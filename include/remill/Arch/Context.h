@@ -49,12 +49,12 @@ class DecodingContext {
   void UpdateContextReg(std::string creg, uint64_t value);
   void DropReg(const std::string &creg);
 
-  bool HasContextValue(const std::string &creg) const;
+  bool HasValueForReg(const std::string &creg) const;
 
 
   uint64_t GetContextValue(const std::string &context_reg) const;
   DecodingContext PutContextReg(std::string creg, uint64_t value) const;
-  DecodingContext MakeContextRegNonConstant(const std::string &creg) const;
+  DecodingContext ContextWithoutRegister(const std::string &creg) const;
 };
 
 }  // namespace remill

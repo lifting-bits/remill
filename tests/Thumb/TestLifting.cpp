@@ -67,7 +67,7 @@ std::optional<remill::Instruction> GetFlows(std::string_view bytes,
 
   remill::DecodingContext dec_context;
   dec_context.UpdateContextReg(std::string(remill::kThumbModeRegName), tm_val);
-  assert(dec_context.HasContextValue("TMReg"));
+  assert(dec_context.HasValueForReg("TMReg"));
   remill::Instruction insn;
   auto res = arch->DecodeInstruction(address, bytes, insn, dec_context);
   if (!res) {
@@ -421,8 +421,8 @@ TEST(ArmContextTests, ArmLDRIndirect) {
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbee4).HasContextValue(remill::kThumbModeRegName));
-  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
 }
 
 TEST(ArmContextTests, ArmBXIndirect) {
@@ -433,8 +433,8 @@ TEST(ArmContextTests, ArmBXIndirect) {
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbee4).HasContextValue(remill::kThumbModeRegName));
-  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
 }
 
 
@@ -446,8 +446,8 @@ TEST(ArmContextTests, ThumbLDRIndirect) {
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbee4).HasContextValue(remill::kThumbModeRegName));
-  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
 }
 
 TEST(ArmContextTests, ThumbBXIndirect) {
@@ -458,8 +458,8 @@ TEST(ArmContextTests, ThumbBXIndirect) {
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbee2).HasContextValue(remill::kThumbModeRegName));
-  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee2).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
 }
 
 TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitch) {
@@ -470,8 +470,8 @@ TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitch) {
   ASSERT_TRUE(maybe_map.has_value());
   auto map = *maybe_map;
 
-  EXPECT_FALSE(map(0xdeadbee4).HasContextValue(remill::kThumbModeRegName));
-  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
 }
 
 
@@ -511,7 +511,7 @@ TEST(ArmContextTests, ArmLDRIndirectConditional) {
   auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
-  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
 }
 
 TEST(ArmContextTests, ArmBXIndirectConditional) {
@@ -523,7 +523,7 @@ TEST(ArmContextTests, ArmBXIndirectConditional) {
   auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
-  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
 }
 
 TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitchConditional) {
@@ -535,7 +535,7 @@ TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitchConditional) {
   auto map = *maybe_map;
 
   EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
-  EXPECT_FALSE(map(0x1000).HasContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
 }
 */
 

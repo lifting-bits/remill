@@ -3761,7 +3761,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   inst.operands.clear();
   inst.flows = Instruction::InvalidInsn();
 
-  if (!context.HasContextValue(std::string(kThumbModeRegName))) {
+  if (!context.HasValueForReg(std::string(kThumbModeRegName))) {
     return false;
   }
 

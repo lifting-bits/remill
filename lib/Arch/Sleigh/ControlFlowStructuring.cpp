@@ -548,7 +548,7 @@ void ContextUpdater::ApplyPcodeOp(const RemillPcodeOp &op) {
 // May have a complete context
 std::optional<DecodingContext> ContextUpdater::GetContext() const {
   for (const auto &[_, remill_reg] : this->register_mapping) {
-    if (!this->curr_context.HasContextValue(remill_reg)) {
+    if (!this->curr_context.HasValueForReg(remill_reg)) {
       return std::nullopt;
     }
   }

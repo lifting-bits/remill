@@ -38,13 +38,13 @@ void DecodingContext::DropReg(const std::string &creg) {
   this->context_value.erase(creg);
 }
 
-bool DecodingContext::HasContextValue(const std::string &creg) const {
+bool DecodingContext::HasValueForReg(const std::string &creg) const {
   return this->context_value.find(creg) != this->context_value.end();
 }
 
 
 DecodingContext
-DecodingContext::MakeContextRegNonConstant(const std::string &creg) const {
+DecodingContext::ContextWithoutRegister(const std::string &creg) const {
   DecodingContext cpy = *this;
   cpy.DropReg(creg);
   return cpy;
