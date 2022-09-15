@@ -273,11 +273,11 @@ class Instruction {
 
   struct IndirectFlow : Flow {
    public:
-    // We may have info in the decoder that tells us a context value
-    std::optional<DecodingContext> maybe_context;
-
     IndirectFlow() = delete;
     IndirectFlow(std::optional<DecodingContext> maybe_context);
+
+    // We may have info in the decoder that tells us a context value
+    std::optional<DecodingContext> maybe_context;
 
     bool operator==(const IndirectFlow &rhs) const;
   };
@@ -298,6 +298,7 @@ class Instruction {
     NormalInsn(FallthroughFlow fallthrough);
 
     FallthroughFlow fallthrough;
+
     bool operator==(const NormalInsn &rhs) const;
   };
 
@@ -306,9 +307,9 @@ class Instruction {
     NoOp() = delete;
     NoOp(FallthroughFlow fallthrough);
 
-    bool operator==(const NoOp &rhs) const;
-
     FallthroughFlow fallthrough;
+
+    bool operator==(const NoOp &rhs) const;
   };
 
   struct InvalidInsn {
@@ -330,8 +331,9 @@ class Instruction {
     DirectJump() = delete;
     DirectJump(DirectFlow taken_flow);
 
-    bool operator==(const DirectJump &rhs) const;
     DirectFlow taken_flow;
+
+    bool operator==(const DirectJump &rhs) const;
   };
 
   struct IndirectJump {
@@ -372,6 +374,7 @@ class Instruction {
   struct AsyncHyperCall {
    public:
     AsyncHyperCall() = default;
+
     bool operator==(const AsyncHyperCall &rhs) const;
   };
 
@@ -381,12 +384,12 @@ class Instruction {
 
   struct ConditionalInstruction {
    public:
-    AbnormalFlow taken_branch;
-    FallthroughFlow fall_through;
-
     ConditionalInstruction() = delete;
     ConditionalInstruction(AbnormalFlow taken_branch,
                            FallthroughFlow fall_through);
+
+    AbnormalFlow taken_branch;
+    FallthroughFlow fall_through;
 
     bool operator==(const ConditionalInstruction &rhs) const;
   };
