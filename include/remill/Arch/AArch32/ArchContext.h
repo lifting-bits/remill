@@ -5,9 +5,11 @@
 #include <string>
 
 namespace remill {
+inline const std::string_view kThumbModeRegName = "TMReg";
 
-extern const std::string_view kThumbModeRegName;
+inline const remill::DecodingContext kThumbContext =
+    remill::DecodingContext({{std::string(remill::kThumbModeRegName), 1}});
+inline const remill::DecodingContext kARMContext =
+    remill::DecodingContext({{std::string(remill::kThumbModeRegName), 0}});
 
-extern const remill::DecodingContext kThumbContext;
-extern const remill::DecodingContext kARMContext;
 }  // namespace remill

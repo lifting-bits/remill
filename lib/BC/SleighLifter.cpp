@@ -902,7 +902,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
 
       if (lifted_lhs.has_value()) {
-        LOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
+        DLOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
         auto new_size = lhs.size - rhs.offset;
         auto *subpiece_lhs = bldr.CreateTrunc(
             *lifted_lhs, llvm::IntegerType::get(this->context, new_size * 8));
@@ -1067,8 +1067,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
                     VarnodeData *vars, int4 isize) final override {
-    LOG(INFO) << "inner handle" << std::endl;
-
     llvm::IRBuilder bldr(this->target_block);
 
     if (this->to_lift_btaken && curr_id == this->to_lift_btaken->index) {

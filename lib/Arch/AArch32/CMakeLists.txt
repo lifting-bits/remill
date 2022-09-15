@@ -27,7 +27,6 @@ add_library(remill_arch_aarch32 STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/ArchContext.h"
 
   Arch.cpp
-  ArchContext.cpp
   Decode.cpp
   Base.cpp
 

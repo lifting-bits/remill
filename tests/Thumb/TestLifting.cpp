@@ -67,10 +67,10 @@ std::optional<remill::Instruction> GetFlows(std::string_view bytes,
 
   remill::DecodingContext dec_context;
   dec_context.UpdateContextReg(std::string(remill::kThumbModeRegName), tm_val);
-  assert(dec_context.HasValueForReg("TMReg"));
+  CHECK(dec_context.HasValueForReg("TMReg"));
   remill::Instruction insn;
-  auto res = arch->DecodeInstruction(address, bytes, insn, dec_context);
-  if (!res) {
+
+  if (!arch->DecodeInstruction(address, bytes, insn, dec_context)) {
     return std::nullopt;
   } else {
     return insn;
