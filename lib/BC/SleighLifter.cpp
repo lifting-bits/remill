@@ -240,7 +240,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           this->current_replacements.end()) {
 
         if (this->used_values.find(target.offset) != this->used_values.end()) {
-          LOG(FATAL) << "Ambigous value substitution via claim eq: "
+          LOG(ERROR) << "Ambigous value substitution via claim eq: "
                      << target.offset;
         }
         auto replacement = this->current_replacements.find(target.offset)
@@ -455,13 +455,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     switch (opc) {
       case OpCode::CPUI_BOOL_NEGATE: {
         auto bneg_inval = this->LiftInParam(
-            bldr, input_var, llvm::IntegerType::get(this->context, 1));
+            bldr, input_var, llvm::IntegerType::get(this->context, 8));
+        ;
         if (bneg_inval.has_value()) {
-          return this->LiftStoreIntoOutParam(
-              bldr,
-              bldr.CreateZExt(bldr.CreateNot(*bneg_inval),
-                              llvm::IntegerType::get(this->context, 8)),
-              outvar);
+          return this->LiftStoreIntoOutParam(bldr, bldr.CreateNot(*bneg_inval),
+                                             outvar);
         }
         break;
       }
@@ -1035,13 +1033,16 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   LiftStatus HandleCallOther(llvm::IRBuilder<> &bldr, VarnodeData *outvar,
                              VarnodeData *vars, int4 isize) {
     auto other_func_name = this->GetOtherFuncName(vars, isize);
-
-    if (other_func_name == kEqualityClaimName && isize == kEqualityClaimArity) {
-      LOG(INFO) << "Applying eq claim";
-      this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1], vars[2]);
-      return kLiftedInstruction;
+    if (other_func_name.has_value()) {
+      if (other_func_name == kEqualityClaimName &&
+          isize == kEqualityClaimArity) {
+        LOG(INFO) << "Applying eq claim";
+        this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1],
+                                                  vars[2]);
+        return kLiftedInstruction;
+      }
+      LOG(ERROR) << "Unsupported pcode intrinsic: " << *other_func_name;
     }
-
     return kLiftedUnsupportedInstruction;
   }
 
