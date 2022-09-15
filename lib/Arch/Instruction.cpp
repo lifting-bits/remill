@@ -822,7 +822,7 @@ Instruction::NormalInsn::NormalInsn(FallthroughFlow fallthrough_)
 
 
 Instruction::NoOp::NoOp(FallthroughFlow fallthrough_)
-    : fallthrough(std::move(fallthrough_)) {}
+    : NormalInsn(std::move(fallthrough_)) {}
 
 
 Instruction::DirectJump::DirectJump(DirectFlow taken_flow_)

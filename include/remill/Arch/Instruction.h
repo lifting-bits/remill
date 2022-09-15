@@ -302,12 +302,10 @@ class Instruction {
     bool operator==(const NormalInsn &rhs) const;
   };
 
-  struct NoOp {
+  struct NoOp : public NormalInsn {
    public:
     NoOp() = delete;
     NoOp(FallthroughFlow fallthrough);
-
-    FallthroughFlow fallthrough;
 
     bool operator==(const NoOp &rhs) const;
   };
