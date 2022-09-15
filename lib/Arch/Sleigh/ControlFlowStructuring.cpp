@@ -389,7 +389,6 @@ static std::optional<std::pair<Instruction::InstructionFlowCategory,
                                std::optional<BranchTakenVar>>>
 ExtractAbnormal(const std::vector<Flow> &flows,
                 const std::vector<RemillPcodeOp> &ops) {
-  LOG(INFO) << "Extracting abnormal flow category";
   return ExtractNonConditionalCategory(
       flows, ops,
       [](const Flow &flow, const RemillPcodeOp &op)
@@ -513,7 +512,6 @@ ControlFlowStructureAnalysis::ComputeCategory(
   }
   auto context_updater = this->BuildContextUpdater(std::move(entry_context));
   auto flows = GetBoundContextsForFlows(ops, cc, context_updater);
-  LOG(INFO) << "Extracting actual category " << *maybe_ccategory;
 
   switch (*maybe_ccategory) {
     case CAT_ABNORMAL: return ExtractAbnormal(flows, ops);

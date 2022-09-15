@@ -205,7 +205,7 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
 
   inst.SetLifter(std::make_shared<SleighLifterWithState>(res_cat->second,
                                                          this->GetLifter()));
-  assert(inst.GetLifter() != nullptr);
+  CHECK(inst.GetLifter() != nullptr);
   return res_cat.has_value();
 }
 
