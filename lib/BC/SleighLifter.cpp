@@ -30,6 +30,11 @@ namespace remill {
 
 namespace {
 
+
+static bool isFloatOp(OpCode opc) {
+  return opc >= OpCode::CPUI_FLOAT_EQUAL && opc <= OpCode::CPUI_FLOAT_ROUND;
+}
+
 static const std::string kEqualityClaimName = "claim_eq";
 
 static bool isVarnodeInConstantSpace(VarnodeData vnode) {
@@ -1268,10 +1273,22 @@ void SleighLifter::SetISelAttributes(llvm::Function *target_func) {
   target_func->addFnAttr(llvm::Attribute::AlwaysInline);
 }
 
-std::pair<LiftStatus, llvm::Function *>
+
+std::pair<LiftStatus, std::optional<llvm::Function *>>
 SleighLifter::LiftIntoInternalBlockWithSleighState(
     Instruction &inst, llvm::Module *target_mod, bool is_delayed,
     const std::optional<sleigh::BranchTakenVar> &btaken) {
+
+  this->sleigh_context->resetContext();
+  this->decoder.InitializeSleighContext(*this->sleigh_context);
+
+  sleigh::PcodeDecoder pcode_record(this->GetEngine());
+  sleigh_context->oneInstruction(inst.pc, pcode_record, inst.bytes);
+  for (const auto &op : pcode_record.ops) {
+    if (isFloatOp(op.op)) {
+      return {LiftStatus::kLiftedUnsupportedInstruction, std::nullopt};
+    }
+  }
 
   LOG(INFO) << "Secondary lift of bytes: " << llvm::toHex(inst.bytes);
   auto target_func = inst.arch->DefineLiftedFunction(
@@ -1306,9 +1323,6 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
   //TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
 
-  this->sleigh_context->resetContext();
-  this->decoder.InitializeSleighContext(*this->sleigh_context);
-
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
       target_block, internal_state_pointer, inst, *this,
@@ -1337,7 +1351,11 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
   auto res = this->LiftIntoInternalBlockWithSleighState(
       inst, block->getModule(), is_delayed, btaken);
 
-  auto target_func = res.second;
+  if (res.first != LiftStatus::kLiftedInstruction || !res.second.has_value()) {
+    return res.first;
+  }
+
+  auto target_func = *res.second;
 
   llvm::IRBuilder<> intoblock_builer(block);
   std::array<llvm::Value *, 3> args = {
