@@ -41,8 +41,7 @@ class SleighX86Decoder final : public SleighDecoder {
             kArchX86_SLEIGH == arch.arch_name ? "x86.pspec" : "x86-64.pspec",
             {}) {}
 
-  virtual ~SleighX86Decoder(void) = default;
-
+  // The x86 default context is sufficient. No context register assignments are required.
   void InitializeSleighContext(
       remill::sleigh::SingleInstructionSleighContext &ctxt) const override {}
 };
