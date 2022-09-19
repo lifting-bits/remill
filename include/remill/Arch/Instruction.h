@@ -304,8 +304,7 @@ class Instruction {
 
   struct NoOp : public NormalInsn {
    public:
-    NoOp() = delete;
-    NoOp(FallthroughFlow fallthrough);
+    using NormalInsn::NormalInsn;
 
     bool operator==(const NoOp &rhs) const;
   };
