@@ -16,9 +16,8 @@
 
 #pragma once
 
+#include <lib/Arch/Sleigh/Thumb.h>
 #include <remill/Arch/AArch32/AArch32Base.h>
-
-#include "../Sleigh/Thumb.h"
 
 namespace remill {
 class AArch32Arch final : public AArch32ArchBase {

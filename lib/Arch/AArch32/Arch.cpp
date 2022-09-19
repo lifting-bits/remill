@@ -68,11 +68,7 @@ uint64_t AArch32Arch::MinInstructionAlign(const DecodingContext &cont) const {
 }
 
 uint64_t AArch32Arch::MinInstructionSize(const DecodingContext &cont) const {
-  if (IsThumb(cont)) {
-    return 2;
-  } else {
-    return 4;
-  }
+  return IsThumb(cont) ? 2 : 4;
 }
 
 // Maximum number of bytes in an instruction for this particular architecture.
