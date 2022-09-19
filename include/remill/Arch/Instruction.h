@@ -355,16 +355,14 @@ class Instruction {
 
   struct IndirectFunctionCall : public IndirectJump {
    public:
-    IndirectFunctionCall() = delete;
-    IndirectFunctionCall(IndirectFlow id_flow);
+    using IndirectJump::IndirectJump;
 
     bool operator==(const IndirectFunctionCall &rhs) const;
   };
 
   struct FunctionReturn : public IndirectJump {
    public:
-    FunctionReturn() = delete;
-    FunctionReturn(IndirectFlow id_flow);
+    using IndirectJump::IndirectJump;
 
     bool operator==(const FunctionReturn &rhs) const;
   };

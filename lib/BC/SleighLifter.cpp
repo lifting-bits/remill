@@ -728,7 +728,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                            VarnodeData *outvar, VarnodeData lhs,
                            VarnodeData rhs) {
 
-
+    // We make sure to only attempt to lift params for operands where we know they are booleans
+    // Otherwise lifting a value as a byte could be an incorrect size for something like a unique.
     if (this->BOOL_BINARY_OPS.find(opc) == this->BOOL_BINARY_OPS.end()) {
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
