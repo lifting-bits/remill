@@ -51,9 +51,6 @@ class SleighLifter : public InstructionLifter {
 
   const sleigh::SleighDecoder &decoder;
 
-  // TODO(Ian) this is really annoying but we dont want to reconstruct the work the categorization did
-  std::optional<sleigh::BranchTakenVar> btaken;
-
  public:
   static const std::string_view kInstructionFunctionPrefix;
 
