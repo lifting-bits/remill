@@ -1,6 +1,5 @@
-#include "ControlFlowStructuring.h"
-
 #include <glog/logging.h>
+#include <lib/Arch/Sleigh/ControlFlowStructuring.h>
 
 namespace remill::sleigh {
 

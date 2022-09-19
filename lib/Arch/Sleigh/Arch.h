@@ -15,13 +15,12 @@
  */
 
 #pragma once
+#include <lib/Arch/Sleigh/ControlFlowStructuring.h>
 #include <remill/Arch/ArchBase.h>
 #include <remill/BC/SleighLifter.h>
 
 #include <sleigh/libsleigh.hh>
 #include <unordered_set>
-
-#include "ControlFlowStructuring.h"
 
 // Unifies shared functionality between sleigh architectures
 

@@ -45,6 +45,8 @@ target_link_libraries(remill_arch_sleigh LINK_PUBLIC
   remill_settings
 )
 
+target_include_directories(remill_arch_sleigh AFTER PRIVATE "${REMILL_SOURCE_DIR}")
+
 if(REMILL_ENABLE_INSTALL_TARGET)
   install(
     TARGETS remill_arch_sleigh
