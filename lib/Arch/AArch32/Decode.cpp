@@ -2811,26 +2811,28 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
 
   inst.branch_taken_pc = target_pc;
   inst.branch_not_taken_pc = inst.pc + 4;
+
+
+  auto btaken_flow =
+      Instruction::DirectFlow(inst.branch_taken_pc, taken_context);
+
   if (is_cond && is_func) {
     inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
     inst.flows = Instruction::ConditionalInstruction(
-        Instruction::DirectFunctionCall(
-            Instruction::DirectFlow(inst.branch_taken_pc, taken_context)),
+        Instruction::DirectFunctionCall(std::move(btaken_flow)),
         Instruction::FallthroughFlow(kARMContext));
   } else if (is_cond) {
     inst.category = Instruction::kCategoryConditionalBranch;
     inst.flows = Instruction::ConditionalInstruction(
-        Instruction::DirectJump(
-            Instruction::DirectFlow(inst.branch_taken_pc, taken_context)),
+        Instruction::DirectJump(std::move(btaken_flow)),
         Instruction::FallthroughFlow(kARMContext));
   } else if (is_func) {
     inst.category = Instruction::kCategoryDirectFunctionCall;
-    inst.flows = Instruction::DirectFunctionCall(
-        Instruction::DirectFlow(inst.branch_taken_pc, taken_context));
+    inst.flows = Instruction::DirectFunctionCall(std::move(btaken_flow));
   } else {
     inst.category = Instruction::kCategoryDirectJump;
     inst.flows = Instruction::DirectJump(
-        Instruction::DirectFlow(inst.branch_taken_pc, taken_context));
+        Instruction::DirectFlow(std::move(btaken_flow)));
   }
   AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                Operand::kActionRead, 0);

@@ -43,8 +43,6 @@ class AssemblyLogger : public AssemblyEmit {
               << " " << body;
   }
 };
-
-
 }  // namespace
 
 PcodeDecoder::PcodeDecoder(::Sleigh &engine_) : engine(engine_) {}
