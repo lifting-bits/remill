@@ -831,10 +831,6 @@ Instruction::DirectJump::DirectJump(DirectFlow taken_flow_)
 Instruction::IndirectJump::IndirectJump(IndirectFlow taken_flow_)
     : taken_flow(std::move(taken_flow_)) {}
 
-
-Instruction::DirectFunctionCall::DirectFunctionCall(DirectFlow taken_flow_)
-    : DirectJump(std::move(taken_flow_)) {}
-
 Instruction::ConditionalInstruction::ConditionalInstruction(
     AbnormalFlow taken_branch_, FallthroughFlow fall_through_)
     : taken_branch(std::move(taken_branch_)),

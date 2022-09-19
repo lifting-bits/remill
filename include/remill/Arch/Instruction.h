@@ -346,8 +346,7 @@ class Instruction {
 
   class DirectFunctionCall : public DirectJump {
    public:
-    DirectFunctionCall() = delete;
-    DirectFunctionCall(DirectFlow taken_flow);
+    using DirectJump::DirectJump;
 
     bool operator==(const DirectFunctionCall &rhs) const;
   };
