@@ -61,17 +61,14 @@ Arch::ArchPtr Arch::GetAArch32(llvm::LLVMContext *context_, OSName os_name_,
   return std::make_unique<AArch32Arch>(context_, os_name_, arch_name_);
 }
 
+
 // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
 uint64_t AArch32Arch::MinInstructionAlign(const DecodingContext &cont) const {
-  if (cont.GetContextValue(std::string(kThumbModeRegName))) {
-    return 2;
-  } else {
-    return 4;
-  }
+  return IsThumb(cont) ? 2 : 4;
 }
 
 uint64_t AArch32Arch::MinInstructionSize(const DecodingContext &cont) const {
-  if (cont.GetContextValue(std::string(kThumbModeRegName))) {
+  if (IsThumb(cont)) {
     return 2;
   } else {
     return 4;
@@ -91,5 +88,8 @@ bool AArch32Arch::DecodeThumb(uint64_t address, std::string_view instr_bytes,
                                                context);
 }
 
+bool AArch32Arch::IsThumb(const DecodingContext &context) {
+  return context.GetContextValue(std::string(kThumbModeRegName));
+}
 
 }  // namespace remill

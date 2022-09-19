@@ -49,6 +49,8 @@ class AArch32Arch final : public AArch32ArchBase {
 
 
  private:
+  static bool IsThumb(const DecodingContext &context);
+
   sleighthumb2::SleighThumb2Decoder thumb_decoder;
   bool DecodeAArch32(uint64_t address, std::string_view instr_bytes,
                      Instruction &inst, DecodingContext context) const;
