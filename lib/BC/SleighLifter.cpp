@@ -454,12 +454,18 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
     switch (opc) {
       case OpCode::CPUI_BOOL_NEGATE: {
-        auto bneg_inval = this->LiftInParam(
-            bldr, input_var, llvm::IntegerType::get(this->context, 8));
+        auto byte_type = llvm::IntegerType::get(this->context, 8);
+        auto bneg_inval = this->LiftInParam(bldr, input_var, byte_type);
         ;
         if (bneg_inval.has_value()) {
-          return this->LiftStoreIntoOutParam(bldr, bldr.CreateNot(*bneg_inval),
-                                             outvar);
+          // TODO(Ian): is there a more optimization friendly way to get logical not on a byte?
+          return this->LiftStoreIntoOutParam(
+              bldr,
+              bldr.CreateZExt(
+                  bldr.CreateICmpEQ(*bneg_inval,
+                                    llvm::ConstantInt::get(byte_type, 0)),
+                  byte_type),
+              outvar);
         }
         break;
       }
