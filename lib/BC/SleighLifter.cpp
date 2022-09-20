@@ -240,8 +240,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
           this->current_replacements.end()) {
 
         if (this->used_values.find(target.offset) != this->used_values.end()) {
-          LOG(ERROR) << "Ambigous value substitution via claim eq: "
-                     << target.offset;
+          DLOG(ERROR) << "Ambigous value substitution via claim eq: "
+                      << target.offset;
         }
         auto replacement = this->current_replacements.find(target.offset)
                                ->second->LiftAsInParam(bldr, target_type);
@@ -274,7 +274,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
     if (new_status != LiftStatus::kLiftedInstruction) {
       this->status = new_status;
-      LOG(ERROR) << "Failed to lift insn with opcode: " << get_opname(opc);
+      DLOG(ERROR) << "Failed to lift insn with opcode: " << get_opname(opc);
     }
   }
 
@@ -485,7 +485,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         // directs dont read the address of the variable, the offset is the jump
         // TODO(Ian): handle other address spaces
         if (isVarnodeInConstantSpace(input_var)) {
-          LOG(ERROR) << "Internal control flow not supported";
+          DLOG(ERROR) << "Internal control flow not supported";
           return LiftStatus::kLiftedUnsupportedInstruction;
         }
 
@@ -666,7 +666,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
 
     if (isVarnodeInConstantSpace(lhs)) {
-      LOG(ERROR) << "Internal control flow not supported";
+      DLOG(ERROR) << "Internal control flow not supported";
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
@@ -708,10 +708,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       auto lifted_lhs = this->LiftIntegerInParam(bldr, lhs);
       auto lifted_rhs = this->LiftIntegerInParam(bldr, rhs);
       if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
-        LOG(INFO) << "Binop with lhs: "
-                  << remill::LLVMThingToString(*lifted_lhs);
-        LOG(INFO) << "Binop with rhs: "
-                  << remill::LLVMThingToString(*lifted_rhs);
+        DLOG(INFO) << "Binop with lhs: "
+                   << remill::LLVMThingToString(*lifted_lhs);
+        DLOG(INFO) << "Binop with rhs: "
+                   << remill::LLVMThingToString(*lifted_rhs);
         auto orig_res = op_func(*lifted_lhs, *lifted_rhs, bldr);
         if (INTEGER_COMP_OPS.find(opc) != INTEGER_COMP_OPS.end()) {
           // Comparison operators always return a byte
@@ -720,9 +720,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                 orig_res, llvm::IntegerType::get(bldr.getContext(), 8));
           }
         }
-        LOG(INFO) << "Res: " << remill::LLVMThingToString(orig_res);
-        LOG(INFO) << "Res ty: "
-                  << remill::LLVMThingToString(orig_res->getType());
+        DLOG(INFO) << "Res: " << remill::LLVMThingToString(orig_res);
+        DLOG(INFO) << "Res ty: "
+                   << remill::LLVMThingToString(orig_res->getType());
         return this->LiftStoreIntoOutParam(bldr, orig_res, outvar);
       }
     }
@@ -1043,12 +1043,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (other_func_name.has_value()) {
       if (other_func_name == kEqualityClaimName &&
           isize == kEqualityClaimArity) {
-        LOG(INFO) << "Applying eq claim";
+        DLOG(INFO) << "Applying eq claim";
         this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1],
                                                   vars[2]);
         return kLiftedInstruction;
       }
-      LOG(ERROR) << "Unsupported pcode intrinsic: " << *other_func_name;
+      DLOG(ERROR) << "Unsupported pcode intrinsic: " << *other_func_name;
     }
     return kLiftedUnsupportedInstruction;
   }
@@ -1300,7 +1300,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
     }
   }
 
-  LOG(INFO) << "Secondary lift of bytes: " << llvm::toHex(inst.bytes);
+  DLOG(INFO) << "Secondary lift of bytes: " << llvm::toHex(inst.bytes);
   auto target_func = inst.arch->DefineLiftedFunction(
       SleighLifter::kInstructionFunctionPrefix, target_mod);
 
@@ -1353,7 +1353,7 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
     Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
     bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken) {
   if (!inst.IsValid()) {
-    LOG(ERROR) << "Invalid function" << inst.Serialize();
+    DLOG(ERROR) << "Invalid function" << inst.Serialize();
     return kLiftedInvalidInstruction;
   }
 
@@ -1382,7 +1382,7 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
       remill::LoadNextProgramCounterRef(block));
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
-  LOG(INFO) << res.first;
+  DLOG(INFO) << res.first;
 
   return res.first;
 }
