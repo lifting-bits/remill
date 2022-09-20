@@ -355,8 +355,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       auto reg_name = this->insn_lifter_parent.GetEngine().getRegisterName(
           vnode.space, vnode.offset, vnode.size);
 
-      LOG(INFO) << "Looking for reg name " << reg_name << " from offset "
-                << vnode.offset;
+      DLOG(INFO) << "Looking for reg name " << reg_name << " from offset "
+                 << vnode.offset;
       return this->LiftNormalRegisterOrCreateUnique(bldr, reg_name, vnode);
     } else if (space_name == "const") {
 
@@ -375,7 +375,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   llvm::Value *FixResultForOutVarnode(llvm::IRBuilder<> &bldr,
                                       llvm::Value *orig, VarnodeData outvnode) {
-    assert(orig->getType()->isIntegerTy());
+    CHECK(orig->getType()->isIntegerTy());
     auto out_bits = outvnode.size * 8;
     if (out_bits == orig->getType()->getIntegerBitWidth()) {
       return orig;
@@ -1054,7 +1054,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     auto maybe_should_branch =
         this->LiftIntegerInParam(bldr, btaken_var.target_vnode);
     if (!maybe_should_branch) {
-      LOG(ERROR) << "Failed to lift iparam branch taken var";
+      DLOG(ERROR) << "Failed to lift iparam branch taken var";
       return LiftStatus::kLiftedLifterError;
     }
 
@@ -1066,53 +1066,57 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   }
 
 
-  virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
-                    VarnodeData *vars, int4 isize) final override {
-    llvm::IRBuilder bldr(this->target_block);
+  void LiftBtakenIfReached(llvm::IRBuilder<> &bldr, OpCode opc) {
 
     if (this->to_lift_btaken && curr_id == this->to_lift_btaken->index) {
       this->UpdateStatus(this->LiftBranchTaken(bldr, *this->to_lift_btaken),
                          opc);
     }
+  }
 
+  void LiftPcodeOp(llvm::IRBuilder<> &bldr, OpCode opc, VarnodeData *outvar,
+                   VarnodeData *vars, int4 isize) {
     // The MULTIEQUAL op has variadic operands
     if (opc == OpCode::CPUI_MULTIEQUAL || opc == OpCode::CPUI_CPOOLREF) {
       this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
                          opc);
-      this->curr_id++;
       return;
     }
 
     if (opc == OpCode::CPUI_CALLOTHER) {
       this->UpdateStatus(this->HandleCallOther(bldr, outvar, vars, isize), opc);
-      this->curr_id++;
       return;
     }
 
     switch (isize) {
       case 1: {
         this->UpdateStatus(this->LiftUnaryOp(bldr, opc, outvar, vars[0]), opc);
-        this->curr_id++;
         break;
       }
       case 2: {
         this->UpdateStatus(this->LiftBinOp(bldr, opc, outvar, vars[0], vars[1]),
                            opc);
-        this->curr_id++;
         return;
       }
       case 3: {
         this->UpdateStatus(this->LiftThreeOperandOp(bldr, opc, outvar, vars[0],
                                                     vars[1], vars[2]),
                            opc);
-        this->curr_id++;
+
         return;
       }
       default:
-        this->curr_id++;
         this->UpdateStatus(LiftStatus::kLiftedUnsupportedInstruction, opc);
         return;
     }
+  }
+
+  virtual void dump(const Address &addr, OpCode opc, VarnodeData *outvar,
+                    VarnodeData *vars, int4 isize) final override {
+    llvm::IRBuilder bldr(this->target_block);
+    this->LiftBtakenIfReached(bldr, opc);
+    this->LiftPcodeOp(bldr, opc, outvar, vars, isize);
+    this->curr_id++;
   }
 
   LiftStatus GetStatus() {
