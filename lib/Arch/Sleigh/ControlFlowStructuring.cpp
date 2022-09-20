@@ -29,28 +29,28 @@ auto variant_cast(const std::variant<Args...> &v)
   return {v};
 }
 
-enum CoarseEffect { ABNORMAL, NORMAL };
+enum CoarseEffect { kAbnormal, kNormal };
 
 struct CoarseFlow {
   CoarseEffect eff;
   bool is_conditional;
 };
 
-enum CoarseCategory { CAT_NORMAL, CAT_ABNORMAL, CAT_CONDITIONAL_ABNORMAL };
+enum CoarseCategory { kCatNormal, kCatAbnormal, kCatConditionalAbnormal };
 
 
 static CoarseEffect EffectFromDirectControlFlowOp(const RemillPcodeOp &op,
                                                   uint64_t next_pc) {
   CHECK(op.op == CPUI_BRANCH || op.op == CPUI_CBRANCH);
-  return op.vars[0].offset == next_pc ? CoarseEffect::NORMAL
-                                      : CoarseEffect::ABNORMAL;
+  return op.vars[0].offset == next_pc ? CoarseEffect::kNormal
+                                      : CoarseEffect::kAbnormal;
 }
 
 static std::optional<CoarseFlow>
 CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
   if (op.op == CPUI_CALL || op.op == CPUI_CALLIND || op.op == CPUI_BRANCHIND ||
       op.op == CPUI_RETURN) {
-    return {{CoarseEffect::ABNORMAL, false}};
+    return {{CoarseEffect::kAbnormal, false}};
   }
 
   // either a branch or a cbranch
@@ -91,7 +91,7 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
       !ControlFlowStructureAnalysis::isControlFlowPcodeOp(
           ops[ops.size() - 1].op) ||
       ops[ops.size() - 1].op == CPUI_CBRANCH) {
-    CoarseFlow cat = {CoarseEffect::NORMAL, false};
+    CoarseFlow cat = {CoarseEffect::kNormal, false};
     res.emplace(ops.size(), cat);
   }
 
@@ -99,35 +99,39 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
 }
 
 static bool isConditionalAbnormal(CoarseFlow flow) {
-  return flow.eff == CoarseEffect::ABNORMAL && flow.is_conditional;
+  return flow.eff == CoarseEffect::kAbnormal && flow.is_conditional;
 }
 
 static bool isUnconditionalAbnormal(CoarseFlow flow) {
-  return flow.eff == CoarseEffect::ABNORMAL && !flow.is_conditional;
+  return flow.eff == CoarseEffect::kAbnormal && !flow.is_conditional;
 }
 
 static bool isConditionalNormal(CoarseFlow flow) {
-  return flow.eff == CoarseEffect::NORMAL && flow.is_conditional;
+  return flow.eff == CoarseEffect::kNormal && flow.is_conditional;
 }
 
 static bool isUnconditionalNormal(CoarseFlow flow) {
-  return flow.eff == CoarseEffect::NORMAL && !flow.is_conditional;
+  return flow.eff == CoarseEffect::kNormal && !flow.is_conditional;
 }
 
 static std::optional<CoarseCategory>
 CoarseCategoryFromFlows(const std::map<size_t, CoarseFlow> &ops) {
-  if (std::all_of(ops.begin(), ops.end(),
-                  [](const std::pair<size_t, CoarseFlow> &op) {
-                    return op.second.eff == CoarseEffect::NORMAL;
-                  })) {
-    return CoarseCategory::CAT_NORMAL;
+
+
+  auto all_normal_effects = std::all_of(
+      ops.begin(), ops.end(), [](const std::pair<size_t, CoarseFlow> &op) {
+        return op.second.eff == CoarseEffect::kNormal;
+      });
+  if (all_normal_effects) {
+    return CoarseCategory::kCatNormal;
   }
 
-  if (std::all_of(ops.begin(), ops.end(),
-                  [](const std::pair<size_t, CoarseFlow> &op) {
-                    return op.second.eff == CoarseEffect::ABNORMAL;
-                  })) {
-    return CoarseCategory::CAT_ABNORMAL;
+  auto all_abnormal_effects = std::all_of(
+      ops.begin(), ops.end(), [](const std::pair<size_t, CoarseFlow> &op) {
+        return op.second.eff == CoarseEffect::kAbnormal;
+      });
+  if (all_abnormal_effects) {
+    return CoarseCategory::kCatAbnormal;
   }
 
   if (ops.size() == 2) {
@@ -135,7 +139,7 @@ CoarseCategoryFromFlows(const std::map<size_t, CoarseFlow> &ops) {
     auto snd = ops.rbegin()->second;
     if (((isConditionalAbnormal(fst) && isUnconditionalNormal(snd)) ||
          (isConditionalNormal(fst) && isUnconditionalAbnormal(snd)))) {
-      return CoarseCategory::CAT_CONDITIONAL_ABNORMAL;
+      return CoarseCategory::kCatConditionalAbnormal;
     }
   }
 
@@ -376,7 +380,7 @@ Either a fallthrough or an abnormal flow can be conditional
 
 So the first step is to categorize a coarse grained control flow category which is one of:
 - Normal, in this case there are only fallthroughs, conditional or otherwise  
-- Conditional Abnormal: either we have a CONDITIONAL_FALLTHROUGH followed by an ABNORMAL
+- Conditional Abnormal: either we have a CONDITIONAL_FALLTHROUGH followed by an kAbnormal
   - or we have a CONDITIONAL_ABNORMAL followed by a FALLTHROUGH
 - Abnormal: we have many ABNORMALs conditional or otherwise 
 
@@ -410,10 +414,9 @@ ControlFlowStructureAnalysis::ComputeCategory(
   auto flows = GetBoundContextsForFlows(ops, cc, context_updater);
 
   switch (*maybe_ccategory) {
-    case CAT_ABNORMAL: return ExtractAbnormal(flows, ops);
-    case CAT_CONDITIONAL_ABNORMAL:
-      return ExtractConditionalAbnormal(flows, ops);
-    case CAT_NORMAL: return ExtractNormal(flows, ops);
+    case kCatAbnormal: return ExtractAbnormal(flows, ops);
+    case kCatConditionalAbnormal: return ExtractConditionalAbnormal(flows, ops);
+    case kCatNormal: return ExtractNormal(flows, ops);
   }
 }
 
