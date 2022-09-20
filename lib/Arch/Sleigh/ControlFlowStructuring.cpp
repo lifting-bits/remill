@@ -246,7 +246,7 @@ ExtractNonConditionalCategory(
     if (auto cat = compute_single_flow_category(flow, ops[flow.pcode_index])) {
       cats.push_back(*cat);
     } else {
-      LOG(ERROR) << "Missing flow cat";
+      DLOG(ERROR) << "Missing flow cat";
       return std::nullopt;
     }
   }
@@ -254,19 +254,18 @@ ExtractNonConditionalCategory(
   // if all cats are equal then we have our result
 
   if (cats.size() < 1) {
-    LOG(ERROR) << "No extracted cats";
+    DLOG(ERROR) << "No extracted cats";
     return std::nullopt;
   }
 
   Instruction::InstructionFlowCategory fst = cats[0];
-
-  if (std::all_of(cats.begin(), cats.end(),
-                  [&fst](Instruction::InstructionFlowCategory curr_cat) {
-                    return fst == curr_cat;
-                  })) {
+  auto all_flows_equal = [&fst](Instruction::InstructionFlowCategory curr_cat) {
+    return fst == curr_cat;
+  };
+  if (std::all_of(cats.begin(), cats.end(), std::move(all_flows_equal))) {
     return std::make_pair(fst, std::nullopt);
   }
-  LOG(ERROR) << "Not equal flows";
+  DLOG(ERROR) << "Not equal flows";
 
   return std::nullopt;
 }
@@ -285,7 +284,7 @@ ExtractNormal(const std::vector<Flow> &flows,
               Instruction::FallthroughFlow(*flow.context));
           return norm;
         }
-        LOG(ERROR) << "Normal does not have context";
+        DLOG(ERROR) << "Normal does not have context";
         return std::nullopt;
       });
 }
@@ -302,9 +301,8 @@ ExtractAbnormal(const std::vector<Flow> &flows,
         auto res = AbnormalCategoryOfFlow(flow, op);
         if (res) {
           return variant_cast(*res);
-        } else {
-          return std::nullopt;
         }
+        return std::nullopt;
       });
 }
 
@@ -316,8 +314,8 @@ ExtractConditionalAbnormal(const std::vector<Flow> &flows,
     return std::nullopt;
   }
 
-  auto first_flow = flows[0];
-  auto snd_flow = flows[1];
+  const auto &first_flow = flows[0];
+  const auto &snd_flow = flows[1];
 
   // Two case sto handle here either conditional_fallthrough->abnormal
   // Or conditional_abnormal -> fallthrough
@@ -405,7 +403,7 @@ ControlFlowStructureAnalysis::ComputeCategory(
 
   auto maybe_cc = CoarseFlows(ops, fallthrough_addr);
   if (!maybe_cc) {
-    LOG(ERROR) << "No coarse flow found";
+    DLOG(ERROR) << "No coarse flow found";
     return std::nullopt;
   }
 
@@ -413,7 +411,7 @@ ControlFlowStructureAnalysis::ComputeCategory(
 
   auto maybe_ccategory = CoarseCategoryFromFlows(cc);
   if (!maybe_ccategory) {
-    LOG(ERROR) << "No coarse category found";
+    DLOG(ERROR) << "No coarse category found";
     return std::nullopt;
   }
   auto context_updater = this->BuildContextUpdater(std::move(entry_context));
