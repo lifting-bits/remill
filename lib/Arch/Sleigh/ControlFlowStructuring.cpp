@@ -345,14 +345,14 @@ ExtractConditionalAbnormal(const std::vector<Flow> &flows,
       first_flow.pcode_index,
   };
 
-  auto abnormal_part =
-      AbnormalCategoryOfFlow(abnormal_flow, ops[abnormal_flow.pcode_index]);
-
 
   if (!normal_flow.context) {
     return std::nullopt;
   }
   auto normal_context = *normal_flow.context;
+
+  auto abnormal_part =
+      AbnormalCategoryOfFlow(abnormal_flow, ops[abnormal_flow.pcode_index]);
 
 
   if (!abnormal_part) {
@@ -407,7 +407,7 @@ ControlFlowStructureAnalysis::ComputeCategory(
     return std::nullopt;
   }
 
-  auto cc = *maybe_cc;
+  auto cc = std::move(*maybe_cc);
 
   auto maybe_ccategory = CoarseCategoryFromFlows(cc);
   if (!maybe_ccategory) {
