@@ -3768,7 +3768,7 @@ bool AArch32Arch::DecodeInstruction(uint64_t address,
   }
 
 
-  if (context.GetContextValue(std::string(kThumbModeRegName))) {
+  if (AArch32Arch::IsThumb(context)) {
     return this->DecodeThumb(address, inst_bytes, inst, std::move(context));
   } else {
     return this->DecodeAArch32(address, inst_bytes, inst, std::move(context));

@@ -39,6 +39,13 @@ struct CoarseFlow {
 enum CoarseCategory { CAT_NORMAL, CAT_ABNORMAL, CAT_CONDITIONAL_ABNORMAL };
 
 
+static CoarseEffect EffectFromDirectControlFlowOp(const RemillPcodeOp &op,
+                                                  uint64_t next_pc) {
+  CHECK(op.op == CPUI_BRANCH || op.op == CPUI_CBRANCH);
+  return op.vars[0].offset == next_pc ? CoarseEffect::NORMAL
+                                      : CoarseEffect::ABNORMAL;
+}
+
 static std::optional<CoarseFlow>
 CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
   if (op.op == CPUI_CALL || op.op == CPUI_CALLIND || op.op == CPUI_BRANCHIND ||
@@ -56,11 +63,7 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
     return std::nullopt;
   }
 
-  if (op.vars[0].offset == next_pc) {
-    return {{CoarseEffect::NORMAL, is_conditional}};
-  } else {
-    return {{CoarseEffect::ABNORMAL, is_conditional}};
-  }
+  return {{EffectFromDirectControlFlowOp(op, next_pc), is_conditional}};
 }
 
 // gets a list of indeces and coarse categories in this pcodeop block
@@ -81,15 +84,15 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
     ind++;
   }
 
-  auto last_index = ops.size();
   // insert a pseudo control flow op at the end
   // add a fallthrough insn at +1 to represent a last fallthrough if there is a chance we fallthrough at the end
+
   if (ops.empty() ||
       !ControlFlowStructureAnalysis::isControlFlowPcodeOp(
-          ops[last_index - 1].op) ||
-      ops[last_index - 1].op == CPUI_CBRANCH) {
+          ops[ops.size() - 1].op) ||
+      ops[ops.size() - 1].op == CPUI_CBRANCH) {
     CoarseFlow cat = {CoarseEffect::NORMAL, false};
-    res.emplace(last_index, cat);
+    res.emplace(ops.size(), cat);
   }
 
   return res;
