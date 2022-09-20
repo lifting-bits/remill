@@ -418,9 +418,10 @@ ControlFlowStructureAnalysis::ComputeCategory(
   auto flows = GetBoundContextsForFlows(ops, cc, context_updater);
 
   switch (*maybe_ccategory) {
-    case kCatAbnormal: return ExtractAbnormal(flows, ops);
-    case kCatConditionalAbnormal: return ExtractConditionalAbnormal(flows, ops);
-    case kCatNormal: return ExtractNormal(flows, ops);
+    case CoarseCategory::kCatAbnormal: return ExtractAbnormal(flows, ops);
+    case CoarseCategory::kCatConditionalAbnormal:
+      return ExtractConditionalAbnormal(flows, ops);
+    case CoarseCategory::kCatNormal: return ExtractNormal(flows, ops);
   }
 }
 
