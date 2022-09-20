@@ -152,6 +152,12 @@ struct Flow {
   size_t pcode_index;
   CoarseFlow flow;
   std::optional<DecodingContext> context;
+
+  Flow(size_t pcode_index, CoarseFlow flow,
+       std::optional<DecodingContext> context)
+      : pcode_index(pcode_index),
+        flow(std::move(flow)),
+        context(std::move(context)) {}
 };
 
 std::vector<Flow>
@@ -165,8 +171,7 @@ GetBoundContextsForFlows(const std::vector<RemillPcodeOp> &ops,
   for (size_t curr_ind = 0; curr_ind <= ops.size(); curr_ind++) {
     if (auto curr = cc.find(curr_ind); curr != cc.end()) {
       auto cont = updater.GetContext();
-      Flow f = {curr_ind, curr->second, cont};
-      res.push_back(std::move(f));
+      res.emplace_back(curr_ind, curr->second, cont);
     }
 
     if (curr_ind < ops.size()) {
