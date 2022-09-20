@@ -232,8 +232,7 @@ AbnormalCategoryOfFlow(const Flow &flow, const RemillPcodeOp &op) {
 }
 
 
-static std::optional<std::pair<Instruction::InstructionFlowCategory,
-                               std::optional<BranchTakenVar>>>
+static ControlFlowStructureAnalysis::SleighDecodingResult
 ExtractNonConditionalCategory(
     const std::vector<Flow> &flows, const std::vector<RemillPcodeOp> &ops,
     std::function<std::optional<Instruction::InstructionFlowCategory>(
@@ -270,8 +269,7 @@ ExtractNonConditionalCategory(
   return std::nullopt;
 }
 
-static std::optional<std::pair<Instruction::InstructionFlowCategory,
-                               std::optional<BranchTakenVar>>>
+static ControlFlowStructureAnalysis::SleighDecodingResult
 ExtractNormal(const std::vector<Flow> &flows,
               const std::vector<RemillPcodeOp> &ops) {
   // So we already know the op fallsthrough
@@ -290,8 +288,7 @@ ExtractNormal(const std::vector<Flow> &flows,
 }
 
 
-static std::optional<std::pair<Instruction::InstructionFlowCategory,
-                               std::optional<BranchTakenVar>>>
+static ControlFlowStructureAnalysis::SleighDecodingResult
 ExtractAbnormal(const std::vector<Flow> &flows,
                 const std::vector<RemillPcodeOp> &ops) {
   return ExtractNonConditionalCategory(
@@ -306,8 +303,7 @@ ExtractAbnormal(const std::vector<Flow> &flows,
       });
 }
 
-static std::optional<std::pair<Instruction::InstructionFlowCategory,
-                               std::optional<BranchTakenVar>>>
+static ControlFlowStructureAnalysis::SleighDecodingResult
 ExtractConditionalAbnormal(const std::vector<Flow> &flows,
                            const std::vector<RemillPcodeOp> &ops) {
   if (flows.size() != 2) {
@@ -395,8 +391,7 @@ After we find coarse categories and the flows follow these patterns, we determin
 Finally we pass these coarse flows to a final categorizer to attempt to print these into a flow type
 */
 
-std::optional<std::pair<Instruction::InstructionFlowCategory,
-                        std::optional<BranchTakenVar>>>
+ControlFlowStructureAnalysis::SleighDecodingResult
 ControlFlowStructureAnalysis::ComputeCategory(
     const std::vector<RemillPcodeOp> &ops, uint64_t fallthrough_addr,
     DecodingContext entry_context) {

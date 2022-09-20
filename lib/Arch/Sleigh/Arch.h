@@ -119,8 +119,7 @@ class SleighDecoder {
   std::shared_ptr<remill::OperandLifter> GetOpLifter() const;
 
  protected:
-  std::optional<std::pair<Instruction::InstructionFlowCategory,
-                          std::optional<BranchTakenVar>>>
+  ControlFlowStructureAnalysis::SleighDecodingResult
   DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
                         Instruction &inst, DecodingContext context);
 

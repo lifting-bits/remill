@@ -47,15 +47,17 @@ class ControlFlowStructureAnalysis {
   ContextUpdater BuildContextUpdater(DecodingContext initial_context);
 
  public:
+  using SleighDecodingResult =
+      std::optional<std::pair<Instruction::InstructionFlowCategory,
+                              std::optional<BranchTakenVar>>>;
   ControlFlowStructureAnalysis(
       const std::unordered_map<std::string, std::string> &register_mapping,
       Sleigh &engine);
 
   static bool isControlFlowPcodeOp(OpCode opc);
 
-  std::optional<std::pair<Instruction::InstructionFlowCategory,
-                          std::optional<BranchTakenVar>>>
-  ComputeCategory(const std::vector<RemillPcodeOp> &ops,
-                  uint64_t fallthrough_addr, DecodingContext entry_context);
+  SleighDecodingResult ComputeCategory(const std::vector<RemillPcodeOp> &ops,
+                                       uint64_t fallthrough_addr,
+                                       DecodingContext entry_context);
 };
 }  // namespace remill::sleigh
