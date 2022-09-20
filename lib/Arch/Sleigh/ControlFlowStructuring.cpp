@@ -116,15 +116,17 @@ static bool isUnconditionalNormal(CoarseFlow flow) {
 
 static std::optional<CoarseCategory>
 CoarseCategoryFromFlows(const std::map<size_t, CoarseFlow> &ops) {
-  if (std::all_of(ops.begin(), ops.end(), [](std::pair<size_t, CoarseFlow> op) {
-        return op.second.eff == CoarseEffect::NORMAL;
-      })) {
+  if (std::all_of(ops.begin(), ops.end(),
+                  [](const std::pair<size_t, CoarseFlow> &op) {
+                    return op.second.eff == CoarseEffect::NORMAL;
+                  })) {
     return CoarseCategory::CAT_NORMAL;
   }
 
-  if (std::all_of(ops.begin(), ops.end(), [](std::pair<size_t, CoarseFlow> op) {
-        return op.second.eff == CoarseEffect::ABNORMAL;
-      })) {
+  if (std::all_of(ops.begin(), ops.end(),
+                  [](const std::pair<size_t, CoarseFlow> &op) {
+                    return op.second.eff == CoarseEffect::ABNORMAL;
+                  })) {
     return CoarseCategory::CAT_ABNORMAL;
   }
 
