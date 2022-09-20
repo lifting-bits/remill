@@ -236,8 +236,9 @@ static std::optional<std::pair<Instruction::InstructionFlowCategory,
                                std::optional<BranchTakenVar>>>
 ExtractNonConditionalCategory(
     const std::vector<Flow> &flows, const std::vector<RemillPcodeOp> &ops,
-    const std::function<std::optional<Instruction::InstructionFlowCategory>(
-        const Flow &, const RemillPcodeOp &)> &compute_single_flow_category) {
+    std::function<std::optional<Instruction::InstructionFlowCategory>(
+        const Flow &, const RemillPcodeOp &)>
+        compute_single_flow_category) {
 
   // So here the requirement to make this cateogry work is that all flows target the same abnormal (or are all returns), and all decoding contexts are equal
   std::vector<Instruction::InstructionFlowCategory> cats;
