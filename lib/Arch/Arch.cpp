@@ -888,16 +888,16 @@ DefaultContextAndLifter::FillInFlowFromCategoryAndDefaultContext(
     case Instruction::Category::kCategoryDirectJump:
       return Instruction::DirectJump(this->GetDirectFlow(inst.branch_taken_pc));
     case Instruction::Category::kCategoryIndirectJump:
-      Instruction::IndirectJump(this->GetIndirectFlow());
+      return Instruction::IndirectJump(this->GetIndirectFlow());
     case Instruction::Category::kCategoryConditionalIndirectJump:
       return Instruction::ConditionalInstruction(
           Instruction::IndirectJump(this->GetIndirectFlow()),
           this->GetFallthrough());
-    case Instruction::Category::kCategoryError: Instruction::ErrorInsn();
+    case Instruction::Category::kCategoryError: return Instruction::ErrorInsn();
     case Instruction::Category::kCategoryFunctionReturn:
-      Instruction::FunctionReturn(this->GetIndirectFlow());
+      return Instruction::FunctionReturn(this->GetIndirectFlow());
     case Instruction::Category::kCategoryConditionalFunctionReturn:
-      Instruction::ConditionalInstruction(
+      return Instruction::ConditionalInstruction(
           Instruction::FunctionReturn(this->GetIndirectFlow()),
           this->GetFallthrough());
     case Instruction::Category::kCategoryConditionalDirectFunctionCall:
@@ -932,6 +932,7 @@ bool DefaultContextAndLifter::DecodeInstruction(uint64_t address,
   if (res) {
     inst.flows = this->FillInFlowFromCategoryAndDefaultContext(inst);
   }
+
   return res;
 }
 
