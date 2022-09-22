@@ -478,11 +478,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   LiftStatus RedirectControlFlow(llvm::IRBuilder<> &bldr,
                                  llvm::Value *target_addr) {
-    auto pc_reg = this->LiftNormalRegister(bldr, "PC");
-    CHECK(pc_reg.has_value());
-    auto res = (*pc_reg)->StoreIntoParam(bldr, target_addr);
+
+    bldr.CreateStore(target_addr, this->GetNextPcRef());
     this->TerminateBlock();
-    return res;
+    return LiftStatus::kLiftedInstruction;
   }
 
   LiftStatus LiftUnaryOp(llvm::IRBuilder<> &bldr, OpCode opc,
@@ -727,10 +726,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (orig_pc_value.has_value()) {
       auto next_pc_value =
           bldr.CreateSelect(trunc_should_branch, jump_addr, *orig_pc_value);
-      auto res = pc_reg_ptr->StoreIntoParam(bldr, next_pc_value);
-      if (LiftStatus::kLiftedInstruction != res) {
-        return res;
-      }
+
+      bldr.CreateStore(next_pc_value, this->GetNextPcRef());
     }
 
     return this->TerminateBlockWithCondition(trunc_should_branch);
@@ -1095,6 +1092,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return this->exit_block->getParent()->getArg(kBranchTakenArgNum);
   }
 
+  llvm::Argument *GetNextPcRef() {
+    return this->exit_block->getParent()->getArg(kNextPcArgNum);
+  }
+
   LiftStatus LiftBranchTaken(llvm::IRBuilder<> &bldr,
                              const sleigh::BranchTakenVar &btaken_var) {
 
@@ -1382,17 +1383,13 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
   llvm::IRBuilder<> ir(target_block);
   auto internal_state_pointer =
       remill::NthArgument(target_func, kStatePointerArgNum);
-  const auto next_pc_ref = target_func->getArg(kNextPcArgNum);
-  auto pc_ref =
-      this->LoadRegAddress(target_block, internal_state_pointer, "PC");
 
 
   auto exit_block = llvm::BasicBlock::Create(target_mod->getContext(),
                                              "exit_block", target_func);
 
   llvm::IRBuilder<> exit_builder(exit_block);
-  exit_builder.CreateStore(
-      exit_builder.CreateLoad(this->GetWordType(), pc_ref.first), next_pc_ref);
+
 
   exit_builder.CreateRet(remill::LoadMemoryPointer(
       exit_builder.GetInsertBlock(), *this->GetIntrinsicTable()));
@@ -1461,11 +1458,6 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
 
   intoblock_builer.CreateStore(intoblock_builer.CreateCall(target_func, args),
                                remill::LoadMemoryPointerRef(block));
-
-  // also store off the potentially updated pc into NEXT_PC to keep with traditional lifters
-  intoblock_builer.CreateStore(
-      remill::LoadProgramCounter(block, *this->GetIntrinsicTable()),
-      remill::LoadNextProgramCounterRef(block));
 
   //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   DLOG(INFO) << res.first;
