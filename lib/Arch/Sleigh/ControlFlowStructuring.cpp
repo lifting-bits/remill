@@ -428,8 +428,8 @@ void ContextUpdater::ApplyPcodeOp(const RemillPcodeOp &op) {
 
   auto out = *op.outvar;
   auto reg_name = this->engine.getRegisterName(out.space, out.offset, out.size);
-  auto maybe_remill_reg_name = this->register_mapping.find(reg_name);
-  if (maybe_remill_reg_name == this->register_mapping.end()) {
+  auto maybe_remill_reg_name = this->context_reg_mapping.find(reg_name);
+  if (maybe_remill_reg_name == this->context_reg_mapping.end()) {
     return;
   }
 
@@ -444,7 +444,7 @@ void ContextUpdater::ApplyPcodeOp(const RemillPcodeOp &op) {
 
 // May have a complete context
 std::optional<DecodingContext> ContextUpdater::GetContext() const {
-  for (const auto &[_, remill_reg] : this->register_mapping) {
+  for (const auto &[_, remill_reg] : this->context_reg_mapping) {
     if (!this->curr_context.HasValueForReg(remill_reg)) {
       return std::nullopt;
     }
@@ -455,14 +455,14 @@ std::optional<DecodingContext> ContextUpdater::GetContext() const {
 
 ContextUpdater ControlFlowStructureAnalysis::BuildContextUpdater(
     DecodingContext initial_context) {
-  return ContextUpdater(this->register_mapping, std::move(initial_context),
+  return ContextUpdater(this->context_reg_mapping, std::move(initial_context),
                         this->engine);
 }
 
 ContextUpdater::ContextUpdater(
-    const std::unordered_map<std::string, std::string> &register_mapping,
+    const std::unordered_map<std::string, std::string> &context_reg_mapping,
     DecodingContext initial_context, Sleigh &engine_)
-    : register_mapping(register_mapping),
+    : context_reg_mapping(context_reg_mapping),
       curr_context(std::move(initial_context)),
       engine(engine_) {}
 
@@ -470,7 +470,7 @@ ContextUpdater::ContextUpdater(
 ControlFlowStructureAnalysis::ControlFlowStructureAnalysis(
     const std::unordered_map<std::string, std::string> &register_mapping_,
     Sleigh &engine_)
-    : register_mapping(register_mapping_),
+    : context_reg_mapping(register_mapping_),
       engine(engine_) {}
 
 

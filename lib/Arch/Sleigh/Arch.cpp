@@ -210,18 +210,25 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
 
 SleighDecoder::SleighDecoder(
     const remill::Arch &arch_, std::string sla_name, std::string pspec_name,
-    std::unordered_map<std::string, std::string> reg_map_)
+    std::unordered_map<std::string, std::string> context_reg_map_,
+    std::unordered_map<std::string, std::string> state_reg_map_)
     : sleigh_ctx(sla_name, pspec_name),
       sla_name(sla_name),
       pspec_name(pspec_name),
       lifter(nullptr),
       arch(arch_),
-      register_mapping(reg_map_) {}
+      context_reg_mapping(std::move(context_reg_map_)),
+      state_reg_remappings(std::move(state_reg_map_)) {}
 
 
 const std::unordered_map<std::string, std::string> &
-SleighDecoder::GetRegisterMapping() const {
-  return this->register_mapping;
+SleighDecoder::GetContextRegisterMapping() const {
+  return this->context_reg_mapping;
+}
+
+const std::unordered_map<std::string, std::string> &
+SleighDecoder::GetStateRegRemappings() const {
+  return this->state_reg_remappings;
 }
 
 std::optional<std::pair<Instruction::InstructionFlowCategory,
@@ -264,7 +271,7 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
   uint64_t fallthrough = address + *instr_len;
   inst.next_pc = fallthrough;
 
-  ControlFlowStructureAnalysis analysis(this->register_mapping,
+  ControlFlowStructureAnalysis analysis(this->context_reg_mapping,
                                         this->sleigh_ctx.GetEngine());
 
 

@@ -34,7 +34,8 @@ namespace sleighthumb2 {
 //ARM7_le.sla"
 SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
     : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec",
-                    {{"ISAModeSwitch", std::string(kThumbModeRegName)}}) {}
+                    {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
+                    {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
 
 
 void SleighThumb2Decoder::InitializeSleighContext(

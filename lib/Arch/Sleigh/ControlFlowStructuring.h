@@ -21,13 +21,13 @@ struct RemillPcodeOp {
 /// A context updates a context if the target PcodeOp updates the context. if it is non constant it drops the context
 class ContextUpdater {
  private:
-  const std::unordered_map<std::string, std::string> &register_mapping;
+  const std::unordered_map<std::string, std::string> &context_reg_mapping;
   DecodingContext curr_context;
   Sleigh &engine;
 
  public:
   ContextUpdater(
-      const std::unordered_map<std::string, std::string> &register_mapping,
+      const std::unordered_map<std::string, std::string> &context_reg_mapping,
       DecodingContext initial_context, Sleigh &engine_);
 
   // Applies a pcode op to the held context, this may produce a complete context
@@ -40,7 +40,7 @@ class ContextUpdater {
 class ControlFlowStructureAnalysis {
 
  private:
-  const std::unordered_map<std::string, std::string> &register_mapping;
+  const std::unordered_map<std::string, std::string> &context_reg_mapping;
   Sleigh &engine;
 
 
@@ -51,7 +51,7 @@ class ControlFlowStructureAnalysis {
       std::optional<std::pair<Instruction::InstructionFlowCategory,
                               std::optional<BranchTakenVar>>>;
   ControlFlowStructureAnalysis(
-      const std::unordered_map<std::string, std::string> &register_mapping,
+      const std::unordered_map<std::string, std::string> &context_reg_mapping,
       Sleigh &engine);
 
   static bool isControlFlowPcodeOp(OpCode opc);

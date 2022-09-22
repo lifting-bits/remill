@@ -28,8 +28,36 @@
 
 namespace remill {
 
+
 namespace {
 
+
+void print_vardata(Sleigh &engine, std::stringstream &s, VarnodeData &data) {
+  s << '(' << data.space->getName() << ',';
+  data.space->printOffset(s, data.offset);
+  s << ',' << dec << data.size << ')';
+  auto maybe_name = engine.getRegisterName(data.space, data.offset, data.size);
+  if (!maybe_name.empty()) {
+    s << ":" << maybe_name;
+  }
+}
+std::string DumpPcode(Sleigh &engine, const remill::sleigh::RemillPcodeOp &op) {
+  std::stringstream ss;
+  ss << get_opname(op.op);
+  if (op.outvar) {
+    auto ov = *op.outvar;
+    print_vardata(engine, ss, ov);
+    ss << " = ";
+  }
+  for (size_t i = 0; i < op.vars.size(); ++i) {
+    auto iv = op.vars[i];
+    print_vardata(engine, ss, iv);
+  }
+  return ss.str();
+}
+
+static size_t kBranchTakenArgNum = 2;
+static size_t kNextPcArgNum = 3;
 
 static bool isFloatOp(OpCode opc) {
   return opc >= OpCode::CPUI_FLOAT_EQUAL && opc <= OpCode::CPUI_FLOAT_ROUND;
@@ -314,7 +342,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     for (auto &c : reg_name) {
       c = toupper(c);
     }
+    const auto &remappings =
+        this->insn_lifter_parent.decoder.GetStateRegRemappings();
 
+    if (auto el = remappings.find(reg_name); el != remappings.end()) {
+      DLOG(INFO) << "Remapping to " << el->second;
+      reg_name = el->second;
+    }
 
     if (this->insn_lifter_parent.ArchHasRegByName(reg_name)) {
       // TODO(Ian): will probably need to adjust the pointer here in certain circumstances
@@ -332,6 +366,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     if (auto res = this->LiftNormalRegister(bldr, reg_name)) {
       return *res;
     }
+
+    std::stringstream ss;
+    print_vardata(this->insn_lifter_parent.GetEngine(), ss, target_vnode);
+    DLOG(ERROR) << "Creating unique for unkown register: " << ss.str();
 
     return RegisterValue::CreatRegister(this->unknown_regs.GetUniquePtr(
         target_vnode.offset, target_vnode.size, bldr));
@@ -1053,6 +1091,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return kLiftedUnsupportedInstruction;
   }
 
+  llvm::Argument *GetBranchTakenRef() {
+    return this->exit_block->getParent()->getArg(kBranchTakenArgNum);
+  }
+
   LiftStatus LiftBranchTaken(llvm::IRBuilder<> &bldr,
                              const sleigh::BranchTakenVar &btaken_var) {
 
@@ -1064,9 +1106,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       return LiftStatus::kLiftedLifterError;
     }
 
-    auto should_branch = bldr.CreateTrunc(
-        *maybe_should_branch, llvm::IntegerType::get(this->context, 1));
-    auto branch_taken_ref = LoadBranchTakenRef(bldr.GetInsertBlock());
+    auto should_branch = bldr.CreateZExtOrTrunc(
+        *maybe_should_branch, llvm::IntegerType::get(this->context, 8));
+    auto branch_taken_ref = this->GetBranchTakenRef();
     bldr.CreateStore(should_branch, branch_taken_ref);
     return LiftStatus::kLiftedInstruction;
   }
@@ -1284,6 +1326,36 @@ void SleighLifter::SetISelAttributes(llvm::Function *target_func) {
 }
 
 
+llvm::Function *
+SleighLifter::DefineInstructionFunction(Instruction &inst,
+                                        llvm::Module *target_mod) {
+
+  std::stringstream nm;
+  nm << SleighLifter::kInstructionFunctionPrefix << "_" << std::hex << inst.pc;
+  auto &context = target_mod->getContext();
+  auto ptr_ty = llvm::PointerType::get(context, 0);
+  std::array<llvm::Type *, 4> params = {inst.arch->StatePointerType(),
+                                        inst.arch->MemoryPointerType(), ptr_ty,
+                                        ptr_ty};
+  auto ty =
+      llvm::FunctionType::get(inst.arch->MemoryPointerType(), params, false);
+  auto func = llvm::Function::Create(ty, llvm::GlobalValue::ExternalLinkage, 0,
+                                     nm.str(), target_mod);
+
+  auto memory = remill::NthArgument(func, 1);
+  auto state = remill::NthArgument(func, 0);
+  memory->setName("memory");
+  state->setName("state");
+  func->getArg(kBranchTakenArgNum)->setName("btaken");
+  func->getArg(kNextPcArgNum)->setName("npc");
+  auto block = llvm::BasicBlock::Create(context, "entry_block", func);
+  llvm::IRBuilder<> ir(block);
+
+  ir.CreateStore(memory, ir.CreateAlloca(memory->getType(), nullptr, "MEMORY"));
+
+  return func;
+}
+
 std::pair<LiftStatus, std::optional<llvm::Function *>>
 SleighLifter::LiftIntoInternalBlockWithSleighState(
     Instruction &inst, llvm::Module *target_mod, bool is_delayed,
@@ -1295,28 +1367,24 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
   sleigh::PcodeDecoder pcode_record(this->GetEngine());
   sleigh_context->oneInstruction(inst.pc, pcode_record, inst.bytes);
   for (const auto &op : pcode_record.ops) {
+    DLOG(INFO) << "Pcodeop: " << DumpPcode(this->GetEngine(), op);
+
     if (isFloatOp(op.op)) {
       return {LiftStatus::kLiftedUnsupportedInstruction, std::nullopt};
     }
   }
 
   DLOG(INFO) << "Secondary lift of bytes: " << llvm::toHex(inst.bytes);
-  auto target_func = inst.arch->DefineLiftedFunction(
-      SleighLifter::kInstructionFunctionPrefix, target_mod);
+  auto target_func = this->DefineInstructionFunction(inst, target_mod);
+
 
   llvm::BasicBlock *target_block = &target_func->getEntryBlock();
   llvm::IRBuilder<> ir(target_block);
-  auto internal_state_pointer = remill::LoadStatePointer(target_block);
-  const auto next_pc_ref =
-      LoadRegAddress(target_block, internal_state_pointer, kNextPCVariableName);
-  const auto next_pc = ir.CreateLoad(this->GetWordType(), next_pc_ref.first);
+  auto internal_state_pointer =
+      remill::NthArgument(target_func, kStatePointerArgNum);
+  const auto next_pc_ref = target_func->getArg(kNextPcArgNum);
   auto pc_ref =
       this->LoadRegAddress(target_block, internal_state_pointer, "PC");
-
-  auto curr_eip = ir.CreateAdd(
-      next_pc, llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size()));
-  ir.CreateStore(curr_eip, next_pc_ref.first);
-  ir.CreateStore(curr_eip, pc_ref.first);
 
 
   auto exit_block = llvm::BasicBlock::Create(target_mod->getContext(),
@@ -1324,8 +1392,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
   llvm::IRBuilder<> exit_builder(exit_block);
   exit_builder.CreateStore(
-      exit_builder.CreateLoad(this->GetWordType(), pc_ref.first),
-      next_pc_ref.first);
+      exit_builder.CreateLoad(this->GetWordType(), pc_ref.first), next_pc_ref);
 
   exit_builder.CreateRet(remill::LoadMemoryPointer(
       exit_builder.GetInsertBlock(), *this->GetIntrinsicTable()));
@@ -1345,6 +1412,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
   // Setup like an ISEL
   SleighLifter::SetISelAttributes(target_func);
+  remill::InitFunctionAttributes(target_func);
 
   return {lifter.GetStatus(), target_func};
 }
@@ -1357,6 +1425,7 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
     return kLiftedInvalidInstruction;
   }
 
+
   // Call the instruction function
   auto res = this->LiftIntoInternalBlockWithSleighState(
       inst, block->getModule(), is_delayed, btaken);
@@ -1367,11 +1436,28 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
 
   auto target_func = *res.second;
 
+
+  // Setup PC and NEXT_PC
+  const auto [pc_ref, pc_ref_type] =
+      LoadRegAddress(block, state_ptr, kPCVariableName);
+  const auto [next_pc_ref, next_pc_ref_type] =
+      LoadRegAddress(block, state_ptr, kNextPCVariableName);
+
   llvm::IRBuilder<> intoblock_builer(block);
-  std::array<llvm::Value *, 3> args = {
-      remill::LoadStatePointer(block),
-      remill::LoadProgramCounter(block, *this->GetIntrinsicTable()),
-      remill::LoadMemoryPointer(block, *this->GetIntrinsicTable())};
+  const auto next_pc =
+      intoblock_builer.CreateLoad(this->GetWordType(), next_pc_ref);
+  intoblock_builer.CreateStore(next_pc, pc_ref);
+  intoblock_builer.CreateStore(
+      intoblock_builer.CreateAdd(
+          next_pc,
+          llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size())),
+      next_pc_ref);
+
+
+  std::array<llvm::Value *, 4> args = {
+      state_ptr, remill::LoadMemoryPointer(block, *this->GetIntrinsicTable()),
+      remill::LoadBranchTakenRef(block),
+      remill::LoadNextProgramCounterRef(block)};
 
   intoblock_builer.CreateStore(intoblock_builer.CreateCall(target_func, args),
                                remill::LoadMemoryPointerRef(block));
