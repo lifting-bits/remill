@@ -111,6 +111,11 @@ class SleighDecoder {
   InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
 
 
+  virtual llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
+                                        llvm::Value *curr_pc,
+                                        size_t curr_insn_size) const = 0;
+
+
   bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                          Instruction &inst, DecodingContext context) const;
 

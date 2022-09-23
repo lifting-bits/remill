@@ -29,7 +29,9 @@
 
 namespace remill {
 namespace sleighthumb2 {
-
+namespace {
+const size_t kThumbInstructionSize = 2;
+}
 
 //ARM7_le.sla"
 SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
@@ -41,6 +43,17 @@ SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
 void SleighThumb2Decoder::InitializeSleighContext(
     remill::sleigh::SingleInstructionSleighContext &ctxt) const {
   ctxt.GetContext().setVariableDefault("TMode", 1);
+}
+
+llvm::Value *
+SleighThumb2Decoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
+                                      llvm::Value *curr_pc,
+                                      size_t curr_insn_size) const {
+
+  // PC on thumb points to the next instructions next.
+  return bldr.CreateAdd(
+      curr_pc,
+      llvm::ConstantInt::get(curr_pc->getType(), kThumbInstructionSize * 2));
 }
 
 //TODO(Ian): this has code duplication with SleighX86Arch couldnt come up with a way to share implementation and not run into more

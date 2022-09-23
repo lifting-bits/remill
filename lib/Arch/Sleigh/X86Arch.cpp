@@ -44,6 +44,14 @@ class SleighX86Decoder final : public SleighDecoder {
   // The x86 default context is sufficient. No context register assignments are required.
   void InitializeSleighContext(
       remill::sleigh::SingleInstructionSleighContext &ctxt) const override {}
+
+  llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr, llvm::Value *curr_pc,
+                                size_t curr_insn_size) const final {
+
+    // PC on thumb points to the next instructions next.
+    return bldr.CreateAdd(
+        curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size));
+  }
 };
 
 

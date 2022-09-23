@@ -1443,7 +1443,13 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
   llvm::IRBuilder<> intoblock_builer(block);
   const auto next_pc =
       intoblock_builer.CreateLoad(this->GetWordType(), next_pc_ref);
-  intoblock_builer.CreateStore(next_pc, pc_ref);
+
+  ;
+
+  intoblock_builer.CreateStore(
+      this->decoder.LiftPcFromCurrPc(intoblock_builer, next_pc,
+                                     inst.bytes.size()),
+      pc_ref);
   intoblock_builer.CreateStore(
       intoblock_builer.CreateAdd(
           next_pc,
