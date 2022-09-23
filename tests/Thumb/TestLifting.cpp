@@ -251,7 +251,7 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
                       remill::Instruction::Category::kCategoryNormal,
                       {{"r15", 11}}, {{"r1", 0xdeadc0de}});
   // The bit from 11+12 gets masked off
-  spec.AddPrecWrite<uint32_t>(24, 0xdeadc0de);
+  spec.AddPrecWrite<uint32_t>(28, 0xdeadc0de);
   llvm::LLVMContext context;
 
   context.enableOpaquePointers();
