@@ -44,6 +44,20 @@
 
 Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                                  SyncHyperCall::Name call) {
+
+#if REMILL_HYPERCALL_X86 || REMILL_HYPERCALL_AMD64
+  register unsigned int *rsp asm("rsp") = &state.gpr.rsp.dword;
+  register unsigned int *rbp asm("rbp") = &state.gpr.rbp.dword;
+  register unsigned int *r8 asm("r8") = &state.gpr.r8.dword;
+  register unsigned int *r9 asm("r9") = &state.gpr.r9.dword;
+  register unsigned int *r10 asm("r10") = &state.gpr.r10.dword;
+  register unsigned int *r11 asm("r11") = &state.gpr.r11.dword;
+  register unsigned int *r12 asm("r12") = &state.gpr.r12.dword;
+  register unsigned int *r13 asm("r13") = &state.gpr.r13.dword;
+  register unsigned int *r14 asm("r14") = &state.gpr.r14.dword;
+  register unsigned int *r15 asm("r15") = &state.gpr.r15.dword;
+#endif
+
   switch (call) {
 
 #if REMILL_HYPERCALL_X86 || REMILL_HYPERCALL_AMD64
@@ -129,12 +143,25 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_x86_set_segment_gs(mem);
       break;
 
-    case SyncHyperCall::kX86SysEnter: asm volatile("sysenter" : :); break;
+    case SyncHyperCall::kX86SysEnter:
+      asm volatile("sysenter"
+                   : "=a"(state.gpr.rax.dword)
+                   : "a"(state.gpr.rax.dword), "b"(state.gpr.rbx.dword),
+                     "c"(state.gpr.rcx.dword), "d"(state.gpr.rdx.dword),
+                     "S"(state.gpr.rsi.dword), "D"(state.gpr.rdi.dword),
+                     "r"(rsp), "r"(rbp), "r"(r8), "r"(r9), "r"(r10), "r"(r11),
+                     "r"(r12), "r"(r13), "r"(r14), "r"(r15));
+      break;
+
 
     case SyncHyperCall::kX86SysExit:
       asm volatile("sysexit"
-                   : "=c"(state.gpr.rcx.aword), "=d"(state.gpr.rdx.aword)
-                   :);
+                   : "=a"(state.gpr.rax.dword)
+                   : "a"(state.gpr.rax.dword), "b"(state.gpr.rbx.dword),
+                     "c"(state.gpr.rcx.dword), "d"(state.gpr.rdx.dword),
+                     "S"(state.gpr.rsi.dword), "D"(state.gpr.rdi.dword),
+                     "r"(rsp), "r"(rbp), "r"(r8), "r"(r9), "r"(r10), "r"(r11),
+                     "r"(r12), "r"(r13), "r"(r14), "r"(r15));
       break;
 
 #  if REMILL_HYPERCALL_X86
@@ -168,8 +195,9 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                    : "=a"(state.gpr.rax.dword)
                    : "a"(state.gpr.rax.dword), "b"(state.gpr.rbx.dword),
                      "c"(state.gpr.rcx.dword), "d"(state.gpr.rdx.dword),
-                     "e"(state.gpr.rsi.dword), "f"(state.gpr.rdi.dword),
-                     "g"(state.gpr.rbp.dword));
+                     "S"(state.gpr.rsi.dword), "D"(state.gpr.rdi.dword),
+                     "r"(rsp), "r"(rbp), "r"(r8), "r"(r9), "r"(r10), "r"(r11),
+                     "r"(r12), "r"(r13), "r"(r14), "r"(r15));
       break;
 
 #  elif REMILL_HYPERCALL_AMD64
@@ -204,11 +232,12 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
     case SyncHyperCall::kX86SysCall:
       asm volatile("syscall"
-                   : "=a"(state.gpr.rax.qword)
-                   : "a"(state.gpr.rax.qword), "b"(state.gpr.rdi.qword),
-                     "c"(state.gpr.rsi.qword), "d"(state.gpr.rdx.qword),
-                     "e"(state.gpr.r10.qword), "f"(state.gpr.r8.qword),
-                     "g"(state.gpr.r9.qword));
+                   : "=a"(state.gpr.rax.dword)
+                   : "a"(state.gpr.rax.dword), "b"(state.gpr.rbx.dword),
+                     "c"(state.gpr.rcx.dword), "d"(state.gpr.rdx.dword),
+                     "S"(state.gpr.rsi.dword), "D"(state.gpr.rdi.dword),
+                     "r"(rsp), "r"(rbp), "r"(r8), "r"(r9), "r"(r10), "r"(r11),
+                     "r"(r12), "r"(r13), "r"(r14), "r"(r15));
       break;
 
 #  endif
