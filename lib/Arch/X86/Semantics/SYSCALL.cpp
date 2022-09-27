@@ -17,21 +17,25 @@
 namespace {
 
 DEF_SEM(DoSYSCALL, IF_32BIT_ELSE(R32W, R64W)) {
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86SysCall);
   HYPER_CALL = AsyncHyperCall::kX86SysCall;
   return memory;
 }
 
 DEF_SEM(DoSYSCALL_AMD, IF_32BIT_ELSE(R32W, R64W)) {
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86SysCall);
   HYPER_CALL = AsyncHyperCall::kX86SysCall;
   return memory;
 }
 
 DEF_SEM(DoSYSENTER, IF_32BIT_ELSE(R32W, R64W)) {
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86SysEnter);
   HYPER_CALL = AsyncHyperCall::kX86SysEnter;
   return memory;
 }
 
 DEF_SEM(DoSYSEXIT, IF_32BIT_ELSE(R32W, R64W)) {
+  memory = __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86SysExit);
   HYPER_CALL = AsyncHyperCall::kX86SysExit;
   return memory;
 }

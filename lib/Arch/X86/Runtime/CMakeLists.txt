@@ -35,6 +35,12 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
     set(required_cpp_standard "c++11")
   endif()
 
+  if (address_bit_size EQUAL 32)
+    set(x86_arch "i386")
+  else()
+    set(x86_arch "x86_64")
+  endif()
+
   add_runtime(${target_name}
     SOURCES ${X86RUNTIME_SOURCEFILES}
     ADDRESS_SIZE ${address_bit_size}
@@ -42,7 +48,7 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
     BCFLAGS "-std=${required_cpp_standard}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
-    ARCH x86_64
+    ARCH ${x86_arch}
 
     DEPENDENCIES
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"

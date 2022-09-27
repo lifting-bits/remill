@@ -17,7 +17,7 @@
 #if defined(__x86_64__)
 #  include "remill/Arch/X86/Runtime/State.h"
 #  define REMILL_HYPERCALL_AMD64 1
-# elif defined(__i386__) || defined(_M_X86)
+#elif defined(__i386__) || defined(_M_X86)
 #  include "remill/Arch/X86/Runtime/State.h"
 #  define REMILL_HYPERCALL_X86 1
 #elif defined(__arm__)
@@ -44,6 +44,23 @@
 
 Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                                  SyncHyperCall::Name call) {
+
+#if REMILL_HYPERCALL_X86
+  register uint32_t esp asm("esp") = state.gpr.rsp.dword;
+  register uint32_t ebp asm("ebp") = state.gpr.rbp.dword;
+#elif REMILL_HYPERCALL_AMD64
+  register uint64_t rsp asm("rsp") = state.gpr.rsp.qword;
+  register uint64_t rbp asm("rbp") = state.gpr.rbp.qword;
+  register uint64_t r8 asm("r8") = state.gpr.r8.qword;
+  register uint64_t r9 asm("r9") = state.gpr.r9.qword;
+  register uint64_t r10 asm("r10") = state.gpr.r10.qword;
+  register uint64_t r11 asm("r11") = state.gpr.r11.qword;
+  register uint64_t r12 asm("r12") = state.gpr.r12.qword;
+  register uint64_t r13 asm("r13") = state.gpr.r13.qword;
+  register uint64_t r14 asm("r14") = state.gpr.r14.qword;
+  register uint64_t r15 asm("r15") = state.gpr.r15.qword;
+#endif
+
   switch (call) {
 
 #if REMILL_HYPERCALL_X86 || REMILL_HYPERCALL_AMD64
@@ -155,6 +172,34 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_x86_set_control_reg_4(mem);
       break;
 
+    case SyncHyperCall::kX86SysCall:
+      asm volatile("syscall"
+                   : "=a"(state.gpr.rax.dword), "=r"(esp)
+                   : "a"(state.gpr.rax.dword), "b"(state.gpr.rbx.dword),
+                     "c"(state.gpr.rcx.dword), "d"(state.gpr.rdx.dword),
+                     "S"(state.gpr.rsi.dword), "D"(state.gpr.rdi.dword),
+                     "r"(esp), "r"(ebp));
+      break;
+
+    case SyncHyperCall::kX86SysEnter:
+      asm volatile("sysenter"
+                   : "=a"(state.gpr.rax.dword), "=r"(esp)
+                   : "a"(state.gpr.rax.dword), "b"(state.gpr.rbx.dword),
+                     "c"(state.gpr.rcx.dword), "d"(state.gpr.rdx.dword),
+                     "S"(state.gpr.rsi.dword), "D"(state.gpr.rdi.dword),
+                     "r"(esp), "r"(ebp));
+      break;
+
+
+    case SyncHyperCall::kX86SysExit:
+      asm volatile("sysexit"
+                   : "=a"(state.gpr.rax.dword), "=r"(esp)
+                   : "a"(state.gpr.rax.dword), "b"(state.gpr.rbx.dword),
+                     "c"(state.gpr.rcx.dword), "d"(state.gpr.rdx.dword),
+                     "S"(state.gpr.rsi.dword), "D"(state.gpr.rdi.dword),
+                     "r"(esp), "r"(ebp));
+      break;
+
 #  elif REMILL_HYPERCALL_AMD64
 
     case SyncHyperCall::kAMD64SetDebugReg:
@@ -183,6 +228,37 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
     case SyncHyperCall::kAMD64SetControlReg8:
       mem = __remill_amd64_set_control_reg_8(mem);
+      break;
+
+    case SyncHyperCall::kX86SysCall:
+      asm volatile("syscall"
+                   : "=a"(state.gpr.rax.qword), "=r"(rsp)
+                   : "a"(state.gpr.rax.qword), "b"(state.gpr.rbx.qword),
+                     "c"(state.gpr.rcx.qword), "d"(state.gpr.rdx.qword),
+                     "S"(state.gpr.rsi.qword), "D"(state.gpr.rdi.qword),
+                     "r"(rsp), "r"(rbp), "r"(r8), "r"(r9), "r"(r10), "r"(r11),
+                     "r"(r12), "r"(r13), "r"(r14), "r"(r15));
+      break;
+
+    case SyncHyperCall::kX86SysEnter:
+      asm volatile("sysenter"
+                   : "=a"(state.gpr.rax.qword), "=r"(rsp)
+                   : "a"(state.gpr.rax.qword), "b"(state.gpr.rbx.qword),
+                     "c"(state.gpr.rcx.qword), "d"(state.gpr.rdx.qword),
+                     "S"(state.gpr.rsi.qword), "D"(state.gpr.rdi.qword),
+                     "r"(rsp), "r"(rbp), "r"(r8), "r"(r9), "r"(r10), "r"(r11),
+                     "r"(r12), "r"(r13), "r"(r14), "r"(r15));
+      break;
+
+
+    case SyncHyperCall::kX86SysExit:
+      asm volatile("sysexit"
+                   : "=a"(state.gpr.rax.qword), "=r"(rsp)
+                   : "a"(state.gpr.rax.qword), "b"(state.gpr.rbx.qword),
+                     "c"(state.gpr.rcx.qword), "d"(state.gpr.rdx.qword),
+                     "S"(state.gpr.rsi.qword), "D"(state.gpr.rdi.qword),
+                     "r"(rsp), "r"(rbp), "r"(r8), "r"(r9), "r"(r10), "r"(r11),
+                     "r"(r12), "r"(r13), "r"(r14), "r"(r15));
       break;
 
 #  endif
