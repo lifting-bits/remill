@@ -32,22 +32,56 @@
 namespace remill {
 namespace sleigh::x86 {
 
-class SleighX86Arch final : public SleighArch, public remill::X86ArchBase {
+class SleighX86Decoder final : public SleighDecoder {
+ public:
+  SleighX86Decoder() = delete;
+  SleighX86Decoder(const remill::Arch &arch)
+      : SleighDecoder(
+            arch, kArchX86_SLEIGH == arch.arch_name ? "x86.sla" : "x86-64.sla",
+            kArchX86_SLEIGH == arch.arch_name ? "x86.pspec" : "x86-64.pspec",
+            {}, {}) {}
+
+  // The x86 default context is sufficient. No context register assignments are required.
+  void InitializeSleighContext(
+      remill::sleigh::SingleInstructionSleighContext &ctxt) const override {}
+
+  llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr, llvm::Value *curr_pc,
+                                size_t curr_insn_size) const final {
+
+    // PC on thumb points to the next instructions next.
+    return bldr.CreateAdd(
+        curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size));
+  }
+};
+
+
+class SleighX86Arch : public X86ArchBase {
  public:
   SleighX86Arch(llvm::LLVMContext *context_, OSName os_name_,
                 ArchName arch_name_)
       : ArchBase(context_, os_name_, arch_name_),
-        SleighArch(
-            context_, os_name_, arch_name_,
-            kArchX86_SLEIGH == arch_name_ ? "x86.sla" : "x86-64.sla",
-            kArchX86_SLEIGH == arch_name_ ? "x86.pspec" : "x86-64.pspec"),
-        X86ArchBase(context_, os_name_, arch_name_) {}
+        X86ArchBase(context_, os_name_, arch_name_),
+        decoder(*this) {}
 
-  virtual ~SleighX86Arch(void) = default;
+  virtual DecodingContext CreateInitialContext(void) const override {
+    return DecodingContext();
+  }
 
-  void InitializeSleighContext(
-      remill::sleigh::SingleInstructionSleighContext &ctxt) const override {}
+  virtual OperandLifter::OpLifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override {
+    return this->decoder.GetOpLifter();
+  }
+
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst,
+                                 DecodingContext context) const override {
+    return decoder.DecodeInstruction(address, instr_bytes, inst, context);
+  }
+
+ private:
+  SleighX86Decoder decoder;
 };
+
 }  // namespace sleigh::x86
 Arch::ArchPtr Arch::GetSleighX86(llvm::LLVMContext *context_, OSName os_name_,
                                  ArchName arch_name_) {

@@ -24,6 +24,7 @@ add_library(remill_arch_aarch32 STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/Operators.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/Types.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/ArchContext.h"
 
   Arch.cpp
   Decode.cpp
@@ -40,6 +41,8 @@ set_property(TARGET remill_arch_aarch32 PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(remill_arch_aarch32 LINK_PUBLIC
   remill_settings
 )
+
+target_include_directories(remill_arch_aarch32 AFTER PRIVATE "${REMILL_SOURCE_DIR}")
 
 if(REMILL_ENABLE_INSTALL_TARGET)
   install(

@@ -25,6 +25,7 @@
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <remill/Arch/AArch32/ArchContext.h>
 #include <remill/Arch/AArch32/Runtime/State.h>
 #include <remill/Arch/Arch.h>
 #include <remill/Arch/Name.h>
@@ -38,11 +39,13 @@
 #include <functional>
 #include <random>
 #include <sstream>
+#include <variant>
 
 #include "gtest/gtest.h"
 
 
 namespace {
+
 const static std::unordered_map<std::string,
                                 std::function<uint32_t &(AArch32State &)>>
     reg_to_accessor = {
@@ -50,7 +53,30 @@ const static std::unordered_map<std::string,
          [](AArch32State &st) -> uint32_t & { return st.gpr.r15.dword; }},
         {"sp", [](AArch32State &st) -> uint32_t & { return st.gpr.r13.dword; }},
         {"r1", [](AArch32State &st) -> uint32_t & { return st.gpr.r1.dword; }}};
+
+
+std::optional<remill::Instruction> GetFlows(std::string_view bytes,
+                                            uint64_t address, uint64_t tm_val) {
+
+  llvm::LLVMContext context;
+  context.enableOpaquePointers();
+  auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
+                                  remill::ArchName::kArchAArch32LittleEndian);
+  auto sems = remill::LoadArchSemantics(arch.get());
+
+
+  remill::DecodingContext dec_context;
+  dec_context.UpdateContextReg(std::string(remill::kThumbModeRegName), tm_val);
+  CHECK(dec_context.HasValueForReg("TMReg"));
+  remill::Instruction insn;
+
+  if (!arch->DecodeInstruction(address, bytes, insn, dec_context)) {
+    return std::nullopt;
+  } else {
+    return insn;
+  }
 }
+}  // namespace
 
 
 using MemoryModifier = std::function<void(test_runner::MemoryHandler &)>;
@@ -225,7 +251,7 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
                       remill::Instruction::Category::kCategoryNormal,
                       {{"r15", 11}}, {{"r1", 0xdeadc0de}});
   // The bit from 11+12 gets masked off
-  spec.AddPrecWrite<uint32_t>(24, 0xdeadc0de);
+  spec.AddPrecWrite<uint32_t>(28, 0xdeadc0de);
   llvm::LLVMContext context;
 
   context.enableOpaquePointers();
@@ -253,4 +279,377 @@ TEST(RegressionTests, AARCH64RegSize) {
       op_lifter->LoadRegValue(&target_lift->getEntryBlock(), st_ptr, "W0");
 
   CHECK_EQ(lifted2->getType()->getIntegerBitWidth(), 32);
+}
+
+
+/* These tests are transcribed from the behaviors described in: A2.3.1 
+
+  MOV(reg, thumb) ignores last bit, but does not mode-switch
+
+  Thumb -> Thumb (1, mov pc, r1) -> {true: 1}
+
+  B always remains in the same state:
+  Arm -> Arm (0, b 4) -> {true: 0}
+  Arm -> Arm (0, b 0) -> {true: 0}
+
+  Thumb -> Thumb (1, b 4) -> {true: 1}
+  Thumb -> Thumb (1, b 0) -> {true: 1}
+
+  BLX immediate always changes, but is interprocedural so we keep the state the same
+  Arm -> Arm (0, blx 1) -> {true: 0}
+  Thumb -> Thumb (1, blx 1) -> {true: 1}
+
+  Indirects (LDR, MOV(reg,ARM), BX):
+  
+  Arm -> (Thumb/Arm) (0, LDR PC, [r0]) -> {true: non_constant}
+  Arm -> (Thumb/Arm) (0, BX r1) -> {true: non_constant}
+  Thumb -> (Thumb/Arm) (1, LDR PC, [0]) -> {true: non_constant}
+  Thumb -> (Thumb/Arm) (1, BX r1) -> {true: non_constant}
+  
+  Arm only
+  Arm -> (Thumb/Arm) (0, mov pc, r1) -> {true: non_constant}
+    
+
+
+  Same but with conditionals:
+
+
+  B always remains in the same state:
+  Arm -> Arm (0, bne 4) -> {true: 0}
+  Arm -> Arm (0, bne 0) -> {true: 0}
+\
+
+  BLX immediate always changes, but is interprocedural so we keep the state the same
+  Arm -> Arm (0, blxne 1) -> {true: 0}
+
+  Indirects (LDR, MOV(reg,ARM), BX):
+  
+  Arm -> (Thumb/Arm) (0, LDRNE PC, [r0]) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
+  Arm -> (Thumb/Arm) (0, BXNE r1) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
+  
+  Arm only
+  Arm -> (Thumb/Arm) (0, movne pc, r1) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
+    
+*/
+
+/*
+TEST(ArmContextTests, ThumbMovIgnoresAnyStateChange) {
+  //mov pc, r1
+  std::string insn_data("\x8f\x46", 2);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_TRUE(map(0xdeadbee2).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_TRUE(map(0x100).GetContextValue(remill::kThumbModeRegName));
+}
+
+
+TEST(ArmContextTests, ArmBStaysInArmAligned1) {
+  // b 0
+  std::string insn_data("\xfe\xff\xff\xea", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmBStaysInArmAligned2) {
+  // b 4
+  std::string insn_data("\xff\xff\xff\xea", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0x4).GetContextValue(remill::kThumbModeRegName));
+}
+
+
+TEST(ArmContextTests, ThumbBStaysInThumbAligned1) {
+  // b 0
+  std::string insn_data("\xfe\xe7", 2);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_TRUE(map(0x0).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ThumbBStaysInThumbAligned2) {
+  // b 4
+  std::string insn_data("\x00\xe0", 2);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_TRUE(map(0x4).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmBLXInterProcStaysInSameMode) {
+  // blx 4
+  std::string insn_data("\xff\xff\xff\xfa", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ThumbBLXInterProcStaysInSameMode) {
+  // blx 4
+  std::string insn_data("\x00\xf0\x00\xe8", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_TRUE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmLDRIndirect) {
+  // ldr pc, [r0]
+  std::string insn_data("\x00\xf0\x90\xe5", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmBXIndirect) {
+  // bx r1
+  std::string insn_data("\x11\xff\x2f\xe1", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
+}
+
+
+TEST(ArmContextTests, ThumbLDRIndirect) {
+  // ldr pc, [r0]
+  std::string insn_data("\xd0\xf8\x00\xf0", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ThumbBXIndirect) {
+  // bx r1
+  std::string insn_data("\x08\x47", 2);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee2).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitch) {
+  // mov pc, r1
+  std::string insn_data("\x01\xf0\xa0\xe1", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).HasValueForReg(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
+}
+
+
+// Conditionals
+
+
+TEST(ArmContextTests, ArmBStaysInArmConditionalAligned1) {
+  // bne 0
+  std::string insn_data("\xfe\xff\xff\x1a", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmBStaysInArmConditionalAligned2) {
+  // bne 4
+  std::string insn_data("\xff\xff\xff\x1a", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0x0).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmLDRIndirectConditional) {
+  // ldrne pc, [r0]
+  std::string insn_data("\x00\xf0\x90\x15", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmBXIndirectConditional) {
+  // bxne r1
+  std::string insn_data("\x11\xff\x2f\x11", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
+}
+
+TEST(ArmContextTests, ArmMovPCIndirectDoesAllowModeSwitchConditional) {
+  // movne pc, r1
+  std::string insn_data("\x01\xf0\xa0\x11", 4);
+
+  auto maybe_map = GetSuccessorContext(insn_data, 0xdeadbee0, 0);
+  ASSERT_TRUE(maybe_map.has_value());
+  auto map = *maybe_map;
+
+  EXPECT_FALSE(map(0xdeadbee4).GetContextValue(remill::kThumbModeRegName));
+  EXPECT_FALSE(map(0x1000).HasValueForReg(remill::kThumbModeRegName));
+}
+*/
+
+// Two things we need to test: correct categories and when we lift, the branch taken var is set appropriately
+
+
+TEST(ArmContextTests, ThumbBXIndirect) {
+  // bx r1
+  std::string insn_data("\x08\x47", 2);
+
+  auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto flow = *maybe_flow;
+
+  remill::Instruction::InstructionFlowCategory jmp =
+      remill::Instruction::IndirectJump(
+          remill::Instruction::IndirectFlow(std::nullopt));
+
+
+  remill::Instruction::IndirectJump str =
+      std::get<remill::Instruction::IndirectJump>(flow.flows);
+
+  EXPECT_FALSE(str.taken_flow.maybe_context.has_value());
+
+
+  EXPECT_EQ(flow.flows, jmp);
+}
+
+TEST(ArmContextTests, ThumbMovIgnoresAnyStateChange) {
+  //mov pc, r1
+  std::string insn_data("\x8f\x46", 2);
+
+  auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto flow = *maybe_flow;
+
+
+  remill::Instruction::InstructionFlowCategory jmp =
+      remill::Instruction::IndirectJump(
+          remill::Instruction::IndirectFlow(remill::kThumbContext));
+
+
+  remill::Instruction::IndirectJump str =
+      std::get<remill::Instruction::IndirectJump>(flow.flows);
+
+  EXPECT_TRUE(str.taken_flow.maybe_context.has_value());
+
+
+  remill::Instruction::IndirectJump str2 =
+      std::get<remill::Instruction::IndirectJump>(jmp);
+
+  EXPECT_TRUE(str2.taken_flow.maybe_context.has_value());
+
+  EXPECT_EQ(flow.flows, jmp);
+}
+
+TEST(ArmContextTests, ThumbBLXInterProcStaysInSameMode) {
+  // blx 4
+  std::string insn_data("\x00\xf0\x00\xe8", 4);
+
+  auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto flow = *maybe_flow;
+
+  remill::Instruction::InstructionFlowCategory jmp =
+      remill::Instruction::DirectFunctionCall(
+          remill::Instruction::DirectFlow(0xdeadbee0, remill::kARMContext));
+}
+
+
+TEST(ArmContextTests, ThumbBLStaysInSameContext) {
+  // bl 1b528
+  std::string insn_data("\x05\xf0\x74\xfc", 4);
+
+  auto maybe_flow = GetFlows(insn_data, 0x1596c, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto act_insn = *maybe_flow;
+
+
+  remill::Instruction::InstructionFlowCategory jmp =
+      remill::Instruction::DirectFunctionCall(
+          remill::Instruction::DirectFlow(0x1b258, remill::kThumbContext));
+
+  auto dfcall =
+      std::get<remill::Instruction::DirectFunctionCall>(act_insn.flows);
+
+
+  EXPECT_EQ(0x0001b258, dfcall.taken_flow.known_target);
+
+  EXPECT_EQ(remill::kThumbContext, dfcall.taken_flow.static_context);
+
+  EXPECT_EQ(jmp, act_insn.flows);
+
+  EXPECT_EQ(0x00015970, act_insn.next_pc);
+}
+
+
+TEST(ArmContextTests, ThumbBPLRegressionTest) {
+  // bpl     #0x135e0
+  std::string insn_data("\x7f\xf5\x70\xae", 4);
+
+  auto maybe_flow = GetFlows(insn_data, 0x000138fc, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto act_insn = *maybe_flow;
+
+
+  remill::Instruction::InstructionFlowCategory expect_cond_flow =
+      remill::Instruction::ConditionalInstruction(
+          remill::Instruction::DirectJump(
+              remill::Instruction::DirectFlow(0x135e0, remill::kThumbContext)),
+          remill::Instruction::FallthroughFlow(remill::kThumbContext));
+
+  auto act_cond_insn_flow =
+      std::get<remill::Instruction::ConditionalInstruction>(act_insn.flows);
+
+  EXPECT_EQ(expect_cond_flow, act_insn.flows);
 }

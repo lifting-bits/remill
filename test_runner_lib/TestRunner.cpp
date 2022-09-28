@@ -210,9 +210,9 @@ LiftingTester::LiftingTester(std::shared_ptr<llvm::Module> semantics_module_,
       arch(remill::Arch::Build(&this->semantics_module->getContext(), os_name,
                                arch_name)),
       table(std::make_unique<remill::IntrinsicTable>(
-          this->semantics_module.get())),
-      lifter(this->arch->DefaultLifter(*this->table.get())) {
+          this->semantics_module.get())) {
   this->arch->InitFromSemanticsModule(this->semantics_module.get());
+  this->lifter = this->arch->DefaultLifter(*this->table.get());
 }
 
 LiftingTester::LiftingTester(llvm::LLVMContext &context, remill::OSName os_name,

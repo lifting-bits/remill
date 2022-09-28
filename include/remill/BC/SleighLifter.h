@@ -29,9 +29,17 @@ class Sleigh;
 
 namespace remill {
 namespace sleigh {
-class SleighArch;
+// If you lift a varnode before the given pcode index, then you have a branch taken metavar
+struct BranchTakenVar {
+  bool invert;
+  VarnodeData target_vnode;
+  size_t index;
+};
+
+class SleighDecoder;
 class SingleInstructionSleighContext;
 }  // namespace sleigh
+
 
 class SleighLifter : public InstructionLifter {
  private:
@@ -39,28 +47,69 @@ class SleighLifter : public InstructionLifter {
 
   std::unique_ptr<sleigh::SingleInstructionSleighContext> sleigh_context;
   // Architecture being used for lifting.
-  const sleigh::SleighArch *const arch;
+  // Decoder being used for disassembly
 
+  const sleigh::SleighDecoder &decoder;
 
  public:
   static const std::string_view kInstructionFunctionPrefix;
 
-  SleighLifter(const sleigh::SleighArch *arch_,
+  SleighLifter(const remill::Arch &arch_,
+               const remill::sleigh::SleighDecoder &dec_,
                const IntrinsicTable &intrinsics_);
 
   virtual ~SleighLifter(void) = default;
 
-  LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
-                           llvm::Value *state_ptr, bool is_delayed) override;
+  LiftStatus LiftIntoBlockWithSleighState(
+      Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
+      bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken);
 
  private:
   static void SetISelAttributes(llvm::Function *);
 
-  std::pair<LiftStatus, llvm::Function *>
-  LiftIntoInternalBlock(Instruction &inst, llvm::Module *target_mod,
-                        bool is_delayed);
+
+  llvm::Function *DefineInstructionFunction(Instruction &inst,
+                                            llvm::Module *target_mod);
+
+  std::pair<LiftStatus, std::optional<llvm::Function *>>
+  LiftIntoInternalBlockWithSleighState(
+      Instruction &inst, llvm::Module *target_mod, bool is_delayed,
+      const std::optional<sleigh::BranchTakenVar> &btaken);
 
   ::Sleigh &GetEngine(void) const;
+};
+
+
+// lets us attach state to a lifter that we need to carry on from when we decoded the instruction
+class SleighLifterWithState final : public InstructionLifterIntf {
+ private:
+  std::optional<sleigh::BranchTakenVar> btaken;
+  std::shared_ptr<SleighLifter> lifter;
+
+ public:
+  SleighLifterWithState(std::optional<sleigh::BranchTakenVar> btaken,
+                        std::shared_ptr<SleighLifter> lifter_);
+
+  // Lift a single instruction into a basic block. `is_delayed` signifies that
+  // this instruction will execute within the delay slot of another instruction.
+  virtual LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
+                                   llvm::Value *state_ptr,
+                                   bool is_delayed = false) override;
+
+
+  // Load the address of a register.
+  virtual std::pair<llvm::Value *, llvm::Type *>
+  LoadRegAddress(llvm::BasicBlock *block, llvm::Value *state_ptr,
+                 std::string_view reg_name) const override;
+
+  // Load the value of a register.
+  virtual llvm::Value *LoadRegValue(llvm::BasicBlock *block,
+                                    llvm::Value *state_ptr,
+                                    std::string_view reg_name) const override;
+
+  virtual llvm::Type *GetMemoryType() override;
+
+  virtual void ClearCache(void) const override;
 };
 
 }  // namespace remill

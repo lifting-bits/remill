@@ -15,122 +15,30 @@
  */
 
 #pragma once
-
+#include <lib/Arch/Sleigh/ControlFlowStructuring.h>
 #include <remill/Arch/ArchBase.h>
+#include <remill/BC/SleighLifter.h>
 
 #include <sleigh/libsleigh.hh>
+#include <unordered_set>
 
 // Unifies shared functionality between sleigh architectures
 
 namespace remill::sleigh {
 
-// NOTE(Ian): Ok so there is some horrible collaboration with the lifter.
-// The lifter has to add metavars. So the lifter is responsible for working
-// out if a branch was taken
-class InstructionFlowResolver {
- public:
-  virtual ~InstructionFlowResolver(void) = default;
-
-  using IFRPtr = std::shared_ptr<InstructionFlowResolver>;
-
-  virtual void ResolveControlFlow(uint64_t fall_through,
-                                  remill::Instruction &insn) = 0;
-
-
-  static IFRPtr CreateDirectCBranchResolver(uint64_t target);
-  static IFRPtr CreateIndirectCall();
-  static IFRPtr CreateIndirectRet();
-  static IFRPtr CreateIndirectBranch();
-
-  static IFRPtr CreateDirectBranch(uint64_t target);
-  static IFRPtr CreateDirectCall(uint64_t target);
-
-  static IFRPtr CreateNormal();
-};
-
-
-class NormalResolver : public InstructionFlowResolver {
- public:
-  NormalResolver() = default;
-  virtual ~NormalResolver() = default;
-
-  void ResolveControlFlow(uint64_t fall_through,
-                          remill::Instruction &insn) override;
-};
-
-// Direct Branch
-class DirectBranchResolver : public InstructionFlowResolver {
- private:
-  uint64_t target_address;
-
-  // Can be a call or branch.
-  remill::Instruction::Category category;
-
- public:
-  DirectBranchResolver(uint64_t target_address,
-                       remill::Instruction::Category category);
-  virtual ~DirectBranchResolver() = default;
-
-  void ResolveControlFlow(uint64_t fall_through,
-                          remill::Instruction &insn) override;
-};
-
-// Cbranch(NOTE): this may be normal if the cbranch target is the same as the fallthrough
-class DirectCBranchResolver : public InstructionFlowResolver {
- private:
-  uint64_t target_address;
-
- public:
-  DirectCBranchResolver(uint64_t target_address);
-  virtual ~DirectCBranchResolver() = default;
-
-  void ResolveControlFlow(uint64_t fall_through,
-                          remill::Instruction &insn) override;
-};
-
-
-class IndirectBranch : public InstructionFlowResolver {
-  // can be a return, callind, or branchind
-  remill::Instruction::Category category;
-
- public:
-  IndirectBranch(remill::Instruction::Category category);
-
-  virtual ~IndirectBranch() = default;
-
-  void ResolveControlFlow(uint64_t fall_through,
-                          remill::Instruction &insn) override;
-};
-
 class PcodeDecoder final : public PcodeEmit {
  public:
-  PcodeDecoder(::Sleigh &engine_, Instruction &inst_);
+  PcodeDecoder(::Sleigh &engine_);
 
   void dump(const Address &, OpCode op, VarnodeData *outvar, VarnodeData *vars,
             int32_t isize) override;
 
-  InstructionFlowResolver::IFRPtr GetResolver();
+
+  std::vector<RemillPcodeOp> ops;
 
  private:
+  ::Sleigh &engine;
   void print_vardata(std::stringstream &s, VarnodeData &data);
-
-  void DecodeOperand(VarnodeData &var);
-
-  void DecodeRegister(const VarnodeData &var);
-
-  void DecodeMemory(const VarnodeData &var);
-
-  void DecodeConstant(const VarnodeData &var);
-
-  void DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize);
-
-  static std::optional<InstructionFlowResolver::IFRPtr>
-  GetFlowResolverForOp(OpCode op, VarnodeData *vars, int32_t isize);
-
-  Sleigh &engine;
-  Instruction &inst;
-
-  std::optional<InstructionFlowResolver::IFRPtr> current_resolver;
 };
 
 class CustomLoadImage final : public LoadImage {
@@ -150,12 +58,10 @@ class CustomLoadImage final : public LoadImage {
   uint64_t current_offset{0};
 };
 
-class SleighArch;
 // Holds onto contextual sleigh information in order to provide an interface with which you can decode single instructions
 // Give me bytes and i give you pcode (maybe)
 class SingleInstructionSleighContext {
  private:
-  friend class SleighArch;
   CustomLoadImage image;
   ContextInternal ctx;
   ::Sleigh engine;
@@ -189,38 +95,59 @@ class SingleInstructionSleighContext {
   std::vector<std::string> getUserOpNames();
 };
 
-class SleighArch : virtual public ArchBase {
+
+class SleighDecoder {
  public:
-  SleighArch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_,
-             std::string sla_name, std::string pspec_name);
-
-
- public:
-  OperandLifter::OpLifterPtr
-  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
-
-
-  virtual DecodingContext CreateInitialContext(void) const override;
-
-  virtual std::optional<DecodingContext::ContextMap>
-  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                    Instruction &inst, DecodingContext context) const override;
-
-
-  // Arch specific preperation
-  virtual void
-  InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
-
+  SleighDecoder() = delete;
+  SleighDecoder(
+      const remill::Arch &arch, std::string sla_name, std::string pspec_name,
+      std::unordered_map<std::string, std::string> context_reg_mapping,
+      std::unordered_map<std::string, std::string> state_reg_remappings);
   std::string GetSLAName() const;
 
   std::string GetPSpec() const;
+  // Decoder specific prep
+  virtual void
+  InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
+
+
+  virtual llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
+                                        llvm::Value *curr_pc,
+                                        size_t curr_insn_size) const = 0;
+
+
+  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                         Instruction &inst, DecodingContext context) const;
+
+  // Gets the context registers that are required to be set in order to decode, maps pcode context reg names to remill context reg names.
+  const std::unordered_map<std::string, std::string> &
+  GetContextRegisterMapping() const;
+
+  // Maps pcode registers to their names in the remill state structure for the given arch (if a renaming is required.)
+  const std::unordered_map<std::string, std::string> &
+  GetStateRegRemappings() const;
+
+  std::shared_ptr<remill::OperandLifter> GetOpLifter() const;
 
  protected:
-  bool DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
-                             Instruction &inst);
+  ControlFlowStructureAnalysis::SleighDecodingResult
+  DecodeInstructionImpl(uint64_t address, std::string_view instr_bytes,
+                        Instruction &inst, DecodingContext context);
+
 
   SingleInstructionSleighContext sleigh_ctx;
   std::string sla_name;
   std::string pspec_name;
+
+ private:
+  std::shared_ptr<remill::SleighLifter> GetLifter() const;
+  // Compatibility that applies old categories from constructed flows
+  void ApplyFlowToInstruction(remill::Instruction &) const;
+
+
+  mutable std::shared_ptr<remill::SleighLifter> lifter;
+  const remill::Arch &arch;
+  std::unordered_map<std::string, std::string> context_reg_mapping;
+  std::unordered_map<std::string, std::string> state_reg_remappings;
 };
 }  // namespace remill::sleigh

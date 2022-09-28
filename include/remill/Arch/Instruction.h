@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <remill/Arch/Context.h>
 #include <remill/BC/InstructionLifter.h>
 
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -212,7 +214,8 @@ class Instruction {
   ArchName sub_arch_name;
 
   // Name of the architecture of the branch taken target.
-  ArchName branch_taken_arch_name;
+  /// We may not know the arch name if it is an indirect jump
+  std::optional<ArchName> branch_taken_arch_name;
 
   // Pointer to the `remill::Arch` used to complete the decoding of this
   // instruction.
@@ -253,6 +256,145 @@ class Instruction {
     kCategoryAsyncHyperCall,
     kCategoryConditionalAsyncHyperCall,
   } category;
+
+
+  struct Flow {};
+
+  struct DirectFlow : Flow {
+   public:
+    DirectFlow() = delete;
+    DirectFlow(uint64_t known_target, DecodingContext static_context);
+
+    uint64_t known_target;
+    DecodingContext static_context;
+
+    bool operator==(const DirectFlow &rhs) const;
+  };
+
+  struct IndirectFlow : Flow {
+   public:
+    IndirectFlow() = delete;
+    IndirectFlow(std::optional<DecodingContext> maybe_context);
+
+    // We may have info in the decoder that tells us a context value
+    std::optional<DecodingContext> maybe_context;
+
+    bool operator==(const IndirectFlow &rhs) const;
+  };
+
+  struct FallthroughFlow : Flow {
+   public:
+    FallthroughFlow(DecodingContext fallthrough_context);
+    FallthroughFlow() = delete;
+
+    DecodingContext fallthrough_context;
+
+    bool operator==(const FallthroughFlow &rhs) const;
+  };
+
+  struct NormalInsn {
+   public:
+    NormalInsn() = delete;
+    NormalInsn(FallthroughFlow fallthrough);
+
+    FallthroughFlow fallthrough;
+
+    bool operator==(const NormalInsn &rhs) const;
+  };
+
+  struct NoOp : public NormalInsn {
+   public:
+    using NormalInsn::NormalInsn;
+
+    bool operator==(const NoOp &rhs) const;
+  };
+
+  struct InvalidInsn {
+   public:
+    InvalidInsn() = default;
+
+    bool operator==(const InvalidInsn &rhs) const;
+  };
+
+  struct ErrorInsn {
+   public:
+    ErrorInsn() = default;
+
+    bool operator==(const ErrorInsn &rhs) const;
+  };
+
+  struct DirectJump {
+   public:
+    DirectJump() = delete;
+    DirectJump(DirectFlow taken_flow);
+
+    DirectFlow taken_flow;
+
+    bool operator==(const DirectJump &rhs) const;
+  };
+
+  struct IndirectJump {
+   public:
+    IndirectJump() = delete;
+    IndirectJump(IndirectFlow taken_flow);
+
+    IndirectFlow taken_flow;
+
+    bool operator==(const IndirectJump &rhs) const;
+  };
+
+  class DirectFunctionCall : public DirectJump {
+   public:
+    using DirectJump::DirectJump;
+
+    bool operator==(const DirectFunctionCall &rhs) const;
+  };
+
+
+  struct IndirectFunctionCall : public IndirectJump {
+   public:
+    using IndirectJump::IndirectJump;
+
+    bool operator==(const IndirectFunctionCall &rhs) const;
+  };
+
+  struct FunctionReturn : public IndirectJump {
+   public:
+    using IndirectJump::IndirectJump;
+
+    bool operator==(const FunctionReturn &rhs) const;
+  };
+
+  struct AsyncHyperCall {
+   public:
+    AsyncHyperCall() = default;
+
+    bool operator==(const AsyncHyperCall &rhs) const;
+  };
+
+  using AbnormalFlow =
+      std::variant<DirectFunctionCall, IndirectFunctionCall, FunctionReturn,
+                   AsyncHyperCall, IndirectJump, DirectJump>;
+
+  struct ConditionalInstruction {
+   public:
+    ConditionalInstruction() = delete;
+    ConditionalInstruction(AbnormalFlow taken_branch,
+                           FallthroughFlow fall_through);
+
+    AbnormalFlow taken_branch;
+    FallthroughFlow fall_through;
+
+    bool operator==(const ConditionalInstruction &rhs) const;
+  };
+
+
+  using InstructionFlowCategory =
+      std::variant<NormalInsn, NoOp, InvalidInsn, ErrorInsn, DirectJump,
+                   IndirectJump, IndirectFunctionCall, DirectFunctionCall,
+                   FunctionReturn, AsyncHyperCall, ConditionalInstruction>;
+
+  InstructionFlowCategory flows;
 
   std::vector<Operand> operands;
 

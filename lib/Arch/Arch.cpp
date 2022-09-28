@@ -856,16 +856,84 @@ DecodingContext DefaultContextAndLifter::CreateInitialContext(void) const {
   return DecodingContext();
 }
 
-Arch::DecodingResult DefaultContextAndLifter::DecodeInstruction(
-    uint64_t address, std::string_view instr_bytes, Instruction &inst,
-    DecodingContext context) const {
+
+Instruction::FallthroughFlow DefaultContextAndLifter::GetFallthrough() const {
+  return Instruction::FallthroughFlow(this->CreateInitialContext());
+}
+
+Instruction::DirectFlow
+DefaultContextAndLifter::GetDirectFlow(uint64_t target) const {
+  return Instruction::DirectFlow(target, this->CreateInitialContext());
+}
+
+Instruction::IndirectFlow DefaultContextAndLifter::GetIndirectFlow() const {
+  return Instruction::IndirectFlow(this->CreateInitialContext());
+}
+
+Instruction::InstructionFlowCategory
+DefaultContextAndLifter::FillInFlowFromCategoryAndDefaultContext(
+    const remill::Instruction &inst) const {
+  switch (inst.category) {
+    case Instruction::Category::kCategoryNormal:
+      return Instruction::NormalInsn(this->GetFallthrough());
+    case Instruction::Category::kCategoryAsyncHyperCall:
+      return Instruction::AsyncHyperCall();
+    case Instruction::Category::kCategoryConditionalAsyncHyperCall:
+      return Instruction::ConditionalInstruction(Instruction::AsyncHyperCall(),
+                                                 this->GetFallthrough());
+    case Instruction::Category::kCategoryConditionalBranch:
+      return Instruction::ConditionalInstruction(
+          Instruction::DirectJump(this->GetDirectFlow(inst.branch_taken_pc)),
+          this->GetFallthrough());
+    case Instruction::Category::kCategoryDirectJump:
+      return Instruction::DirectJump(this->GetDirectFlow(inst.branch_taken_pc));
+    case Instruction::Category::kCategoryIndirectJump:
+      return Instruction::IndirectJump(this->GetIndirectFlow());
+    case Instruction::Category::kCategoryConditionalIndirectJump:
+      return Instruction::ConditionalInstruction(
+          Instruction::IndirectJump(this->GetIndirectFlow()),
+          this->GetFallthrough());
+    case Instruction::Category::kCategoryError: return Instruction::ErrorInsn();
+    case Instruction::Category::kCategoryFunctionReturn:
+      return Instruction::FunctionReturn(this->GetIndirectFlow());
+    case Instruction::Category::kCategoryConditionalFunctionReturn:
+      return Instruction::ConditionalInstruction(
+          Instruction::FunctionReturn(this->GetIndirectFlow()),
+          this->GetFallthrough());
+    case Instruction::Category::kCategoryConditionalDirectFunctionCall:
+      return Instruction::ConditionalInstruction(
+          Instruction::DirectFunctionCall(
+              this->GetDirectFlow(inst.branch_taken_pc)),
+          this->GetFallthrough());
+    case Instruction::Category::kCategoryDirectFunctionCall:
+      return Instruction::DirectFunctionCall(
+          this->GetDirectFlow(inst.branch_taken_pc));
+    case Instruction::Category::kCategoryIndirectFunctionCall:
+      return Instruction::IndirectFunctionCall(this->GetIndirectFlow());
+    case Instruction::Category::kCategoryConditionalIndirectFunctionCall:
+      return Instruction::ConditionalInstruction(
+          Instruction::IndirectFunctionCall(this->GetIndirectFlow()),
+          this->GetFallthrough());
+    case Instruction::Category::kCategoryInvalid:
+      return Instruction::InvalidInsn();
+    case Instruction::Category::kCategoryNoOp:
+      return Instruction::NoOp(this->GetFallthrough());
+  }
+}
+
+bool DefaultContextAndLifter::DecodeInstruction(uint64_t address,
+                                                std::string_view instr_bytes,
+                                                Instruction &inst,
+                                                DecodingContext context) const {
   inst.SetLifter(std::make_unique<remill::InstructionLifter>(
       this, this->GetInstrinsicTable()));
-  if (this->ArchDecodeInstruction(address, instr_bytes, inst)) {
-    return [](uint64_t) -> DecodingContext { return DecodingContext(); };
+
+  auto res = this->ArchDecodeInstruction(address, instr_bytes, inst);
+  if (res) {
+    inst.flows = this->FillInFlowFromCategoryAndDefaultContext(inst);
   }
 
-  return std::nullopt;
+  return res;
 }
 
 

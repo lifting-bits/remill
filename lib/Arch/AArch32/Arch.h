@@ -16,21 +16,49 @@
 
 #pragma once
 
+#include <lib/Arch/Sleigh/Thumb.h>
 #include <remill/Arch/AArch32/AArch32Base.h>
 
 namespace remill {
-class AArch32Arch final : public AArch32ArchBase,
-                          public DefaultContextAndLifter {
+class AArch32Arch final : public AArch32ArchBase {
  public:
   AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
               ArchName arch_name_);
 
   virtual ~AArch32Arch(void);
 
-  bool ArchDecodeInstruction(uint64_t address, std::string_view inst_bytes,
-                             Instruction &inst) const override;
+
+  virtual DecodingContext CreateInitialContext(void) const override;
+
+  bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                         Instruction &inst,
+                         DecodingContext context) const override;
+
+
+  OperandLifter::OpLifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
+
+  // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
+  uint64_t MinInstructionAlign(const DecodingContext &) const override;
+
+  uint64_t MinInstructionSize(const DecodingContext &) const override;
+
+  // Maximum number of bytes in an instruction for this particular architecture.
+  uint64_t MaxInstructionSize(const DecodingContext &, bool) const override;
+
 
  private:
+  static bool IsThumb(const DecodingContext &context);
+
+  sleighthumb2::SleighThumb2Decoder thumb_decoder;
+  bool DecodeAArch32(uint64_t address, std::string_view instr_bytes,
+                     Instruction &inst, DecodingContext context) const;
+
+
+  bool DecodeThumb(uint64_t address, std::string_view instr_bytes,
+                   Instruction &inst, DecodingContext context) const;
+
+
   AArch32Arch(void) = delete;
 };
 

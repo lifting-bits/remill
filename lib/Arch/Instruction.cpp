@@ -316,7 +316,8 @@ Instruction::Instruction(void)
       has_branch_taken_delay_slot(false),
       has_branch_not_taken_delay_slot(false),
       in_delay_slot(false),
-      category(Instruction::kCategoryInvalid) {}
+      category(Instruction::kCategoryInvalid),
+      flows(Instruction::InvalidInsn()) {}
 
 void Instruction::Reset(void) {
   pc = 0;
@@ -673,9 +674,9 @@ std::string Instruction::Serialize(void) const {
   };
 
   auto maybe_stream_branch_taken_arch = [this, &ss, &stream_arch]() {
-    if (branch_taken_arch_name != arch_name) {
+    if (branch_taken_arch_name && *branch_taken_arch_name != arch_name) {
       ss << ':';
-      stream_arch(branch_taken_arch_name);
+      stream_arch(*branch_taken_arch_name);
     }
   };
 
@@ -799,6 +800,107 @@ const InstructionLifter::LifterPtr &Instruction::GetLifter() const {
 
 void Instruction::SetLifter(InstructionLifter::LifterPtr lifter_) {
   lifter.swap(lifter_);
+}
+
+Instruction::DirectFlow::DirectFlow(uint64_t known_target_,
+                                    DecodingContext static_context_)
+    : known_target(known_target_),
+      static_context(std::move(static_context_)) {}
+
+Instruction::IndirectFlow::IndirectFlow(
+    std::optional<DecodingContext> maybe_context_)
+    : maybe_context(std::move(maybe_context_)) {}
+
+
+Instruction::FallthroughFlow::FallthroughFlow(
+    DecodingContext fallthrough_context_)
+    : fallthrough_context(std::move(fallthrough_context_)) {}
+
+
+Instruction::NormalInsn::NormalInsn(FallthroughFlow fallthrough_)
+    : fallthrough(std::move(fallthrough_)) {}
+
+Instruction::DirectJump::DirectJump(DirectFlow taken_flow_)
+    : taken_flow(std::move(taken_flow_)) {}
+
+Instruction::IndirectJump::IndirectJump(IndirectFlow taken_flow_)
+    : taken_flow(std::move(taken_flow_)) {}
+
+Instruction::ConditionalInstruction::ConditionalInstruction(
+    AbnormalFlow taken_branch_, FallthroughFlow fall_through_)
+    : taken_branch(std::move(taken_branch_)),
+      fall_through(std::move(fall_through_)) {}
+
+// TODO(Ian): When we bump remill to C++20 we can replace all of these comparisons with =default.
+bool Instruction::DirectJump::operator==(const DirectJump &rhs) const {
+  return this->taken_flow == rhs.taken_flow;
+}
+
+bool Instruction::DirectFlow::operator==(
+    remill::Instruction::DirectFlow const &rhs) const {
+  return this->known_target == rhs.known_target &&
+         this->static_context == rhs.static_context;
+}
+
+bool Instruction::NormalInsn::operator==(
+    remill::Instruction::NormalInsn const &rhs) const {
+  return this->fallthrough == rhs.fallthrough;
+}
+
+bool Instruction::InvalidInsn::operator==(
+    remill::Instruction::InvalidInsn const &invalid) const {
+  return true;
+}
+
+bool Instruction::IndirectJump::operator==(
+    remill::Instruction::IndirectJump const &rhs) const {
+  return this->taken_flow == rhs.taken_flow;
+}
+
+bool Instruction::AsyncHyperCall::operator==(
+    remill::Instruction::AsyncHyperCall const &rhs) const {
+  return true;
+}
+
+bool Instruction::FunctionReturn::operator==(
+    remill::Instruction::FunctionReturn const &rhs) const {
+  return Instruction::IndirectJump::operator==(rhs);
+}
+
+bool Instruction::FallthroughFlow::operator==(
+    remill::Instruction::FallthroughFlow const &rhs) const {
+  return this->fallthrough_context == rhs.fallthrough_context;
+}
+
+bool Instruction::DirectFunctionCall::operator==(
+    remill::Instruction::DirectFunctionCall const &rhs) const {
+  return Instruction::DirectJump::operator==(rhs);
+}
+
+bool Instruction::ConditionalInstruction::operator==(
+    remill::Instruction::ConditionalInstruction const &rhs) const {
+  return this->fall_through == rhs.fall_through &&
+         this->taken_branch == rhs.taken_branch;
+}
+
+bool Instruction::IndirectFlow::operator==(
+    remill::Instruction::IndirectFlow const &rhs) const {
+  return this->maybe_context == rhs.maybe_context;
+}
+
+bool Instruction::IndirectFunctionCall::operator==(
+    remill::Instruction::IndirectFunctionCall const &rhs) const {
+  return Instruction::IndirectJump::operator==(rhs);
+}
+
+bool Instruction::ErrorInsn::operator==(
+    remill::Instruction::ErrorInsn const &) const {
+  return true;
+}
+
+
+bool Instruction::NoOp::operator==(const NoOp &rhs) const {
+  return this->fallthrough == rhs.fallthrough;
 }
 
 }  // namespace remill

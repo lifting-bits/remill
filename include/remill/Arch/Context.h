@@ -18,9 +18,11 @@
 #pragma once
 
 
+#include <stdint.h>
+
 #include <functional>
+#include <map>
 #include <string_view>
-#include <unordered_map>
 
 namespace remill {
 
@@ -30,23 +32,29 @@ namespace remill {
 /// We return a function of successor -> DecodingContext. The decoder defines a relation on the
 /// previous context and the successor address that produces a new decoding.
 /// This definition of returned contexts allows us to cleanly handle situations like indirect jumps in arm
+///
 class DecodingContext {
 
  private:
-  std::unordered_map<std::string, uint64_t> context_value;
+  std::map<std::string, uint64_t> context_value;
 
  public:
-  using ContextMap = std::function<DecodingContext(uint64_t)>;
+  bool operator==(const DecodingContext &rhs) const;
 
   DecodingContext() = default;
 
-  DecodingContext(std::unordered_map<std::string, uint64_t> context_value);
+  DecodingContext(std::map<std::string, uint64_t> context_value);
+
+
+  void UpdateContextReg(std::string creg, uint64_t value);
+  void DropReg(const std::string &creg);
+
+  bool HasValueForReg(const std::string &creg) const;
 
 
   uint64_t GetContextValue(const std::string &context_reg) const;
   DecodingContext PutContextReg(std::string creg, uint64_t value) const;
-
-  static ContextMap UniformContextMapping(DecodingContext cst);
+  DecodingContext ContextWithoutRegister(const std::string &creg) const;
 };
 
 }  // namespace remill

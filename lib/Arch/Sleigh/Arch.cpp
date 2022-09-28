@@ -45,9 +45,7 @@ class AssemblyLogger : public AssemblyEmit {
 };
 }  // namespace
 
-PcodeDecoder::PcodeDecoder(::Sleigh &engine_, Instruction &inst_)
-    : engine(engine_),
-      inst(inst_) {}
+PcodeDecoder::PcodeDecoder(::Sleigh &engine_) : engine(engine_) {}
 
 
 void PcodeDecoder::print_vardata(std::stringstream &s, VarnodeData &data) {
@@ -64,220 +62,20 @@ void PcodeDecoder::print_vardata(std::stringstream &s, VarnodeData &data) {
 
 void PcodeDecoder::dump(const Address &, OpCode op, VarnodeData *outvar,
                         VarnodeData *vars, int32_t isize) {
-  std::stringstream ss;
-
-  ss << get_opname(op);
+  RemillPcodeOp new_op;
+  new_op.op = op;
   if (outvar) {
-    print_vardata(ss, *outvar);
-    ss << " = ";
-    DecodeOperand(*outvar);
-  }
-  for (int i = 0; i < isize; ++i) {
-    print_vardata(ss, vars[i]);
-    DecodeOperand(vars[i]);
-  }
-
-  DecodeCategory(op, vars, isize);
-  LOG(INFO) << ss.str();
-}
-
-void PcodeDecoder::DecodeOperand(VarnodeData &var) {
-  const auto loc_name = var.space->getName();
-  if (loc_name == "register") {
-    DecodeRegister(var);
-  } else if (loc_name == "unique") {
-    DecodeMemory(var);
-  } else if (loc_name == "ram") {
-    DecodeMemory(var);
-  } else if (loc_name == "const") {
-    DecodeConstant(var);
+    new_op.outvar = *outvar;
   } else {
-    LOG(FATAL) << "Instruction location " << loc_name << " not supported";
-  }
-}
-
-void PcodeDecoder::DecodeRegister(const VarnodeData &var) {
-  const auto reg_name = engine.getRegisterName(var.space, var.offset, var.size);
-  Operand op;
-  op.type = Operand::kTypeRegister;
-  Operand::Register reg;
-  reg.name = reg_name;
-  reg.size =
-      var.size;  // I don't think this is correct. Need to distinguish between the register width vs the read/write size.
-  op.reg = reg;
-  op.size = var.size;
-  // TODO(alex): Pass information about whether its an outvar or not
-  op.action = true ? Operand::kActionRead : Operand::kActionWrite;
-  inst.operands.push_back(op);
-}
-
-void PcodeDecoder::DecodeMemory(const VarnodeData &var) {
-  Operand op;
-  op.size = var.size * 8;
-  op.type = Operand::kTypeAddress;
-  op.addr.address_size = 64;  // Not sure
-  op.addr.kind =
-      true ? Operand::Address::kMemoryRead : Operand::Address::kMemoryWrite;
-  inst.operands.push_back(op);
-}
-
-void PcodeDecoder::DecodeConstant(const VarnodeData &var) {
-  Operand op;
-  op.type = Operand::kTypeImmediate;
-  op.action = Operand::kActionRead;
-  op.imm.is_signed = false;  // Not sure
-  op.imm.val = var.offset;
-  inst.operands.push_back(op);
-}
-
-/*
-CPUI_BRANCH = 4,		///< Always branch
-  CPUI_CBRANCH = 5,		///< Conditional branch
-  CPUI_BRANCHIND = 6,		///< Indirect branch (jumptable)
-
-  CPUI_CALL = 7,		///< Call to an absolute address
-  CPUI_CALLIND = 8,		///< Call through an indirect address
-  CPUI_CALLOTHER = 9,		///< User-defined operation
-  CPUI_RETURN = 10,		///< Return from subroutine
-*/
-
-
-std::optional<InstructionFlowResolver::IFRPtr>
-PcodeDecoder::GetFlowResolverForOp(OpCode op, VarnodeData *vars,
-                                   int32_t isize) {
-  // TODO(Ian): we should check if we know about this address space and do something if not
-  switch (op) {
-    case CPUI_BRANCH:
-      return InstructionFlowResolver::CreateDirectBranch(vars[0].offset);
-
-    case CPUI_CALL:
-      return InstructionFlowResolver::CreateDirectCall(vars[0].offset);
-      break;
-    case CPUI_CBRANCH:
-      return InstructionFlowResolver::CreateDirectCBranchResolver(
-          vars[0].offset);
-      break;
-    case CPUI_BRANCHIND: return InstructionFlowResolver::CreateIndirectBranch();
-    case CPUI_CALLIND: return InstructionFlowResolver::CreateIndirectCall();
-
-    case CPUI_RETURN: return InstructionFlowResolver::CreateIndirectRet();
-
-    default: return std::nullopt;
-  }
-}
-
-
-void PcodeDecoder::DecodeCategory(OpCode op, VarnodeData *vars, int32_t isize) {
-  if (auto resolver = PcodeDecoder::GetFlowResolverForOp(op, vars, isize)) {
-    if (this->current_resolver) {
-      LOG(ERROR)
-          << "Demoting instruction to indirect branch, already guessed category";
-      // ok we've already seen a control flow instruction so call it an indirect branch
-      this->current_resolver = InstructionFlowResolver::CreateIndirectBranch();
-      return;
-    }
-
-    this->current_resolver = resolver;
-  }
-}
-
-InstructionFlowResolver::IFRPtr PcodeDecoder::GetResolver() {
-  if (!this->current_resolver.has_value()) {
-    LOG(INFO) << "resolver doesnt have a value";
-    return InstructionFlowResolver::CreateNormal();
-  } else {
-    LOG(INFO) << "resolver does have a value";
-    return *this->current_resolver;
-  }
-}
-
-
-InstructionFlowResolver::IFRPtr
-InstructionFlowResolver::CreateDirectCBranchResolver(uint64_t target) {
-  return std::make_shared<DirectCBranchResolver>(target);
-}
-InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateIndirectCall() {
-  return std::make_shared<IndirectBranch>(
-      remill::Instruction::Category::kCategoryIndirectFunctionCall);
-}
-InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateIndirectRet() {
-  return std::make_shared<IndirectBranch>(
-      remill::Instruction::Category::kCategoryFunctionReturn);
-}
-InstructionFlowResolver::IFRPtr
-InstructionFlowResolver::CreateIndirectBranch() {
-  return std::make_shared<IndirectBranch>(
-      remill::Instruction::Category::kCategoryIndirectJump);
-}
-
-InstructionFlowResolver::IFRPtr
-InstructionFlowResolver::CreateDirectBranch(uint64_t target) {
-  return std::make_shared<DirectBranchResolver>(
-      target, remill::Instruction::Category::kCategoryDirectJump);
-}
-InstructionFlowResolver::IFRPtr
-InstructionFlowResolver::CreateDirectCall(uint64_t target) {
-  return std::make_shared<DirectBranchResolver>(
-      target, remill::Instruction::Category::kCategoryDirectFunctionCall);
-}
-
-InstructionFlowResolver::IFRPtr InstructionFlowResolver::CreateNormal() {
-  return std::make_shared<NormalResolver>();
-}
-
-IndirectBranch::IndirectBranch(remill::Instruction::Category category)
-    : category(category) {}
-
-DirectBranchResolver::DirectBranchResolver(
-    uint64_t target_address, remill::Instruction::Category category)
-    : target_address(target_address),
-      category(category) {}
-
-
-DirectCBranchResolver::DirectCBranchResolver(uint64_t target_address)
-    : target_address(target_address) {}
-
-
-void IndirectBranch::ResolveControlFlow(uint64_t fall_through,
-                                        remill::Instruction &insn) {
-  insn.next_pc = 0;
-  insn.category = this->category;
-  insn.branch_not_taken_pc = fall_through;
-}
-
-
-void DirectBranchResolver::ResolveControlFlow(uint64_t fall_through,
-                                              remill::Instruction &insn) {
-  insn.next_pc = this->target_address;
-  insn.branch_taken_pc = this->target_address;
-  insn.branch_not_taken_pc = fall_through;
-  insn.category = this->category;
-  insn.branch_taken_arch_name = insn.arch_name;
-}
-
-void NormalResolver::ResolveControlFlow(uint64_t fall_through,
-                                        remill::Instruction &insn) {
-  insn.next_pc = fall_through;
-  insn.category = remill::Instruction::Category::kCategoryNormal;
-}
-
-void DirectCBranchResolver::ResolveControlFlow(uint64_t fall_through,
-                                               remill::Instruction &insn) {
-  LOG(INFO) << "resolving direct cbranch" << fall_through;
-
-  if (this->target_address == fall_through) {
-    insn.next_pc = fall_through;
-    insn.category = remill::Instruction::Category::kCategoryNormal;
-    return;
+    new_op.outvar = std::nullopt;
   }
 
-  insn.next_pc = 0;
-  insn.branch_taken_pc = this->target_address;
-  insn.branch_not_taken_pc = fall_through;
-  insn.category = remill::Instruction::Category::kCategoryConditionalBranch;
-  insn.branch_taken_arch_name = insn.arch_name;
-}
+  for (int i = 0; i < isize; i++) {
+    new_op.vars.push_back(vars[i]);
+  }
 
+  this->ops.push_back(std::move(new_op));
+}
 
 std::vector<std::string> SingleInstructionSleighContext::getUserOpNames() {
   std::vector<std::string> res;
@@ -365,42 +163,80 @@ std::string CustomLoadImage::getArchType(void) const {
 
 void CustomLoadImage::adjustVma(long) {}
 
+std::shared_ptr<remill::OperandLifter> SleighDecoder::GetOpLifter() const {
+  return this->GetLifter();
+}
 
-SleighArch::DecodingResult
-SleighArch::DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                              Instruction &inst,
-                              DecodingContext context) const {
-  inst.SetLifter(
-      std::make_shared<SleighLifter>(this, *this->GetInstrinsicTable()));
-  assert(inst.GetLifter() != nullptr);
-
-  if (const_cast<SleighArch *>(this)->DecodeInstructionImpl(
-          address, instr_bytes, inst)) {
-    return [this](uint64_t) -> DecodingContext {
-      return this->CreateInitialContext();
-    };
+std::shared_ptr<remill::SleighLifter> SleighDecoder::GetLifter() const {
+  if (this->lifter) {
+    return this->lifter;
   }
 
-  return std::nullopt;
+  if (!this->arch.GetInstrinsicTable()) {
+    LOG(FATAL)
+        << "Architecture was not initialized before asking for a lifting";
+  }
+
+  auto tab = this->arch.GetInstrinsicTable();
+
+  this->lifter =
+      std::make_shared<remill::SleighLifter>(this->arch, *this, *tab);
+
+  return this->lifter;
+}
+
+bool SleighDecoder::DecodeInstruction(uint64_t address,
+                                      std::string_view instr_bytes,
+                                      Instruction &inst,
+                                      DecodingContext context) const {
+
+
+  auto res_cat = const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
+      address, instr_bytes, inst, std::move(context));
+
+  if (!res_cat->second &&
+      std::holds_alternative<remill::Instruction::ConditionalInstruction>(
+          res_cat->first)) {
+    LOG(FATAL)
+        << "Should always emit branch taken var for conditional instruction";
+  }
+
+  inst.SetLifter(std::make_shared<SleighLifterWithState>(res_cat->second,
+                                                         this->GetLifter()));
+  CHECK(inst.GetLifter() != nullptr);
+  return res_cat.has_value();
 }
 
 
-DecodingContext SleighArch::CreateInitialContext(void) const {
-  return DecodingContext();
-}
-
-
-SleighArch::SleighArch(llvm::LLVMContext *context_, OSName os_name_,
-                       ArchName arch_name_, std::string sla_name,
-                       std::string pspec_name)
-    : ArchBase(context_, os_name_, arch_name_),
-      sleigh_ctx(sla_name, pspec_name),
+SleighDecoder::SleighDecoder(
+    const remill::Arch &arch_, std::string sla_name, std::string pspec_name,
+    std::unordered_map<std::string, std::string> context_reg_map_,
+    std::unordered_map<std::string, std::string> state_reg_map_)
+    : sleigh_ctx(sla_name, pspec_name),
       sla_name(sla_name),
-      pspec_name(pspec_name) {}
+      pspec_name(pspec_name),
+      lifter(nullptr),
+      arch(arch_),
+      context_reg_mapping(std::move(context_reg_map_)),
+      state_reg_remappings(std::move(state_reg_map_)) {}
 
-bool SleighArch::DecodeInstructionImpl(uint64_t address,
-                                       std::string_view instr_bytes,
-                                       Instruction &inst) {
+
+const std::unordered_map<std::string, std::string> &
+SleighDecoder::GetContextRegisterMapping() const {
+  return this->context_reg_mapping;
+}
+
+const std::unordered_map<std::string, std::string> &
+SleighDecoder::GetStateRegRemappings() const {
+  return this->state_reg_remappings;
+}
+
+std::optional<std::pair<Instruction::InstructionFlowCategory,
+                        std::optional<BranchTakenVar>>>
+SleighDecoder::DecodeInstructionImpl(uint64_t address,
+                                     std::string_view instr_bytes,
+                                     Instruction &inst,
+                                     DecodingContext curr_context) {
 
   // The SLEIGH engine will query this image when we try to decode an instruction. Append the bytes so SLEIGH has data to read.
 
@@ -408,47 +244,64 @@ bool SleighArch::DecodeInstructionImpl(uint64_t address,
   // Now decode the instruction.
   this->sleigh_ctx.resetContext();
   this->InitializeSleighContext(this->sleigh_ctx);
-  PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine(), inst);
+  PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine());
 
-  LOG(INFO) << "Provided insn size: " << instr_bytes.size();
 
-  inst.Reset();
-  inst.arch = this;
+  inst.arch = &this->arch;
   inst.bytes = instr_bytes;
-  inst.arch_name = arch_name;
-  inst.sub_arch_name = arch_name;
+  inst.arch_name = this->arch.arch_name;
+  inst.sub_arch_name = this->arch.arch_name;
   inst.branch_taken_arch_name = ArchName::kArchInvalid;
   inst.pc = address;
   inst.category = Instruction::kCategoryInvalid;
 
   auto instr_len =
-      this->sleigh_ctx.oneInstruction(address, pcode_handler, instr_bytes);
+      this->sleigh_ctx.oneInstruction(address, pcode_handler, inst.bytes);
 
   if (!instr_len || instr_len > instr_bytes.size()) {
-    return false;
+    return std::nullopt;
   }
   // communicate the size back to the caller
   inst.bytes = instr_bytes.substr(0, *instr_len);
   assert(inst.bytes.size() == instr_len);
 
   InstructionFunctionSetter setter(inst);
+
   this->sleigh_ctx.oneInstruction(address, setter, inst.bytes);
-  LOG(INFO) << "Instr len:" << *instr_len;
-  LOG(INFO) << "Addr: " << address;
-  auto fallthrough = address + *instr_len;
+  uint64_t fallthrough = address + *instr_len;
+  inst.next_pc = fallthrough;
+
+  ControlFlowStructureAnalysis analysis(this->context_reg_mapping,
+                                        this->sleigh_ctx.GetEngine());
+
+
+  auto cat =
+      analysis.ComputeCategory(pcode_handler.ops, fallthrough, curr_context);
+  if (!cat) {
+    LOG(ERROR) << "Failed to compute category for inst at " << std::hex
+               << inst.pc;
+    inst.flows = Instruction::InvalidInsn();
+    inst.category = Instruction::Category::kCategoryInvalid;
+    return std::nullopt;
+  }
+
+  inst.flows = cat->first;
+
+  this->ApplyFlowToInstruction(inst);
+
   LOG(INFO) << "Fallthrough: " << fallthrough;
-  pcode_handler.GetResolver()->ResolveControlFlow(fallthrough, inst);
   LOG(INFO) << "Decoded as " << inst.Serialize();
-  return true;
+
+  return cat;
 }
 
 
-std::string SleighArch::GetSLAName() const {
+std::string SleighDecoder::GetSLAName() const {
   return this->sla_name;
 }
 
 
-std::string SleighArch::GetPSpec() const {
+std::string SleighDecoder::GetPSpec() const {
   return this->pspec_name;
 }
 
@@ -519,9 +372,94 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
 }
 
 
-OperandLifter::OpLifterPtr
-SleighArch::DefaultLifter(const remill::IntrinsicTable &intrinsics) const {
-  return std::make_unique<SleighLifter>(this, intrinsics);
+namespace {
+
+template <typename... Ts>  // (7)
+struct Overload : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts>
+Overload(Ts...) -> Overload<Ts...>;
+
+}  // namespace
+
+void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
+
+
+  auto applyer = Overload{
+      [&inst](const remill::Instruction::NormalInsn &cat) -> void {
+        inst.category = remill::Instruction::Category::kCategoryNormal;
+      },
+      [&inst](const remill::Instruction::NoOp &cat) {
+        inst.category = remill::Instruction::Category::kCategoryNoOp;
+      },
+      [&inst](const remill::Instruction::InvalidInsn &cat) {
+        inst.category = remill::Instruction::Category::kCategoryInvalid;
+      },
+      [&inst](const remill::Instruction::ErrorInsn &cat) {
+        inst.category = remill::Instruction::Category::kCategoryError;
+      },
+      [&inst](const remill::Instruction::DirectJump &cat) {
+        inst.category = remill::Instruction::Category::kCategoryDirectJump;
+        inst.branch_taken_pc = cat.taken_flow.known_target;
+      },
+      [&inst](const remill::Instruction::IndirectJump &cat) {
+        inst.category = remill::Instruction::Category::kCategoryIndirectJump;
+      },
+      [&inst](const remill::Instruction::DirectFunctionCall &cat) {
+        // TODO(Ian) maybe add a return_to_flow for function call flows
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category =
+            remill::Instruction::Category::kCategoryDirectFunctionCall;
+      },
+      [&inst](const remill::Instruction::IndirectFunctionCall &cat) {
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category =
+            remill::Instruction::Category::kCategoryIndirectFunctionCall;
+      },
+      [&inst](const remill::Instruction::FunctionReturn &cat) {
+        inst.category = remill::Instruction::Category::kCategoryFunctionReturn;
+      },
+      [&inst](const remill::Instruction::AsyncHyperCall &cat) {
+        inst.category = remill::Instruction::Category::kCategoryAsyncHyperCall;
+      },
+      [&inst](const remill::Instruction::ConditionalInstruction &cat) {
+        // TODO(Ian)
+        inst.branch_not_taken_pc = inst.next_pc;
+
+        auto conditional_applyer = Overload{
+            [&inst](
+                const remill::Instruction::DirectFunctionCall &cat) -> void {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalDirectFunctionCall;
+            },
+            [&inst](const remill::Instruction::IndirectFunctionCall &cat) {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalIndirectFunctionCall;
+            },
+            [&inst](const remill::Instruction::FunctionReturn &cat) {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalFunctionReturn;
+            },
+            [&inst](const remill::Instruction::AsyncHyperCall &cat) {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalAsyncHyperCall;
+            },
+            [&inst](const remill::Instruction::IndirectJump &cat) {
+              inst.category = remill::Instruction::Category::
+                  kCategoryConditionalIndirectJump;
+            },
+            [&inst](const remill::Instruction::DirectJump &cat) {
+              inst.category =
+                  remill::Instruction::Category::kCategoryConditionalBranch;
+              inst.branch_taken_pc = cat.taken_flow.known_target;
+            }};
+
+        std::visit(conditional_applyer, cat.taken_branch);
+      },
+  };  // namespace remill::sleigh
+
+  std::visit(applyer, inst.flows);
 }
 
 }  // namespace remill::sleigh

@@ -71,13 +71,27 @@ class OperandLifter {
   virtual void ClearCache(void) const = 0;
 };
 
+class InstructionLifterIntf : public OperandLifter {
+ public:
+  using LifterPtr = std::shared_ptr<InstructionLifterIntf>;
+
+  // Lift a single instruction into a basic block. `is_delayed` signifies that
+  // this instruction will execute within the delay slot of another instruction.
+  virtual LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
+                                   llvm::Value *state_ptr,
+                                   bool is_delayed = false) = 0;
+
+  // Lift a single instruction into a basic block. `is_delayed` signifies that
+  // this instruction will execute within the delay slot of another instruction.
+  LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
+                           bool is_delayed = false);
+};
+
 // Wraps the process of lifting an instruction into a block. This resolves
 // the intended instruction target to a function, and ensures that the function
 // is called with the appropriate arguments.
-class InstructionLifter : public OperandLifter {
+class InstructionLifter : public InstructionLifterIntf {
  public:
-  using LifterPtr = std::shared_ptr<InstructionLifter>;
-
   virtual ~InstructionLifter(void);
 
   inline InstructionLifter(const std::unique_ptr<const Arch> &arch_,
@@ -93,12 +107,8 @@ class InstructionLifter : public OperandLifter {
   // this instruction will execute within the delay slot of another instruction.
   virtual LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
                                    llvm::Value *state_ptr,
-                                   bool is_delayed = false);
+                                   bool is_delayed = false) override;
 
-  // Lift a single instruction into a basic block. `is_delayed` signifies that
-  // this instruction will execute within the delay slot of another instruction.
-  LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
-                           bool is_delayed = false);
 
   // Load the address of a register.
   std::pair<llvm::Value *, llvm::Type *>

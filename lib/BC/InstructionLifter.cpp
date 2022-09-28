@@ -74,9 +74,9 @@ InstructionLifter::InstructionLifter(const Arch *arch_,
 
 // Lift a single instruction into a basic block. `is_delayed` signifies that
 // this instruction will execute within the delay slot of another instruction.
-LiftStatus InstructionLifter::LiftIntoBlock(Instruction &inst,
-                                            llvm::BasicBlock *block,
-                                            bool is_delayed) {
+LiftStatus InstructionLifterIntf::LiftIntoBlock(Instruction &inst,
+                                                llvm::BasicBlock *block,
+                                                bool is_delayed) {
   return LiftIntoBlock(inst, block,
                        NthArgument(block->getParent(), kStatePointerArgNum),
                        is_delayed);

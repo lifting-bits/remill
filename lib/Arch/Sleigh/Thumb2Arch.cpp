@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 #include <remill/Arch/AArch32/AArch32Base.h>
+#include <remill/Arch/AArch32/ArchContext.h>
 #include <remill/Arch/AArch32/Runtime/State.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
@@ -24,54 +25,92 @@
 #include <remill/OS/OS.h>
 
 #include "Arch.h"
+#include "Thumb.h"
 
 namespace remill {
 namespace sleighthumb2 {
+namespace {
+const size_t kThumbInstructionSize = 2;
+}
 
 //ARM7_le.sla"
-class SleighThumb2Arch final : public remill::sleigh::SleighArch,
-                               public remill::AArch32ArchBase {
+SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
+    : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec",
+                    {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
+                    {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
+
+
+void SleighThumb2Decoder::InitializeSleighContext(
+    remill::sleigh::SingleInstructionSleighContext &ctxt) const {
+  ctxt.GetContext().setVariableDefault("TMode", 1);
+}
+
+llvm::Value *
+SleighThumb2Decoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
+                                      llvm::Value *curr_pc,
+                                      size_t curr_insn_size) const {
+
+  // PC on thumb points to the next instructions next.
+  return bldr.CreateAdd(
+      curr_pc,
+      llvm::ConstantInt::get(curr_pc->getType(), kThumbInstructionSize * 2));
+}
+
+//TODO(Ian): this has code duplication with SleighX86Arch couldnt come up with a way to share implementation and not run into more
+// annoying virtual inheretance from remill Arch. If we go back to virtual Arch then maybe we could just add another virtual inheratance of
+// Arch. All of these are bad tho.
+class SleighThumbArch : public AArch32ArchBase {
  public:
-  SleighThumb2Arch(llvm::LLVMContext *context_, OSName os_name_,
-                   ArchName arch_name_)
+  SleighThumbArch(llvm::LLVMContext *context_, OSName os_name_,
+                  ArchName arch_name_)
       : ArchBase(context_, os_name_, arch_name_),
-        SleighArch(context_, os_name_, arch_name_, "ARM7_le.sla",
-                   "ARMtTHUMB.pspec"),
-        AArch32ArchBase(context_, os_name_, arch_name_) {}
+        AArch32ArchBase(context_, os_name_, arch_name_),
+
+        decoder(*this) {}
+
+  virtual DecodingContext CreateInitialContext(void) const override {
+    return DecodingContext().PutContextReg(std::string(kThumbModeRegName), 1);
+  }
+
+  virtual OperandLifter::OpLifterPtr
+  DefaultLifter(const remill::IntrinsicTable &intrinsics) const override {
+    return this->decoder.GetOpLifter();
+  }
+
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst,
+                                 DecodingContext context) const override {
+    return decoder.DecodeInstruction(address, instr_bytes, inst, context);
+  }
 
 
-  uint64_t MaxInstructionSize(bool permit_fuse_idioms) const final {
+  // TODO(pag): Eventually handle Thumb2 and unaligned addresses.
+  uint64_t MinInstructionAlign(const DecodingContext &) const override {
+    return 2;
+  }
+
+  uint64_t MinInstructionSize(const DecodingContext &) const override {
+    return 2;
+  }
+
+  // Maximum number of bytes in an instruction for this particular architecture.
+  uint64_t MaxInstructionSize(const DecodingContext &, bool) const override {
     return 4;
   }
 
-  uint64_t MinInstructionSize(void) const final {
-    return 2;
-  }
 
-  uint64_t MinInstructionAlign(void) const final {
-    return 2;
-  }
-
-  void InitializeSleighContext(
-      remill::sleigh::SingleInstructionSleighContext &ctxt) const final {
-    ctxt.GetContext().setVariableDefault("TMode", 1);
-  }
-
-  llvm::Triple Triple(void) const final {
-    auto triple = BasicTriple();
-    triple.setArch(llvm::Triple::thumb);
-    triple.setOS(llvm::Triple::OSType::Linux);
-    triple.setVendor(llvm::Triple::VendorType::UnknownVendor);
-    return triple;
-  }
+ private:
+  SleighThumb2Decoder decoder;
 };
-}  // namespace sleighthumb2
-Arch::ArchPtr Arch::GetSleighThumb2(llvm::LLVMContext *context_,
-                                    OSName os_name_, ArchName arch_name_) {
-  return std::make_unique<sleighthumb2::SleighThumb2Arch>(context_, os_name_,
-                                                          arch_name_);
-}
 
-//     this->sleigh_ctx.GetEngine().setContextDefault("TMode", 1);
+
+}  // namespace sleighthumb2
+
+Arch::ArchPtr Arch::GetSleighThumb2(llvm::LLVMContext *context_,
+                                    remill::OSName os_name_,
+                                    remill::ArchName arch_name_) {
+  return std::make_unique<sleighthumb2::SleighThumbArch>(context_, os_name_,
+                                                         arch_name_);
+}
 
 }  // namespace remill

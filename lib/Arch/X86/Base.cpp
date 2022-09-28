@@ -22,15 +22,15 @@ std::string_view X86ArchBase::ProgramCounterRegisterName(void) const {
 }
 
 
-uint64_t X86ArchBase::MinInstructionAlign(void) const {
+uint64_t X86ArchBase::MinInstructionAlign(const DecodingContext &) const {
   return 1;
 }
 
-uint64_t X86ArchBase::MinInstructionSize(void) const {
+uint64_t X86ArchBase::MinInstructionSize(const DecodingContext &) const {
   return 1;
 }
 
-uint64_t X86ArchBase::MaxInstructionSize(bool) const {
+uint64_t X86ArchBase::MaxInstructionSize(const DecodingContext &, bool) const {
   return 15;
 }
 

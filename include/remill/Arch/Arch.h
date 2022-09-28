@@ -287,36 +287,34 @@ class Arch {
   //            bytes being passed to the decoder, until you successfully decode
   //            or ultimately fail.
 
-  // The decoder takes contextual information in the form of a DecodingContext, making a copy to produce a ContextMap which is a function that maps
-  // a successor to a new context that updates the old context.
 
-  using DecodingResult = std::optional<DecodingContext::ContextMap>;
-
-  virtual DecodingResult
-  DecodeInstruction(uint64_t address, std::string_view instr_bytes,
-                    Instruction &inst, DecodingContext context) const = 0;
+  virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
+                                 Instruction &inst,
+                                 DecodingContext context) const = 0;
 
   // Decode an instruction that is within a delay slot.
-  DecodingResult
-  DecodeDelayedInstruction(uint64_t address, std::string_view instr_bytes,
-                           Instruction &inst, DecodingContext context) const {
+  bool DecodeDelayedInstruction(uint64_t address, std::string_view instr_bytes,
+                                Instruction &inst,
+                                DecodingContext context) const {
     inst.in_delay_slot = true;
     return this->DecodeInstruction(address, instr_bytes, inst,
                                    std::move(context));
   }
 
   // Minimum alignment of an instruction for this particular architecture.
-  virtual uint64_t MinInstructionAlign(void) const = 0;
+  virtual uint64_t
+  MinInstructionAlign(const DecodingContext &context) const = 0;
 
   // Minimum number of bytes in an instruction for this particular architecture.
-  virtual uint64_t MinInstructionSize(void) const = 0;
+  virtual uint64_t MinInstructionSize(const DecodingContext &context) const = 0;
 
   // Maximum number of bytes in an instruction for this particular architecture.
   //
   // `permit_fuse_idioms` is `true` if Remill is allowed to decode multiple
   // instructions at a time and look for instruction fusing idioms that are
   // common to this architecture.
-  virtual uint64_t MaxInstructionSize(bool permit_fuse_idioms = true) const = 0;
+  virtual uint64_t MaxInstructionSize(const DecodingContext &context,
+                                      bool permit_fuse_idioms = true) const = 0;
 
   // Default calling convention for this architecture.
   virtual llvm::CallingConv::ID DefaultCallingConv(void) const = 0;

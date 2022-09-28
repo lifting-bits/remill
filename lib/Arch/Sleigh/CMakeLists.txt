@@ -31,9 +31,12 @@ add_library(remill_arch_sleigh STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/Types.h"
 
   Arch.h
+  Thumb.h
   Arch.cpp
   X86Arch.cpp
   Thumb2Arch.cpp
+  ControlFlowStructuring.cpp
+  ControlFlowStructuring.h
 )
 
 set_property(TARGET remill_arch_sleigh PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -41,6 +44,8 @@ set_property(TARGET remill_arch_sleigh PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(remill_arch_sleigh LINK_PUBLIC
   remill_settings
 )
+
+target_include_directories(remill_arch_sleigh AFTER PRIVATE "${REMILL_SOURCE_DIR}")
 
 if(REMILL_ENABLE_INSTALL_TARGET)
   install(

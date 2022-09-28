@@ -161,7 +161,8 @@ TraceLifter::Impl::Impl(const Arch *arch_, TraceManager *manager_)
       func(nullptr),
       block(nullptr),
       switch_inst(nullptr),
-      max_inst_bytes(arch->MaxInstructionSize()) {
+      // TODO(Ian): The trace lfiter is not supporting contexts
+      max_inst_bytes(arch->MaxInstructionSize(arch->CreateInitialContext())) {
 
   inst_bytes.reserve(max_inst_bytes);
 }

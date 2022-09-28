@@ -12,22 +12,6 @@
 #include <remill/OS/OS.h>
 
 namespace remill {
-
-
-// TODO(pag): Eventually handle Thumb2 and unaligned addresses.
-uint64_t AArch32ArchBase::MinInstructionAlign(void) const {
-  return 4;
-}
-
-uint64_t AArch32ArchBase::MinInstructionSize(void) const {
-  return 4;
-}
-
-// Maximum number of bytes in an instruction for this particular architecture.
-uint64_t AArch32ArchBase::MaxInstructionSize(bool) const {
-  return 4;
-}
-
 // Default calling convention for this architecture.
 llvm::CallingConv::ID AArch32ArchBase::DefaultCallingConv(void) const {
   return llvm::CallingConv::C;  // cdecl.
@@ -38,6 +22,7 @@ llvm::Triple AArch32ArchBase::Triple(void) const {
   auto triple = BasicTriple();
   switch (arch_name) {
     case kArchAArch32LittleEndian: triple.setArch(llvm::Triple::arm); break;
+    case kArchThumb2LittleEndian: triple.setArch(llvm::Triple::thumb); break;
     default:
       LOG(FATAL) << "Cannot get triple for non-aarch32 architecture "
                  << GetArchName(arch_name);

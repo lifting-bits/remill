@@ -15,17 +15,30 @@
  */
 
 #include <glog/logging.h>
+#include <remill/Arch/AArch32/ArchContext.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
 
 #include <optional>
 
 #include "../BitManipulation.h"
+#include "../Sleigh/Thumb.h"
 #include "Arch.h"
 
 namespace remill {
 
 namespace {
+
+Instruction::DirectJump GetDirectJumpFromInst(const remill::Instruction &insn) {
+  CHECK(insn.category == Instruction::Category::kCategoryDirectJump ||
+        insn.category == Instruction::Category::kCategoryConditionalBranch);
+
+  auto taken_context = insn.branch_taken_pc % 2 ? kThumbContext : kARMContext;
+  auto taken_addr = insn.branch_taken_pc % 2 ? insn.branch_taken_pc - 1
+                                             : insn.branch_taken_pc;
+  return Instruction::DirectJump(
+      Instruction::DirectFlow(taken_addr, std::move(taken_context)));
+}
 
 // Integer Data Processing (three register, register shift)
 union IntDataProcessingRRRR {
@@ -1207,7 +1220,10 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
           inst.category = Instruction::kCategoryFunctionReturn;
         }
       } else if (!src1 || !src2) {
-        inst.category = Instruction::kCategoryIndirectJump;
+        inst.branch_taken_arch_name = std::nullopt;
+        inst.branch_not_taken_pc = inst.next_pc;
+        inst.category = is_cond ? Instruction::kCategoryConditionalIndirectJump
+                                : Instruction::kCategoryIndirectJump;
       } else {
         auto res = evaluator(*src1, *src2);
         if (!res) {
@@ -1215,22 +1231,34 @@ static bool EvalPCDest(Instruction &inst, const bool s, const unsigned int rd,
           if (is_cond) {
             inst.branch_not_taken_pc = inst.next_pc;
             inst.category = Instruction::kCategoryConditionalIndirectJump;
+            inst.flows = Instruction::ConditionalInstruction(
+                Instruction::IndirectJump(
+                    Instruction::IndirectFlow(std::nullopt)),
+                Instruction::FallthroughFlow(kARMContext));
           } else {
             inst.branch_not_taken_pc = 0;
+            inst.branch_taken_arch_name = std::nullopt;
             inst.category = Instruction::kCategoryIndirectJump;
+            inst.flows = Instruction::IndirectJump(
+                Instruction::IndirectFlow(std::nullopt));
           }
         } else if (is_cond) {
           inst.branch_taken_pc = static_cast<uint64_t>(*res);
           inst.branch_not_taken_pc = inst.next_pc;
           inst.category = Instruction::kCategoryConditionalBranch;
+          inst.flows = Instruction::ConditionalInstruction(
+              GetDirectJumpFromInst(inst),
+              Instruction::FallthroughFlow(kARMContext));
         } else {
           inst.branch_taken_pc = static_cast<uint64_t>(*res);
           inst.branch_not_taken_pc = 0;
           inst.category = Instruction::kCategoryDirectJump;
+          inst.flows = GetDirectJumpFromInst(inst);
         }
         if (inst.branch_taken_pc % 2u) {
           inst.branch_taken_arch_name = ArchName::kArchThumb2LittleEndian;
           inst.branch_taken_pc -= 1u;
+
         } else {
           inst.branch_taken_arch_name = inst.arch_name;
         }
@@ -1779,9 +1807,15 @@ static bool TryDecodeLoadStoreWordUBIL(Instruction &inst, uint32_t bits) {
     if (is_cond) {
       inst.branch_not_taken_pc = inst.next_pc;
       inst.category = Instruction::kCategoryConditionalIndirectJump;
+      inst.flows = Instruction::ConditionalInstruction(
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt)),
+          Instruction::FallthroughFlow(kARMContext));
     } else {
       inst.category = Instruction::kCategoryIndirectJump;
+      inst.flows =
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt));
     }
+    inst.branch_taken_arch_name = std::nullopt;
   } else {
 
     // Add operand to ignore any updates of the next pc if done by semantic
@@ -1889,8 +1923,13 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
     if (is_cond) {
       inst.branch_not_taken_pc = inst.next_pc;
       inst.category = Instruction::kCategoryConditionalIndirectJump;
+      inst.flows = Instruction::ConditionalInstruction(
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt)),
+          Instruction::FallthroughFlow(kARMContext));
     } else {
       inst.category = Instruction::kCategoryIndirectJump;
+      inst.flows =
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt));
     }
   } else {
 
@@ -2065,8 +2104,13 @@ static bool TryDecodeLoadStoreDualHalfSignedBIL(Instruction &inst,
     if (is_cond) {
       inst.branch_not_taken_pc = inst.next_pc;
       inst.category = Instruction::kCategoryConditionalIndirectJump;
+      inst.flows = Instruction::ConditionalInstruction(
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt)),
+          Instruction::FallthroughFlow(kARMContext));
     } else {
       inst.category = Instruction::kCategoryIndirectJump;
+      inst.flows =
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt));
     }
   } else {
 
@@ -2224,8 +2268,13 @@ static bool TryDecodeLoadStoreDualHalfSignedBReg(Instruction &inst,
     if (is_cond) {
       inst.branch_not_taken_pc = inst.next_pc;
       inst.category = Instruction::kCategoryConditionalIndirectJump;
+      inst.flows = Instruction::ConditionalInstruction(
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt)),
+          Instruction::FallthroughFlow(kARMContext));
     } else {
       inst.category = Instruction::kCategoryIndirectJump;
+      inst.flows =
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt));
     }
   } else {
 
@@ -2366,8 +2415,13 @@ static bool TryDecodeLoadStoreMultiple(Instruction &inst, uint32_t bits) {
     if (is_cond) {
       inst.branch_not_taken_pc = inst.next_pc;
       inst.category = Instruction::kCategoryConditionalIndirectJump;
+      inst.flows = Instruction::ConditionalInstruction(
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt)),
+          Instruction::FallthroughFlow(kARMContext));
     } else {
       inst.category = Instruction::kCategoryIndirectJump;
+      inst.flows =
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt));
     }
   } else {
 
@@ -2724,6 +2778,8 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
   // PC used by the branch instruction is actually the address of the next instruction
   auto target_pc = static_cast<uint32_t>(inst.pc + 8 +
                                          static_cast<uint32_t>(enc.imm24 << 2));
+
+  DecodingContext taken_context = kARMContext;
   if (enc.cond != 0b1111) {
     if (!enc.H) {
       target_pc = target_pc & ~0b11u;
@@ -2743,6 +2799,7 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
     is_func = true;
 
     inst.branch_taken_arch_name = remill::ArchName::kArchThumb2LittleEndian;
+    taken_context = kThumbContext;
   }
   if (is_cond) {
     inst.function += "COND";
@@ -2754,14 +2811,28 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
 
   inst.branch_taken_pc = target_pc;
   inst.branch_not_taken_pc = inst.pc + 4;
+
+
+  auto btaken_flow =
+      Instruction::DirectFlow(inst.branch_taken_pc, taken_context);
+
   if (is_cond && is_func) {
     inst.category = Instruction::kCategoryConditionalDirectFunctionCall;
+    inst.flows = Instruction::ConditionalInstruction(
+        Instruction::DirectFunctionCall(std::move(btaken_flow)),
+        Instruction::FallthroughFlow(kARMContext));
   } else if (is_cond) {
     inst.category = Instruction::kCategoryConditionalBranch;
+    inst.flows = Instruction::ConditionalInstruction(
+        Instruction::DirectJump(std::move(btaken_flow)),
+        Instruction::FallthroughFlow(kARMContext));
   } else if (is_func) {
     inst.category = Instruction::kCategoryDirectFunctionCall;
+    inst.flows = Instruction::DirectFunctionCall(std::move(btaken_flow));
   } else {
     inst.category = Instruction::kCategoryDirectJump;
+    inst.flows = Instruction::DirectJump(
+        Instruction::DirectFlow(std::move(btaken_flow)));
   }
   AddAddrRegOp(inst, kNextPCVariableName.data(), kAddressSize,
                Operand::kActionRead, 0);
@@ -2812,25 +2883,41 @@ static bool TryDecodeBX(Instruction &inst, uint32_t bits) {
   AddAddrRegOp(inst, kIntRegName[enc.Rm], kAddressSize, Operand::kActionRead,
                0);
 
-  inst.branch_taken_arch_name = inst.arch_name;
+  inst.branch_taken_arch_name = std::nullopt;
   inst.branch_not_taken_pc = inst.pc + 4;
   if (enc.op1 == 0b01) {
     if (is_cond && (enc.Rm == kLRRegNum)) {
       inst.category = Instruction::kCategoryConditionalFunctionReturn;
+      inst.flows = Instruction::ConditionalInstruction(
+          Instruction::FunctionReturn(Instruction::IndirectFlow(std::nullopt)),
+          Instruction::FallthroughFlow(kARMContext));
     } else if (enc.Rm == kLRRegNum) {
       inst.category = Instruction::kCategoryFunctionReturn;
+      inst.flows =
+          Instruction::FunctionReturn(Instruction::IndirectFlow(std::nullopt));
     } else if (is_cond) {
       inst.category = Instruction::kCategoryConditionalIndirectJump;
+      inst.flows = Instruction::ConditionalInstruction(
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt)),
+          Instruction::FallthroughFlow(kARMContext));
     } else {
       inst.category = Instruction::kCategoryIndirectJump;
+      inst.flows =
+          Instruction::IndirectJump(Instruction::IndirectFlow(std::nullopt));
     }
     // BX destination is allowed to be the PC
     if (enc.Rm == kPCRegNum) {
       inst.branch_taken_pc = inst.pc + 4;
     }
   } else if (is_cond) {
+    inst.flows = Instruction::ConditionalInstruction(
+        Instruction::IndirectFunctionCall(
+            Instruction::IndirectFlow(std::nullopt)),
+        Instruction::FallthroughFlow(kARMContext));
     inst.category = Instruction::kCategoryConditionalIndirectFunctionCall;
   } else {
+    inst.flows = Instruction::IndirectFunctionCall(
+        Instruction::IndirectFlow(std::nullopt));
     inst.category = Instruction::kCategoryIndirectFunctionCall;
   }
 
@@ -3653,11 +3740,15 @@ static uint32_t BytesToBits(const uint8_t *bytes) {
 }
 }  // namespace
 
-// Decode an instruction
-bool AArch32Arch::ArchDecodeInstruction(uint64_t address,
-                                        std::string_view inst_bytes,
-                                        Instruction &inst) const {
 
+DecodingContext AArch32Arch::CreateInitialContext(void) const {
+  return DecodingContext().PutContextReg(std::string(kThumbModeRegName), 0);
+}
+
+bool AArch32Arch::DecodeInstruction(uint64_t address,
+                                    std::string_view inst_bytes,
+                                    Instruction &inst,
+                                    DecodingContext context) const {
   inst.pc = address;
   inst.next_pc = address + inst_bytes.size();  // Default fall-through.
   inst.branch_taken_pc = 0;
@@ -3665,11 +3756,37 @@ bool AArch32Arch::ArchDecodeInstruction(uint64_t address,
   inst.has_branch_taken_delay_slot = false;
   inst.has_branch_not_taken_delay_slot = false;
   inst.arch_name = arch_name;
-  inst.sub_arch_name = arch_name;  // TODO(pag): Thumb.
+  inst.sub_arch_name = arch_name;
   inst.branch_taken_arch_name = arch_name;
   inst.arch = this;
   inst.category = Instruction::kCategoryInvalid;
   inst.operands.clear();
+  inst.flows = Instruction::InvalidInsn();
+
+  if (!context.HasValueForReg(std::string(kThumbModeRegName))) {
+    return false;
+  }
+
+
+  if (AArch32Arch::IsThumb(context)) {
+    return this->DecodeThumb(address, inst_bytes, inst, std::move(context));
+  } else {
+    return this->DecodeAArch32(address, inst_bytes, inst, std::move(context));
+  }
+}
+
+
+OperandLifter::OpLifterPtr AArch32Arch::DefaultLifter(
+    const remill::IntrinsicTable &intrinsics_table) const {
+  return std::make_shared<InstructionLifter>(this, intrinsics_table);
+}
+
+bool AArch32Arch::DecodeAArch32(uint64_t address, std::string_view inst_bytes,
+                                Instruction &inst,
+                                DecodingContext context) const {
+
+  inst.SetLifter(
+      std::make_shared<InstructionLifter>(this, this->instrinsics.get()));
 
   if (4ull > inst_bytes.size()) {
     return false;
@@ -3697,7 +3814,28 @@ bool AArch32Arch::ArchDecodeInstruction(uint64_t address,
   auto ret = decoder(inst, bits);
 
   //  LOG(ERROR) << inst.Serialize();
-  return ret;
+  if (!ret) {
+    return false;
+  }
+
+
+  if (inst.category == Instruction::Category::kCategoryNormal) {
+    inst.flows =
+        Instruction::NormalInsn(Instruction::FallthroughFlow(kARMContext));
+  } else if (inst.category == Instruction::Category::kCategoryNoOp) {
+    inst.flows = Instruction::NoOp(Instruction::FallthroughFlow(kARMContext));
+  } else if (inst.category == Instruction::Category::kCategoryAsyncHyperCall) {
+    inst.flows = Instruction::AsyncHyperCall();
+  } else if (inst.category ==
+             Instruction::Category::kCategoryConditionalAsyncHyperCall) {
+    inst.flows = Instruction::ConditionalInstruction(
+        Instruction::AsyncHyperCall(),
+        Instruction::FallthroughFlow(kARMContext));
+  } else if (inst.category == Instruction::Category::kCategoryError) {
+    inst.flows = Instruction::ErrorInsn();
+  }
+
+  return true;
 }
 
 }  // namespace remill
