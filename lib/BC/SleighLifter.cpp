@@ -1179,6 +1179,8 @@ std::unordered_set<OpCode>
         CPUI_INT_SLESS,   CPUI_INT_LESSEQUAL, CPUI_INT_SLESSEQUAL,
         CPUI_INT_SBORROW, CPUI_INT_SCARRY,    CPUI_INT_CARRY};
 
+// NOTE(Ian): we store a mapping from pcode op to supported boolean operation so that we can easily check if
+// we want to lift the operands to this op as a boolean and also find the right post lifting operation to apply.
 std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
     SleighLifter::PcodeToLLVMEmitIntoBlock::BOOL_BINARY_OPS = {
         {OpCode::CPUI_BOOL_AND,
