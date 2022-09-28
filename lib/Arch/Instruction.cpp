@@ -831,6 +831,7 @@ Instruction::ConditionalInstruction::ConditionalInstruction(
     : taken_branch(std::move(taken_branch_)),
       fall_through(std::move(fall_through_)) {}
 
+// TODO(Ian): When we bump remill to C++20 we can replace all of these comparisons with =default.
 bool Instruction::DirectJump::operator==(const DirectJump &rhs) const {
   return this->taken_flow == rhs.taken_flow;
 }
