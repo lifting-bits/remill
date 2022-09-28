@@ -86,11 +86,12 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
 
   // insert a pseudo control flow op at the end
   // add a fallthrough insn at +1 to represent a last fallthrough if there is a chance we fallthrough at the end
-
-  if (ops.empty() ||
+  auto insn_may_fallthrough_at_end =
+      ops.empty() ||
       !ControlFlowStructureAnalysis::isControlFlowPcodeOp(
           ops[ops.size() - 1].op) ||
-      ops[ops.size() - 1].op == CPUI_CBRANCH) {
+      ops[ops.size() - 1].op == CPUI_CBRANCH;
+  if (insn_may_fallthrough_at_end) {
     CoarseFlow cat = {CoarseEffect::kNormal, false};
     res.emplace(ops.size(), cat);
   }
