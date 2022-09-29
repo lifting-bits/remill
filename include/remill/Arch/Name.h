@@ -22,6 +22,7 @@
 #    define REMILL_ON_AMD64 1
 #    define REMILL_ON_X86 0
 #    define REMILL_ON_AARCH64 0
+#    define REMILL_ON_AARCH32 0
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #  elif defined(__i386__) || defined(_M_X86)
@@ -29,6 +30,7 @@
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 1
 #    define REMILL_ON_AARCH64 0
+#    define REMILL_ON_AARCH32 0
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #  elif defined(__aarch64__)
@@ -36,6 +38,15 @@
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 0
 #    define REMILL_ON_AARCH64 1
+#    define REMILL_ON_AARCH32 0
+#    define REMILL_ON_SPARC64 0
+#    define REMILL_ON_SPARC32 0
+#  elif defined(__arm__)
+#    define REMILL_ARCH "aarch32"
+#    define REMILL_ON_AMD64 0
+#    define REMILL_ON_X86 0
+#    define REMILL_ON_AARCH64 0
+#    define REMILL_ON_AARCH32 1
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #  elif defined(__sparc__) || defined(__sparc) || defined(__sparc_v8__) || \
@@ -43,6 +54,7 @@
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 0
 #    define REMILL_ON_AARCH64 0
+#    define REMILL_ON_AARCH32 0
 #    if (defined(__LP64__) && __LP64__) || (defined(_LP64) && _LP64)
 #      define REMILL_ARCH "sparc64"
 #      define REMILL_ON_SPARC64 1
