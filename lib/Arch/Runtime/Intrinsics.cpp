@@ -35,7 +35,7 @@ extern RegisterWindow __remill_register_window;
 
 // This is just a hack to make sure all these functions appear in the bitcode
 // file!
-[[gnu::used]] extern "C" void __remill_intrinsics(void) {
+extern "C" [[gnu::used]] void __remill_intrinsics(void) {
 
   USED(__remill_state);
 

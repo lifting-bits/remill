@@ -33,6 +33,7 @@
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/Optimizer.h>
 #include <remill/BC/Util.h>
+#include <remill/BC/Version.h>
 #include <remill/OS/OS.h>
 #include <test_runner/TestRunner.h>
 
@@ -59,7 +60,9 @@ std::optional<remill::Instruction> GetFlows(std::string_view bytes,
                                             uint64_t address, uint64_t tm_val) {
 
   llvm::LLVMContext context;
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   context.enableOpaquePointers();
+#endif
   auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
                                   remill::ArchName::kArchAArch32LittleEndian);
   auto sems = remill::LoadArchSemantics(arch.get());
@@ -237,7 +240,9 @@ TEST(ThumbRandomizedLifts, PopPC) {
   spec.AddPrecWrite<uint32_t>(10, 16);
   llvm::LLVMContext context;
 
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   context.enableOpaquePointers();
+#endif
   TestSpecRunner runner(context);
   runner.RunTestSpec(spec);
 }
@@ -254,14 +259,18 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   spec.AddPrecWrite<uint32_t>(28, 0xdeadc0de);
   llvm::LLVMContext context;
 
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   context.enableOpaquePointers();
+#endif
   TestSpecRunner runner(context);
   runner.RunTestSpec(spec);
 }
 
 TEST(RegressionTests, AARCH64RegSize) {
   llvm::LLVMContext context;
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   context.enableOpaquePointers();
+#endif
   auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
                                   remill::ArchName::kArchAArch64LittleEndian);
   auto sems = remill::LoadArchSemantics(arch.get());
@@ -282,7 +291,7 @@ TEST(RegressionTests, AARCH64RegSize) {
 }
 
 
-/* These tests are transcribed from the behaviors described in: A2.3.1 
+/* These tests are transcribed from the behaviors described in: A2.3.1
 
   MOV(reg, thumb) ignores last bit, but does not mode-switch
 
@@ -300,15 +309,15 @@ TEST(RegressionTests, AARCH64RegSize) {
   Thumb -> Thumb (1, blx 1) -> {true: 1}
 
   Indirects (LDR, MOV(reg,ARM), BX):
-  
+
   Arm -> (Thumb/Arm) (0, LDR PC, [r0]) -> {true: non_constant}
   Arm -> (Thumb/Arm) (0, BX r1) -> {true: non_constant}
   Thumb -> (Thumb/Arm) (1, LDR PC, [0]) -> {true: non_constant}
   Thumb -> (Thumb/Arm) (1, BX r1) -> {true: non_constant}
-  
+
   Arm only
   Arm -> (Thumb/Arm) (0, mov pc, r1) -> {true: non_constant}
-    
+
 
 
   Same but with conditionals:
@@ -323,13 +332,13 @@ TEST(RegressionTests, AARCH64RegSize) {
   Arm -> Arm (0, blxne 1) -> {true: 0}
 
   Indirects (LDR, MOV(reg,ARM), BX):
-  
+
   Arm -> (Thumb/Arm) (0, LDRNE PC, [r0]) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
   Arm -> (Thumb/Arm) (0, BXNE r1) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
-  
+
   Arm only
   Arm -> (Thumb/Arm) (0, movne pc, r1) -> {!=branch_not_taken_pc: non_constant, ==branch_not_taken_pc: 0}
-    
+
 */
 
 /*
