@@ -439,23 +439,28 @@ void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
             [&inst](const remill::Instruction::IndirectFunctionCall &cat) {
               inst.category = remill::Instruction::Category::
                   kCategoryConditionalIndirectFunctionCall;
+              inst.branch_not_taken_pc = inst.next_pc;
             },
             [&inst](const remill::Instruction::FunctionReturn &cat) {
               inst.category = remill::Instruction::Category::
                   kCategoryConditionalFunctionReturn;
+              inst.branch_not_taken_pc = inst.next_pc;
             },
             [&inst](const remill::Instruction::AsyncHyperCall &cat) {
               inst.category = remill::Instruction::Category::
                   kCategoryConditionalAsyncHyperCall;
+              inst.branch_not_taken_pc = inst.next_pc;
             },
             [&inst](const remill::Instruction::IndirectJump &cat) {
               inst.category = remill::Instruction::Category::
                   kCategoryConditionalIndirectJump;
+              inst.branch_not_taken_pc = inst.next_pc;
             },
             [&inst](const remill::Instruction::DirectJump &cat) {
               inst.category =
                   remill::Instruction::Category::kCategoryConditionalBranch;
               inst.branch_taken_pc = cat.taken_flow.known_target;
+              inst.branch_not_taken_pc = inst.next_pc;
             }};
 
         std::visit(conditional_applyer, cat.taken_branch);
