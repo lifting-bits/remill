@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <stdint.h>
+#include "remill/Arch/Runtime/Int.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic fatal "-Wpadded"
 
@@ -43,6 +43,9 @@ struct NeonReg final {
     } words;
   };
 } __attribute__((packed));
+
+static_assert(sizeof(uint128_t) == sizeof(NeonReg),
+              "Invalid packing of NeonReg");
 
 static_assert(sizeof(uint32_t) == sizeof(Reg), "Invalid packing of `Reg`.");
 static_assert(0 == __builtin_offsetof(Reg, dword),
@@ -123,6 +126,7 @@ struct alignas(8) SR final {
   uint8_t _padding[2];
 } __attribute__((packed));
 
+
 struct alignas(16) NeonBank {
   NeonReg q0;
   NeonReg q1;
@@ -141,6 +145,10 @@ struct alignas(16) NeonBank {
   NeonReg q14;
   NeonReg q15;
 } __attribute__((packed));
+
+static_assert(sizeof(uint128_t) * 16 == sizeof(NeonBank),
+              "Invalid packing of NeonBank");
+
 
 struct alignas(16) AArch32State : public ArchState {
 
