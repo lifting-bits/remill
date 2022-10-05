@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <stdint.h>
 #pragma clang diagnostic push
 #pragma clang diagnostic fatal "-Wpadded"
 
@@ -24,6 +25,23 @@
 
 struct Reg final {
   alignas(4) uint32_t dword;
+} __attribute__((packed));
+
+
+struct NeonReg final {
+  union {
+    uint128_t qword;
+    struct {
+      uint64_t low_dword;
+      uint64_t high_dword;
+    } dwords;
+    struct {
+      uint32_t ll_word;
+      uint32_t lh_word;
+      uint32_t hl_word;
+      uint32_t hh_word;
+    } words;
+  };
 } __attribute__((packed));
 
 static_assert(sizeof(uint32_t) == sizeof(Reg), "Invalid packing of `Reg`.");
@@ -105,10 +123,30 @@ struct alignas(8) SR final {
   uint8_t _padding[2];
 } __attribute__((packed));
 
+struct alignas(16) NeonBank {
+  NeonReg q0;
+  NeonReg q1;
+  NeonReg q2;
+  NeonReg q3;
+  NeonReg q4;
+  NeonReg q5;
+  NeonReg q6;
+  NeonReg q7;
+  NeonReg q8;
+  NeonReg q9;
+  NeonReg q10;
+  NeonReg q11;
+  NeonReg q12;
+  NeonReg q13;
+  NeonReg q14;
+  NeonReg q15;
+} __attribute__((packed));
+
 struct alignas(16) AArch32State : public ArchState {
 
 
   GPR gpr;  // 528 bytes.
+  NeonBank neon;
   SR sr;
   uint64_t _0;
 
