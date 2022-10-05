@@ -17,14 +17,20 @@
 #include <glog/logging.h>
 #include <lib/Arch/Sleigh/Arch.h>
 #include <lib/Arch/Sleigh/ControlFlowStructuring.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Value.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/SleighLifter.h>
 #include <remill/BC/Util.h>
 
 #include <cassert>
+#include <optional>
+#include <sleigh/pcoderaw.hh>
 #include <unordered_map>
 #include <unordered_set>
+
+#include "remill/BC/InstructionLifter.h"
 
 namespace remill {
 
@@ -59,9 +65,6 @@ std::string DumpPcode(Sleigh &engine, const remill::sleigh::RemillPcodeOp &op) {
 static size_t kBranchTakenArgNum = 2;
 static size_t kNextPcArgNum = 3;
 
-static bool isFloatOp(OpCode opc) {
-  return opc >= OpCode::CPUI_FLOAT_EQUAL && opc <= OpCode::CPUI_FLOAT_ROUND;
-}
 
 static const std::string kEqualityClaimName = "claim_eq";
 
@@ -461,8 +464,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       llvm::IRBuilder<> &bldr,
       llvm::Intrinsic::IndependentIntrinsics intrinsic_id, VarnodeData *outvar,
       VarnodeData input_var) {
-    auto inval = this->LiftInParam(bldr, input_var,
-                                   llvm::Type::getFloatTy(this->context));
+    auto inval = this->LiftFloatInParam(bldr, input_var);
 
     if (!inval) {
       return LiftStatus::kLiftedUnsupportedInstruction;
@@ -472,7 +474,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         bldr.GetInsertBlock()->getModule(), intrinsic_id);
     llvm::Value *intrinsic_args[] = {*inval};
     return this->LiftStoreIntoOutParam(
-        bldr, bldr.CreateCall(intrinsic, intrinsic_args), outvar);
+        bldr,
+        this->CastFloatResult(bldr, *outvar,
+                              bldr.CreateCall(intrinsic, intrinsic_args)),
+        outvar);
   }
 
 
@@ -484,10 +489,97 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     return LiftStatus::kLiftedInstruction;
   }
 
+  LiftStatus LiftFloatUnop(llvm::IRBuilder<> &bldr, OpCode opc,
+                           VarnodeData *outvar, VarnodeData input_var) {
+    switch (opc) {
+      case OpCode::CPUI_FLOAT_NEG: {
+        auto negate_inval = this->LiftFloatInParam(bldr, input_var);
+        if (negate_inval.has_value()) {
+          return this->LiftStoreIntoOutParam(
+              bldr, bldr.CreateFNeg(*negate_inval), outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_FLOAT_ABS: {
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::fabs,
+                                                   outvar, input_var);
+      }
+      case OpCode::CPUI_FLOAT_SQRT: {
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::sqrt,
+                                                   outvar, input_var);
+      }
+      case OpCode::CPUI_FLOAT_CEIL: {
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::ceil,
+                                                   outvar, input_var);
+      }
+      case OpCode::CPUI_FLOAT_FLOOR: {
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::floor,
+                                                   outvar, input_var);
+      }
+      case OpCode::CPUI_FLOAT_ROUND: {
+        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::round,
+                                                   outvar, input_var);
+      }
+      case OpCode::CPUI_FLOAT_NAN: {
+        auto nan_inval = this->LiftFloatInParam(bldr, input_var);
+        if (nan_inval.has_value()) {
+          // LLVM trunk has an `isnan` intrinsic but to support older versions, I think we need to do this.
+          auto *isnan_check = bldr.CreateZExt(
+              bldr.CreateNot(bldr.CreateFCmpORD(*nan_inval, *nan_inval)),
+              llvm::IntegerType::get(this->context, outvar->size * 8));
+          return this->LiftStoreIntoOutParam(bldr, isnan_check, outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_FLOAT_INT2FLOAT: {
+        auto int2float_inval = this->LiftIntegerInParam(bldr, input_var);
+        if (int2float_inval.has_value()) {
+          auto *converted = bldr.CreateSIToFP(
+              *int2float_inval, llvm::Type::getFloatTy(this->context));
+          return this->LiftStoreIntoOutParam(
+              bldr, this->CastFloatResult(bldr, *outvar, converted), outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_FLOAT_FLOAT2FLOAT: {
+        auto float2float_inval = this->LiftFloatInParam(bldr, input_var);
+        auto new_float_type = this->GetFloatTypeOfByteSize(input_var.size);
+        if (float2float_inval.has_value() && new_float_type) {
+          // This is a no-op until we make a helper to select an appropriate float type for a given node size.
+          return this->LiftStoreIntoOutParam(
+              bldr,
+              this->CastFloatResult(
+                  bldr, *outvar,
+                  bldr.CreateFPCast(*float2float_inval, *new_float_type)),
+              outvar);
+        }
+        break;
+      }
+      case OpCode::CPUI_FLOAT_TRUNC: {
+        auto trunc_inval = this->LiftFloatInParam(bldr, input_var);
+        if (trunc_inval.has_value()) {
+          // Should this be UI?
+          auto *converted = bldr.CreateFPToSI(
+              *trunc_inval,
+              llvm::IntegerType::get(this->context, outvar->size * 8));
+          return this->LiftStoreIntoOutParam(bldr, converted, outvar);
+        }
+        break;
+      }
+
+      default: return LiftStatus::kLiftedUnsupportedInstruction;
+    }
+
+    return LiftStatus::kLiftedUnsupportedInstruction;
+  }
+
   LiftStatus LiftUnaryOp(llvm::IRBuilder<> &bldr, OpCode opc,
                          VarnodeData *outvar, VarnodeData input_var) {
-    // TODO(Ian): when we lift a param we need to specify the type we want
 
+    auto res = this->LiftFloatUnop(bldr, opc, outvar, input_var);
+    if (res != LiftStatus::kLiftedUnsupportedInstruction) {
+      return res;
+    }
 
     switch (opc) {
       case OpCode::CPUI_BOOL_NEGATE: {
@@ -571,80 +663,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
         if (negate_inval.has_value()) {
           return this->LiftStoreIntoOutParam(
               bldr, bldr.CreateNot(*negate_inval), outvar);
-        }
-        break;
-      }
-      case OpCode::CPUI_FLOAT_NEG: {
-        auto negate_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (negate_inval.has_value()) {
-          return this->LiftStoreIntoOutParam(
-              bldr, bldr.CreateFNeg(*negate_inval), outvar);
-        }
-        break;
-      }
-      case OpCode::CPUI_FLOAT_ABS: {
-        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::fabs,
-                                                   outvar, input_var);
-      }
-      case OpCode::CPUI_FLOAT_SQRT: {
-        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::sqrt,
-                                                   outvar, input_var);
-      }
-      case OpCode::CPUI_FLOAT_CEIL: {
-        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::ceil,
-                                                   outvar, input_var);
-      }
-      case OpCode::CPUI_FLOAT_FLOOR: {
-        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::floor,
-                                                   outvar, input_var);
-      }
-      case OpCode::CPUI_FLOAT_ROUND: {
-        return this->LiftUnaryOpWithFloatIntrinsic(bldr, llvm::Intrinsic::round,
-                                                   outvar, input_var);
-      }
-      case OpCode::CPUI_FLOAT_NAN: {
-        auto nan_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (nan_inval.has_value()) {
-          // LLVM trunk has an `isnan` intrinsic but to support older versions, I think we need to do this.
-          auto *isnan_check = bldr.CreateZExt(
-              bldr.CreateNot(bldr.CreateFCmpOEQ(*nan_inval, *nan_inval)),
-              llvm::IntegerType::get(this->context, outvar->size * 8));
-          return this->LiftStoreIntoOutParam(bldr, isnan_check, outvar);
-        }
-        break;
-      }
-      case OpCode::CPUI_FLOAT_INT2FLOAT: {
-        auto int2float_inval = this->LiftIntegerInParam(bldr, input_var);
-        if (int2float_inval.has_value()) {
-          auto *converted = bldr.CreateSIToFP(
-              *int2float_inval, llvm::Type::getFloatTy(this->context));
-          return this->LiftStoreIntoOutParam(bldr, converted, outvar);
-        }
-        break;
-      }
-      case OpCode::CPUI_FLOAT_FLOAT2FLOAT: {
-        auto float2float_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (float2float_inval.has_value()) {
-          // This is a no-op until we make a helper to select an appropriate float type for a given node size.
-          return this->LiftStoreIntoOutParam(
-              bldr,
-              bldr.CreateFPTrunc(*float2float_inval,
-                                 llvm::Type::getFloatTy(this->context)),
-              outvar);
-        }
-        break;
-      }
-      case OpCode::CPUI_FLOAT_TRUNC: {
-        auto trunc_inval = this->LiftInParam(
-            bldr, input_var, llvm::Type::getFloatTy(this->context));
-        if (trunc_inval.has_value()) {
-          auto *converted = bldr.CreateFPToSI(
-              *trunc_inval,
-              llvm::IntegerType::get(this->context, outvar->size * 8));
-          return this->LiftStoreIntoOutParam(bldr, converted, outvar);
         }
         break;
       }
@@ -839,10 +857,49 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
   }
 
+
+  std::optional<llvm::Type *> GetFloatTypeOfByteSize(size_t byte_size) {
+    switch (byte_size) {
+      case 4: return llvm::Type::getFloatTy(this->context);
+      case 8: return llvm::Type::getDoubleTy(this->context);
+      default: return std::nullopt;
+    }
+  }
+
+
+  llvm::Value *CastFloatResult(llvm::IRBuilder<> &bldr,
+                               VarnodeData output_varnode,
+                               llvm::Value *maybe_float) {
+
+    auto curr_value = maybe_float;
+    if (curr_value->getType()->isFloatingPointTy()) {
+      auto num_bits = curr_value->getType()->getPrimitiveSizeInBits();
+      curr_value = bldr.CreateBitCast(
+          curr_value, llvm::IntegerType::get(this->context, num_bits));
+    }
+
+    return bldr.CreateZExtOrTrunc(
+        curr_value,
+        llvm::IntegerType::get(this->context, output_varnode.size * 8));
+  }
+
   std::optional<llvm::Value *> LiftFloatInParam(llvm::IRBuilder<> &bldr,
                                                 VarnodeData vnode) {
-    return this->LiftInParam(bldr, vnode,
-                             llvm::Type::getFloatTy(this->context));
+    auto float_ty = this->GetFloatTypeOfByteSize(vnode.size);
+    if (!float_ty) {
+      DLOG(ERROR) << "Could not create llvm float type of size " << vnode.size;
+      return std::nullopt;
+    }
+
+    auto int_ty = llvm::IntegerType::get(this->context, vnode.size * 8);
+
+    auto int_in_param = this->LiftInParam(bldr, vnode, int_ty);
+
+    if (!int_in_param) {
+      return std::nullopt;
+    }
+
+    return bldr.CreateBitCast(*int_in_param, *float_ty);
   }
 
   LiftStatus LiftFloatBinOp(llvm::IRBuilder<> &bldr, OpCode opc,
@@ -866,8 +923,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
+    auto res = (*op_func)(*lifted_lhs, *lifted_rhs, bldr);
     return this->LiftStoreIntoOutParam(
-        bldr, (*op_func)(*lifted_lhs, *lifted_rhs, bldr), outvar);
+        bldr, this->CastFloatResult(bldr, *outvar, res), outvar);
   }
 
 
