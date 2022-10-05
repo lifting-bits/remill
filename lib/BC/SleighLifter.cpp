@@ -18,6 +18,8 @@
 #include <lib/Arch/Sleigh/Arch.h>
 #include <lib/Arch/Sleigh/ControlFlowStructuring.h>
 #include <llvm/ADT/StringExtras.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Value.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/SleighLifter.h>
@@ -304,7 +306,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
     if (new_status != LiftStatus::kLiftedInstruction) {
       this->status = new_status;
-      DLOG(ERROR) << "Failed to lift insn with opcode: " << get_opname(opc);
+      DLOG(ERROR) << "Failed to lift insn with opcode: " << get_opname(opc)
+                  << " in insn: " << std::hex << this->insn.pc
+                  << llvm::toHex(this->insn.bytes);
     }
   }
 
