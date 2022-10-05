@@ -432,6 +432,7 @@ void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
                 const remill::Instruction::DirectFunctionCall &cat) -> void {
               inst.category = remill::Instruction::Category::
                   kCategoryConditionalDirectFunctionCall;
+              inst.branch_taken_pc = cat.taken_flow.known_target;
             },
             [&inst](const remill::Instruction::IndirectFunctionCall &cat) {
               inst.category = remill::Instruction::Category::
