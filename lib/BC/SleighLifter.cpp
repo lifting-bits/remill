@@ -1372,10 +1372,6 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
   sleigh_context->oneInstruction(inst.pc, pcode_record, inst.bytes);
   for (const auto &op : pcode_record.ops) {
     DLOG(INFO) << "Pcodeop: " << DumpPcode(this->GetEngine(), op);
-
-    if (isFloatOp(op.op)) {
-      return {LiftStatus::kLiftedUnsupportedInstruction, std::nullopt};
-    }
   }
 
   DLOG(INFO) << "Secondary lift of bytes: " << llvm::toHex(inst.bytes);
@@ -1447,7 +1443,6 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
   const auto next_pc =
       intoblock_builer.CreateLoad(this->GetWordType(), next_pc_ref);
 
-  ;
 
   intoblock_builer.CreateStore(
       this->decoder.LiftPcFromCurrPc(intoblock_builer, next_pc,
