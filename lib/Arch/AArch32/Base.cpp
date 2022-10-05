@@ -203,7 +203,7 @@ void AArch32ArchBase::FinishLiftedFunctionInitialization(
     llvm::Module *module, llvm::Function *bb_func) const {
   const auto &dl = module->getDataLayout();
   CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
-      << "Mismatch between size of State type for x86/amd64 and what is in "
+      << "Mismatch between size of State type for aarch32 and what is in "
       << "the bitcode module";
 
   auto &context = module->getContext();
