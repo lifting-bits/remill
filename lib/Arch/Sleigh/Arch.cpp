@@ -409,6 +409,7 @@ void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
       [&inst](const remill::Instruction::DirectFunctionCall &cat) {
         // TODO(Ian) maybe add a return_to_flow for function call flows
         inst.branch_not_taken_pc = inst.next_pc;
+        inst.branch_taken_pc = cat.taken_flow.known_target;
         inst.category =
             remill::Instruction::Category::kCategoryDirectFunctionCall;
       },
@@ -430,9 +431,10 @@ void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
         auto conditional_applyer = Overload{
             [&inst](
                 const remill::Instruction::DirectFunctionCall &cat) -> void {
+              inst.branch_not_taken_pc = inst.next_pc;
+              inst.branch_taken_pc = cat.taken_flow.known_target;
               inst.category = remill::Instruction::Category::
                   kCategoryConditionalDirectFunctionCall;
-              inst.branch_taken_pc = cat.taken_flow.known_target;
             },
             [&inst](const remill::Instruction::IndirectFunctionCall &cat) {
               inst.category = remill::Instruction::Category::
