@@ -1502,7 +1502,10 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
   const auto [next_pc_ref, next_pc_ref_type] =
       LoadRegAddress(block, state_ptr, kNextPCVariableName);
 
+
   llvm::IRBuilder<> intoblock_builer(block);
+
+
   const auto next_pc =
       intoblock_builer.CreateLoad(this->GetWordType(), next_pc_ref);
 
@@ -1516,6 +1519,11 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
           next_pc,
           llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size())),
       next_pc_ref);
+
+  // TODO(Ian): THIS IS AN UNSOUND ASSUMPTION THAT RETURNS ALWAYS RETURN TO THE FALLTHROUGH, this is just to make things work
+  intoblock_builer.CreateStore(
+      intoblock_builer.CreateLoad(this->GetWordType(), next_pc_ref),
+      LoadReturnProgramCounterRef(block));
 
 
   std::array<llvm::Value *, 4> args = {
