@@ -280,6 +280,13 @@ TEST(RegressionTests, AARCH64RegSize) {
 
   CHECK_EQ(lifted2->getType()->getIntegerBitWidth(), 32);
 }
+TEST(RegressionTests, Armv8FPSCR) {
+  llvm::LLVMContext context;
+  context.enableOpaquePointers();
+  auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
+                                  remill::ArchName::kArchAArch32LittleEndian);
+  CHECK_NOTNULL(arch->RegisterByName("FPSCR"));
+}
 
 
 /* These tests are transcribed from the behaviors described in: A2.3.1 

@@ -123,7 +123,7 @@ void AArch32ArchBase::PopulateRegisterTable(void) const {
   REG(Q14, neon.q14, u128);
   REG(Q15, neon.q15, u128);
 
-  REG(fpscr, fpscr.value, u32);
+  REG(FPSCR, fpscr.value, u32);
 
   SUB_REG(D0, neon.q0.dwords.low_dword, u64, Q0);
   SUB_REG(D1, neon.q0.dwords.high_dword, u64, Q0);
