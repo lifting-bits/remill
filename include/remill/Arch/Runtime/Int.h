@@ -67,7 +67,7 @@ using uint64_t = TypeSelector<8, unsigned, unsigned long, unsigned long long>::T
 #if defined(__x86_64__) || defined(__i386__) || defined(_M_X86) || defined (__arm__)
 typedef unsigned uint128_t __attribute__((mode(TI)));
 typedef int int128_t __attribute__((mode(TI)));
-#elif defined(__aarch64__) || defined(__arm__)
+#elif defined(__aarch64__)
 typedef __uint128_t uint128_t;
 typedef __int128_t int128_t;
 #elif defined(__sparc__)
