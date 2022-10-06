@@ -374,11 +374,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     }
 
     std::stringstream ss;
-    print_vardata(this->insn_lifter_parent.GetEngine(), ss, target_vnode);
-    DLOG(ERROR) << "Creating unique for unkown register: " << ss.str();
 
-    return RegisterValue::CreatRegister(this->unknown_regs.GetUniquePtr(
-        target_vnode.offset, target_vnode.size, bldr));
+    auto reg_ptr = this->unknown_regs.GetUniquePtr(target_vnode.offset,
+                                                   target_vnode.size, bldr);
+    print_vardata(this->insn_lifter_parent.GetEngine(), ss, target_vnode);
+    DLOG(ERROR) << "Creating unique for unkown register: " << ss.str() << " "
+                << reg_ptr->getName().str();
+
+    return RegisterValue::CreatRegister(reg_ptr);
   }
 
   //TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
