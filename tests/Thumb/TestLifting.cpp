@@ -254,9 +254,9 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   std::string insn_data("\x03\x49", 2);
   TestOutputSpec spec(0x12, insn_data,
                       remill::Instruction::Category::kCategoryNormal,
-                      {{"r15", 11}}, {{"r1", 0xdeadc0de}});
-  // The bit from 11+12 gets masked off
-  spec.AddPrecWrite<uint32_t>(28, 0xdeadc0de);
+                      {{"r15", 0x12}}, {{"r1", 0xdeadc0de}});
+  // So ok instruction is at 18 which means pc is = 22
+  spec.AddPrecWrite<uint32_t>(32, 0xdeadc0de);
   llvm::LLVMContext context;
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
