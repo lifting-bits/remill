@@ -24,6 +24,8 @@
 #include "remill/Arch/SPARC64/Runtime/State.h"
 #include "remill/Arch/SPARC64/Runtime/Types.h"
 
+State __remill_state;
+
 #define REG_PC state.pc.aword
 #define REG_NPC state.next_pc.aword
 #define REG_SP state.gpr.o6.aword

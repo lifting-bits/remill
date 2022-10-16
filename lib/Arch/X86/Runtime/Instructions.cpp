@@ -28,6 +28,8 @@
 
 // clang-format on
 
+State __remill_state;
+
 #define REG_IP state.gpr.rip.word
 #define REG_EIP state.gpr.rip.dword
 #define REG_RIP state.gpr.rip.qword

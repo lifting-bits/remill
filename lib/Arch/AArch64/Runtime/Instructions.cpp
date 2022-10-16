@@ -29,6 +29,8 @@
 
 // clang-format on
 
+State __remill_state;
+
 #define REG_PC state.gpr.pc.qword
 #define REG_SP state.gpr.sp.qword
 #define REG_LP state.gpr.x30.qword
