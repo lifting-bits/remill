@@ -125,7 +125,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     RegisterValue(llvm::Value *register_pointer)
         : register_pointer(register_pointer) {}
 
-    static ParamPtr CreatRegister(llvm::Value *register_pointer) {
+    static ParamPtr CreateRegister(llvm::Value *register_pointer) {
       return std::make_shared<RegisterValue>(register_pointer);
     }
 
@@ -360,7 +360,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       // TODO(Ian): will probably need to adjust the pointer here in certain circumstances
       auto reg_ptr = this->insn_lifter_parent.LoadRegAddress(
           bldr.GetInsertBlock(), this->state_pointer, reg_name);
-      return RegisterValue::CreatRegister(reg_ptr.first);
+      return RegisterValue::CreateRegister(reg_ptr.first);
     } else {
       return std::nullopt;
     }
@@ -381,7 +381,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     DLOG(ERROR) << "Creating unique for unkown register: " << ss.str() << " "
                 << reg_ptr->getName().str();
 
-    return RegisterValue::CreatRegister(reg_ptr);
+    return RegisterValue::CreateRegister(reg_ptr);
   }
 
   //TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
@@ -413,7 +413,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
       return ConstantValue::CreatConstant(cst_v);
     } else if (space_name == "unique") {
       auto reg_ptr = this->uniques.GetUniquePtr(vnode.offset, vnode.size, bldr);
-      return RegisterValue::CreatRegister(reg_ptr);
+      return RegisterValue::CreateRegister(reg_ptr);
     } else {
       LOG(FATAL) << "Unhandled memory space: " << space_name;
     }
