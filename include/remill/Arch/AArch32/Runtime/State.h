@@ -127,7 +127,7 @@ struct alignas(8) SR final {
 } __attribute__((packed));
 
 
-// Ghidra mantains a unit32_t representing FPSCR that gets synced to NG ZR CY and OV, so we mantain this state too
+// Ghidra maintain a uint32_t representing FPSCR that gets synced to NG ZR CY and OV, so we maintain this state too
 // Since we dont support Neon in our aarch32 semantics this will be untouched in those manual semantics
 struct FPSCR {
   uint32_t value;
