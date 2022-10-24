@@ -877,15 +877,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
                                VarnodeData output_varnode,
                                llvm::Value *maybe_float) {
 
-    auto curr_value = maybe_float;
-    if (curr_value->getType()->isFloatingPointTy()) {
-      auto num_bits = curr_value->getType()->getPrimitiveSizeInBits();
-      curr_value = bldr.CreateBitCast(
-          curr_value, llvm::IntegerType::get(this->context, num_bits));
+    if (maybe_float->getType()->isFloatingPointTy()) {
+      auto num_bits = maybe_float->getType()->getPrimitiveSizeInBits();
+      maybe_float = bldr.CreateBitCast(
+          maybe_float, llvm::IntegerType::get(this->context, num_bits));
     }
 
     return bldr.CreateZExtOrTrunc(
-        curr_value,
+        maybe_float,
         llvm::IntegerType::get(this->context, output_varnode.size * 8));
   }
 
