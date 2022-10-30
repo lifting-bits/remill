@@ -1204,46 +1204,6 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-      case llvm::Instruction::UDiv: {
-        const auto b = llvm::dyn_cast<llvm::UDivOperator>(ce);
-        auto ret = llvm::ConstantExpr::getUDiv(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map),
-            b->isExact());
-        moved_c = ret;
-        return ret;
-      }
-      case llvm::Instruction::SDiv: {
-        const auto b = llvm::dyn_cast<llvm::SDivOperator>(ce);
-        auto ret = llvm::ConstantExpr::getSDiv(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map),
-            b->isExact());
-        moved_c = ret;
-        return ret;
-      }
-      case llvm::Instruction::URem: {
-        auto ret = llvm::ConstantExpr::getURem(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map));
-        moved_c = ret;
-        return ret;
-      }
-      case llvm::Instruction::SRem: {
-        auto ret = llvm::ConstantExpr::getSRem(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map));
-        moved_c = ret;
-        return ret;
-      }
       case llvm::Instruction::IntToPtr: {
         auto ret = llvm::ConstantExpr::getIntToPtr(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,

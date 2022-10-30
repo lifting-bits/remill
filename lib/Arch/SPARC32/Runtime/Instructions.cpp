@@ -24,6 +24,10 @@
 #include "remill/Arch/SPARC32/Runtime/State.h"
 #include "remill/Arch/SPARC32/Runtime/Types.h"
 
+// A definition is required to ensure that LLVM doesn't optimize the `State` type out of the bytecode
+// See https://github.com/lifting-bits/remill/pull/631#issuecomment-1279989004
+State __remill_state;
+
 #define REG_PC state.pc.aword
 #define REG_NPC state.next_pc.aword
 #define REG_SP state.gpr.o6.aword

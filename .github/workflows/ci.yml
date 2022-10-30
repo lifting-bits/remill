@@ -23,7 +23,7 @@ jobs:
       matrix:
         image:
           - { name: 'ubuntu', tag: '20.04' }
-        llvm: ['14']
+        llvm: ['14', '15']
 
     runs-on: ubuntu-20.04
     container:
@@ -103,7 +103,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['macos-11']
-        llvm: ['14']
+        llvm: ['14', '15']
 
     runs-on: ${{ matrix.os }}
 
@@ -235,7 +235,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        llvm: ["14"]
+        llvm: ["14", "15"]
         ubuntu: ["20.04"]
     steps:
     - uses: actions/checkout@v2
