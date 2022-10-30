@@ -870,6 +870,11 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   lifted_state->x87.fxsave.fop = 0;
   native_state->x87.fxsave.fop = 0;
 
+  // On AMD systems, FXSAVE does not set x87 pointer registers.
+  // Even though we track `ip`, don't compare it.
+  lifted_state->x87.fxsave.ip = 0;
+  native_state->x87.fxsave.ip = 0;
+
   // Don't compare the tag words.
   lifted_state->x87.fxsave.ftw.flat = 0;
   native_state->x87.fxsave.ftw.flat = 0;
