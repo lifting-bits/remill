@@ -29,6 +29,8 @@
 
 // clang-format on
 
+// A definition is required to ensure that LLVM doesn't optimize the `State` type out of the bytecode
+// See https://github.com/lifting-bits/remill/pull/631#issuecomment-1279989004
 State __remill_state;
 
 #define REG_PC state.gpr.r15.dword

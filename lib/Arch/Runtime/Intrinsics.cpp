@@ -27,6 +27,8 @@
 //        addresses taken, and so this prevents dead argument elimination.
 extern "C" void __remill_mark_as_used(const void *);
 
+// Each architecture's semantic module defines this variable
+// See https://github.com/lifting-bits/remill/pull/631#issuecomment-1279989004
 extern State __remill_state;
 
 #if defined(REMILL_ON_SPARC32) || defined(REMILL_ON_SPARC64)
