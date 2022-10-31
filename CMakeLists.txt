@@ -41,18 +41,13 @@ find_package(Z3 CONFIG REQUIRED)
 
 # LLVM
 find_package(LLVM CONFIG REQUIRED)
-llvm_map_components_to_libnames(llvm_libs
-  support core irreader
-  bitreader bitwriter
-  passes asmprinter
-  aarch64codegen aarch64asmparser
-  armcodegen armasmparser
-  interpreter mcjit
-  nvptxdesc
-  x86codegen x86asmparser
-  sparccodegen sparcasmparser
-  webassemblydesc)
-message(STATUS "LLVM Libraries: ${llvm_libs}")
+
+# https://github.com/JonathanSalwan/Triton/issues/1082#issuecomment-1030826696
+if(LLVM_LINK_LLVM_DYLIB)
+  set(llvm_libs LLVM)
+else()
+  set(llvm_libs ${LLVM_AVAILABLE_LIBS})
+endif()
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -85,6 +80,7 @@ find_package(XED CONFIG REQUIRED)
 find_package(glog CONFIG REQUIRED)
 
 # Google gflags
+set(GFLAGS_USE_TARGET_NAMESPACE ON)
 find_package(gflags CONFIG REQUIRED)
 
 set(sleigh_ENABLE_TESTS OFF)
@@ -122,10 +118,10 @@ option(REMILL_BUILD_SPARC32_RUNTIME "Build the Runtime for SPARC32. Turn this of
 
 # add everything as public.
 add_library(remill_settings INTERFACE)
-
 target_include_directories(remill_settings INTERFACE
   $<BUILD_INTERFACE:${REMILL_INCLUDE_DIR}>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include>
+  $<BUILD_INTERFACE:${LLVM_INCLUDE_DIR}>)
 
 if(WIN32)
   # warnings and compiler settings
