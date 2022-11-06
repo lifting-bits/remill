@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <lib/Arch/Sleigh/Arch.h>
 #include <lib/Arch/Sleigh/ControlFlowStructuring.h>
+#include <llvm/ADT/StringExtras.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/SleighLifter.h>
