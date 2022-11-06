@@ -17,6 +17,11 @@ if("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_C_COMPILER_ID}" STREQUA
     message(STATUS "aarch64 tests enabled")
     set(can_enable_testing_aarch64 TRUE)
   endif()
+
+  if("${CMAKE_HOST_SYSTEM_PROCESSOR}" STREQUAL "arm64" AND "${PLATFORM_NAME}" STREQUAL "macos")
+    message(STATUS "aarch64 tests enabled")
+    set(can_enable_testing_aarch64 TRUE)
+  endif()
 endif()
 
 set(REMILL_SOURCE_DIR "${PROJECT_SOURCE_DIR}" CACHE PATH "Root directory of remill source code")

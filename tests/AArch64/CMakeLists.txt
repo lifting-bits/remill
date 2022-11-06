@@ -19,14 +19,13 @@ enable_testing()
 enable_language(ASM)
 
 add_executable(lift-aarch64-tests
-  EXCLUDE_FROM_ALL
   Lift.cpp
   Tests.S
 )
 
 set_target_properties(lift-aarch64-tests PROPERTIES
   POSITION_INDEPENDENT_CODE ON
-  COMPILE_FLAGS "-fPIC -pie"
+  COMPILE_FLAGS "-fPIC"
 )
 
 target_compile_options(lift-aarch64-tests
@@ -46,7 +45,6 @@ target_include_directories(lift-aarch64-tests PUBLIC ${PROJECT_INCLUDEDIRECTORIE
 target_include_directories(lift-aarch64-tests PRIVATE ${CMAKE_SOURCE_DIR})
 
 add_executable(run-aarch64-tests
-  EXCLUDE_FROM_ALL
   Run.cpp
   Tests.S
   tests_aarch64.S
@@ -54,7 +52,7 @@ add_executable(run-aarch64-tests
 
 set_target_properties(run-aarch64-tests PROPERTIES
   POSITION_INDEPENDENT_CODE ON
-  COMPILE_FLAGS "-fPIC -pie"
+  COMPILE_FLAGS "-fPIC"
   OBJECT_DEPENDS "${AARCH64_TEST_FILES}"
 )
 
@@ -68,7 +66,7 @@ add_custom_command(
   OUTPUT  tests_aarch64.S
   COMMAND ${CMAKE_BC_COMPILER}
           -Wno-override-module
-          -S -O1 -g0
+          -S -O0 -g0
           -c tests_aarch64.bc
           -o tests_aarch64.S
           -mllvm -opaque-pointers
