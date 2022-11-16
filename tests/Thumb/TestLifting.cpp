@@ -291,7 +291,9 @@ TEST(RegressionTests, AARCH64RegSize) {
 }
 TEST(RegressionTests, Armv8FPSCR) {
   llvm::LLVMContext context;
+  #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   context.enableOpaquePointers();
+  #endif
   auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
                                   remill::ArchName::kArchAArch32LittleEndian);
   CHECK_NOTNULL(arch->RegisterByName("FPSCR"));
