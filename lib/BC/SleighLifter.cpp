@@ -866,8 +866,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
 
   std::optional<llvm::Type *> GetFloatTypeOfByteSize(size_t byte_size) {
     switch (byte_size) {
+      case 2: return llvm::Type::getHalfTy(this->context);
       case 4: return llvm::Type::getFloatTy(this->context);
       case 8: return llvm::Type::getDoubleTy(this->context);
+      case 16: return llvm::Type::getFP128Ty(this->context);
       default: return std::nullopt;
     }
   }
