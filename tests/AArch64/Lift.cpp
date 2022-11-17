@@ -37,6 +37,7 @@
 #include "remill/BC/IntrinsicTable.h"
 #include "remill/BC/Lifter.h"
 #include "remill/BC/Util.h"
+#include "remill/BC/Version.h"
 #include "remill/OS/OS.h"
 #include "tests/AArch64/Test.h"
 
