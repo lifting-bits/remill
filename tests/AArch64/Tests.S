@@ -29,10 +29,12 @@
 # define SYMBOL(x) CAT(_, x)
 # define SYMBOL_PAGE(x) SYMBOL(x)@PAGE
 # define SYMBOL_PAGEOFF(x) :lo12:SYMBOL(x)@PAGEOFF
+# define CONST_SECTION .const
 #else
 # define SYMBOL(x) x
 # define SYMBOL_PAGE(x) SYMBOL(x)
 # define SYMBOL_PAGEOFF(x) :lo12:SYMBOL(x)
+# define CONST_SECTION .rodata
 #endif
 
 #define FUNC_NAME(instr_name, num_args) \
@@ -42,8 +44,8 @@
 # define TEST_PROLOGUE
 #else
 # define TEST_PROLOGUE \
-    adrp    x28, SYMBOL_PAGE(gNativeState) ; \
-    add     x28, x28, SYMBOL_PAGEOFF(gNativeState) ;
+    adrp    x28, SYMBOL_PAGE(gNativeState) @N@ \
+    add     x28, x28, SYMBOL_PAGEOFF(gNativeState) @N@
 #endif  /* IN_TEST_GENERATOR */
 
 /* Defines the beginning of a test function. The key detail is that tests
@@ -56,30 +58,30 @@
  * `__aarch64_test_table_end` symbols, respectively.
  */
 #define TEST_BEGIN(isel_name, instr_name, num_args) \
-    .text ; \
+    .text @N@ \
     \
-    .align 16 ; \
-    .globl SYMBOL(FUNC_NAME(instr_name, num_args)) ; \
+    .align 16 @N@ \
+    .globl SYMBOL(FUNC_NAME(instr_name, num_args)) @N@ \
     \
-SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
-    .section "__aarch64_test_table", "a" ; \
-    .balign 128 ; \
+SYMBOL(FUNC_NAME(instr_name, num_args)): @N@ \
+    .section "__aarch64_test_table", "a" @N@ \
+    .balign 128 @N@ \
     1: \
-    .quad 3f ; \
-    .quad 7f ; \
-    .quad 2f ; \
-    .quad 4f ; \
-    .quad 5f ; \
-    .quad num_args ; \
-    .quad 6f ; \
+    .quad 3f @N@ \
+    .quad 7f @N@ \
+    .quad 2f @N@ \
+    .quad 4f @N@ \
+    .quad 5f @N@ \
+    .quad num_args @N@ \
+    .quad 6f @N@ \
     \
-    .rodata ; \
+    CONST_SECTION @N@ \
     2: \
-    .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) ; \
+    .asciz TO_STRING(FUNC_NAME(instr_name, num_args)) @N@ \
     6: \
-    .asciz TO_STRING(isel_name) ; \
+    .asciz TO_STRING(isel_name) @N@ \
     \
-    .text ; \
+    .text @N@ \
     3: \
     TEST_PROLOGUE
 
@@ -90,31 +92,31 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
 #ifdef IN_TEST_GENERATOR
 # define TEST_END \
     7: \
-    .section "__aarch64_test_table", "a" ; \
-    .quad 0 ; \
-    hlt #0 ;
+    .section "__aarch64_test_table", "a" @N@ \
+    .quad 0 @N@ \
+    hlt #0 @N@
 
 #else
 # define TEST_END \
     7: \
-    b SYMBOL(__aarch64_save_state_after) ; \
-    .section "__aarch64_test_table", "a" ; \
-    .quad 0 ; \
-    .text ; \
-    hlt #0 ;
+    b SYMBOL(__aarch64_save_state_after) @N@ \
+    .section "__aarch64_test_table", "a" @N@ \
+    .quad 0 @N@ \
+    .text @N@ \
+    hlt #0 @N@
 #endif  /* IN_TEST_GENERATOR */
 
 /* Defines the possible inputs to provide test. We add an extra 3 null inputs
  * at the end so that we can purposely 'overflow' when accessing the array so
  * that we can always specify 3 inputs, even if the program uses fewer. */
 #define TEST_INPUTS(...) \
-    .data ; \
-    .balign 8 ; \
+    .data @N@ \
+    .balign 8 @N@ \
     4: \
-    .quad  __VA_ARGS__ ; \
+    .quad  __VA_ARGS__ @N@ \
     5: \
-    .quad 0, 0, 0; \
-    .text ;
+    .quad 0, 0, 0 @N@ \
+    .text @N@
 
 #ifndef IN_TEST_GENERATOR
     .data
@@ -424,4 +426,3 @@ SYMBOL(__aarch64_test_table_begin):
     .section "__aarch64_test_table", "a"
     .globl SYMBOL(__aarch64_test_table_end)
 SYMBOL(__aarch64_test_table_end):
-

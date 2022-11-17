@@ -20,7 +20,7 @@ enable_language(ASM)
 
 add_executable(lift-aarch64-tests
   Lift.cpp
-  Tests.S
+  lift-post-processed-tests.S
 )
 
 set_target_properties(lift-aarch64-tests PROPERTIES
@@ -46,7 +46,7 @@ target_include_directories(lift-aarch64-tests PRIVATE ${CMAKE_SOURCE_DIR})
 
 add_executable(run-aarch64-tests
   Run.cpp
-  Tests.S
+  run-post-processed-tests.S
   tests_aarch64.S
 )
 
@@ -71,6 +71,30 @@ add_custom_command(
           -o tests_aarch64.S
           -mllvm -opaque-pointers
   DEPENDS tests_aarch64.bc
+  )
+
+add_custom_command(
+  OUTPUT run-pre-processed-tests.S
+  COMMAND ${CMAKE_CXX_COMPILER} "-I${REMILL_SOURCE_DIR}" -o run-pre-processed-tests.S -E "${CMAKE_CURRENT_SOURCE_DIR}/Tests.S"
+  DEPENDS Tests.S
+)
+
+add_custom_command(
+  OUTPUT lift-pre-processed-tests.S
+  COMMAND ${CMAKE_CXX_COMPILER} "-I${REMILL_SOURCE_DIR}" -D IN_TEST_GENERATOR -o lift-pre-processed-tests.S -E "${CMAKE_CURRENT_SOURCE_DIR}/Tests.S"
+  DEPENDS Tests.S
+)
+
+add_custom_command(
+  OUTPUT run-post-processed-tests.S
+  COMMAND ${Python_EXECUTABLE} "${REMILL_SOURCE_DIR}/scripts/post_process_asm.py" run-pre-processed-tests.S run-post-processed-tests.S
+  DEPENDS run-pre-processed-tests.S
+)
+
+add_custom_command(
+  OUTPUT lift-post-processed-tests.S
+  COMMAND ${Python_EXECUTABLE} "${REMILL_SOURCE_DIR}/scripts/post_process_asm.py" lift-pre-processed-tests.S lift-post-processed-tests.S
+  DEPENDS lift-pre-processed-tests.S
 )
 
 target_link_libraries(run-aarch64-tests PUBLIC remill ${PROJECT_LIBRARIES})
