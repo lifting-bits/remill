@@ -33,9 +33,9 @@ namespace {
 const size_t kThumbInstructionSize = 2;
 }
 
-//ARM7_le.sla"
+// TODO(Ian): support different arm versions
 SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
-    : SleighDecoder(arch, "ARM7_le.sla", "ARMtTHUMB.pspec",
+    : SleighDecoder(arch, "ARM8_le.sla", "ARMtTHUMB.pspec",
                     {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
                     {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
 

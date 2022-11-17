@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "remill/Arch/Runtime/Int.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic fatal "-Wpadded"
 
@@ -25,6 +26,26 @@
 struct Reg final {
   alignas(4) uint32_t dword;
 } __attribute__((packed));
+
+
+struct NeonReg final {
+  union {
+    uint128_t qword;
+    struct {
+      uint64_t low_dword;
+      uint64_t high_dword;
+    } dwords;
+    struct {
+      uint32_t ll_word;
+      uint32_t lh_word;
+      uint32_t hl_word;
+      uint32_t hh_word;
+    } words;
+  };
+} __attribute__((packed));
+
+static_assert(sizeof(uint128_t) == sizeof(NeonReg),
+              "Invalid packing of NeonReg");
 
 static_assert(sizeof(uint32_t) == sizeof(Reg), "Invalid packing of `Reg`.");
 static_assert(0 == __builtin_offsetof(Reg, dword),
@@ -105,10 +126,45 @@ struct alignas(8) SR final {
   uint8_t _padding[2];
 } __attribute__((packed));
 
+
+// Ghidra maintain a uint32_t representing FPSCR that gets synced to NG ZR CY and OV, so we maintain this state too
+// Since we dont support Neon in our aarch32 semantics this will be untouched in those manual semantics
+struct FPSCR {
+  uint32_t value;
+  uint8_t _padding[12];
+} __attribute__((packed));
+static_assert(16 == sizeof(FPSCR), "Invalid packing of FPSCR");
+
+
+struct alignas(16) NeonBank {
+  NeonReg q0;
+  NeonReg q1;
+  NeonReg q2;
+  NeonReg q3;
+  NeonReg q4;
+  NeonReg q5;
+  NeonReg q6;
+  NeonReg q7;
+  NeonReg q8;
+  NeonReg q9;
+  NeonReg q10;
+  NeonReg q11;
+  NeonReg q12;
+  NeonReg q13;
+  NeonReg q14;
+  NeonReg q15;
+} __attribute__((packed));
+
+static_assert(sizeof(uint128_t) * 16 == sizeof(NeonBank),
+              "Invalid packing of NeonBank");
+
+
 struct alignas(16) AArch32State : public ArchState {
 
 
   GPR gpr;  // 528 bytes.
+  NeonBank neon;
+  FPSCR fpscr;
   SR sr;
   uint64_t _0;
 

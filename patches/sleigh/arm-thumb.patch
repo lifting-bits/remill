@@ -1,6 +1,6 @@
-From 03c96143c10b39bb082152495e206ceed68cce00 Mon Sep 17 00:00:00 2001
+From 32ae2981ed8033a08b7be56387275f84edfee2b3 Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
-Date: Wed, 20 Jul 2022 08:59:39 -0400
+Date: Sat, 8 Oct 2022 09:22:46 -0400
 Subject: [PATCH] ARMThumbPcRel
 
 ---
@@ -8,12 +8,12 @@ Subject: [PATCH] ARMThumbPcRel
  1 file changed, 373 insertions(+), 130 deletions(-)
 
 diff --git a/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc b/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
-index daf705731..20a03dd71 100644
+index daf705731..a97c86b60 100644
 --- a/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
 +++ b/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
 @@ -1,3 +1,6 @@
 +
-+@define INST_NEXT_PTR "pc"
++@define INST_NEXT_PTR "(pc-2)"
 +define pcodeop claim_eq;
  # Specification for the THUMB Version 2
  # This closely follows
@@ -779,5 +779,5 @@ index daf705731..20a03dd71 100644
  @endif # VERSION_6T2 || VERSION_7
  
 -- 
-2.32.1 (Apple Git-133)
+2.37.0 (Apple Git-136)
 

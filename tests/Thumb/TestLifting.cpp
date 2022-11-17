@@ -254,9 +254,9 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   std::string insn_data("\x03\x49", 2);
   TestOutputSpec spec(0x12, insn_data,
                       remill::Instruction::Category::kCategoryNormal,
-                      {{"r15", 11}}, {{"r1", 0xdeadc0de}});
-  // The bit from 11+12 gets masked off
-  spec.AddPrecWrite<uint32_t>(28, 0xdeadc0de);
+                      {{"r15", 0x12}}, {{"r1", 0xdeadc0de}});
+  // So ok instruction is at 18 which means pc is = 22
+  spec.AddPrecWrite<uint32_t>(32, 0xdeadc0de);
   llvm::LLVMContext context;
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
@@ -288,6 +288,15 @@ TEST(RegressionTests, AARCH64RegSize) {
       op_lifter->LoadRegValue(&target_lift->getEntryBlock(), st_ptr, "W0");
 
   CHECK_EQ(lifted2->getType()->getIntegerBitWidth(), 32);
+}
+TEST(RegressionTests, Armv8FPSCR) {
+  llvm::LLVMContext context;
+  #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  context.enableOpaquePointers();
+  #endif
+  auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
+                                  remill::ArchName::kArchAArch32LittleEndian);
+  CHECK_NOTNULL(arch->RegisterByName("FPSCR"));
 }
 
 
