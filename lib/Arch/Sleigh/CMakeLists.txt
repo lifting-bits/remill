@@ -32,9 +32,11 @@ add_library(remill_arch_sleigh STATIC
 
   Arch.h
   Thumb.h
+  PPC.h
   Arch.cpp
   X86Arch.cpp
   Thumb2Arch.cpp
+  PPCArch.cpp
   ControlFlowStructuring.cpp
   ControlFlowStructuring.h
 )
