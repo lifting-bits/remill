@@ -14,27 +14,5 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <remill/Arch/Name.h>
-#include <remill/BC/ABI.h>
-#include <remill/BC/Util.h>
-#include <remill/BC/Version.h>
-#include <remill/OS/OS.h>
-
-#include "Arch.h"
-
-namespace remill::sleighppc {
-
-class SleighPPCDecoder final : public remill::sleigh::SleighDecoder {
- public:
-  SleighPPCDecoder(const remill::Arch &);
-
-  llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &, llvm::Value *,
-                                size_t) const override;
-
-  void InitializeSleighContext(
-      remill::sleigh::SingleInstructionSleighContext &) const override;
-};
-
-}  // namespace remill::sleighppc
+#include "remill/Arch/Runtime/Float.h"
+#include "remill/Arch/PPC/Runtime/State.h"

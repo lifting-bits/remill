@@ -36,6 +36,9 @@
 #  else
 #    error "Cannot deduce hyper call SPARC variant"
 #  endif
+#elif defined(__PPC__)
+#  include "remill/Arch/PPC/Runtime/State.h"
+#  define REMILL_HYPERCALL_PPC 1
 #else
 #  error "Cannot deduce hyper call architecture"
 #endif

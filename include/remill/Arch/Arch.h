@@ -356,6 +356,7 @@ class Arch {
   bool IsAArch64(void) const;
   bool IsSPARC32(void) const;
   bool IsSPARC64(void) const;
+  bool IsPPC(void) const;
 
   bool IsWindows(void) const;
   bool IsLinux(void) const;

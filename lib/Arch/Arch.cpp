@@ -53,7 +53,8 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchX86_SLEIGH:
     case kArchAArch32LittleEndian:
     case kArchThumb2LittleEndian:
-    case kArchSparc32: return 32;
+    case kArchSparc32:
+    case kArchPPC: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
     case kArchAMD64_AVX512:
@@ -107,7 +108,8 @@ ArchLocker Arch::Lock(ArchName arch_name_) {
     case ArchName::kArchAArch32LittleEndian:
     case ArchName::kArchThumb2LittleEndian:
     case ArchName::kArchAMD64_SLEIGH:
-    case ArchName::kArchX86_SLEIGH: return &gSleighArchLock;
+    case ArchName::kArchX86_SLEIGH:
+    case ArchName::kArchPPC: return &gSleighArchLock;
     default: return ArchLocker();
   }
 }
@@ -221,6 +223,12 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
       DLOG(INFO) << "Using architecture: 64-bit SPARC";
       return GetSPARC64(context_, os_name_, arch_name_);
     }
+
+    case kArchPPC: {
+      DLOG(INFO) << "Using architecture: POWERPC";
+      return GetSleighPPC(context_, os_name_, arch_name_);
+    }
+
     default: {
       return nullptr;
     }
@@ -396,6 +404,10 @@ bool Arch::IsSPARC32(void) const {
 
 bool Arch::IsSPARC64(void) const {
   return remill::kArchSparc64 == arch_name;
+}
+
+bool Arch::IsPPC(void) const {
+  return remill::kArchPPC == arch_name;
 }
 
 bool Arch::IsWindows(void) const {

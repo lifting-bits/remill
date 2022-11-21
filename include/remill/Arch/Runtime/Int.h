@@ -20,6 +20,7 @@
 
 #if __has_include(<cstdint>)
 #  include <cstdint>
+#  include <cstddef> // TODO(alex): Figure out why we need this.
 #elif __has_include(<cinttypes>)
 #  include <cinttypes>
 #else
@@ -64,7 +65,7 @@ using uint64_t = TypeSelector<8, unsigned, unsigned long, unsigned long long>::T
 #endif  // cstint, cinttypes
 
 #if !defined(REMILL_DISABLE_INT128)
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86) || defined (__arm__)
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X86) || defined (__arm__) || defined(__PPC__)
 typedef unsigned uint128_t __attribute__((mode(TI)));
 typedef int int128_t __attribute__((mode(TI)));
 #elif defined(__aarch64__)
