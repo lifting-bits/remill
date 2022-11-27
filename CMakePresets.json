@@ -51,7 +51,7 @@
           "generator": "Ninja",
           "cacheVariables": {
               "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}",
-              "VCPKG_ROOT": "$env{VCPKG_ROOT}",
+              "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
               "CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}/install",
               "CMAKE_C_COMPILER": "$env{VCPKG_ROOT}/installed/$env{VCPKG_TARGET_TRIPLET}/tools/llvm/clang",
               "CMAKE_CXX_COMPILER": "$env{VCPKG_ROOT}/installed/$env{VCPKG_TARGET_TRIPLET}/tools/llvm/clang++"
