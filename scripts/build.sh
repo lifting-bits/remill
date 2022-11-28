@@ -184,14 +184,19 @@ function DownloadLibraries
     return 1
   fi
 
+  VCPKG_TARGET_ARCH="${ARCH_VERSION}"
+  if [[ "${VCPKG_TARGET_ARCH}" == "amd64" ]]; then
+    VCPKG_TARGET_ARCH="x64"
+  fi
+
   if [[ "${OS_VERSION}" == "macos-"* ]]; then
     # TODO Figure out Xcode compatibility
     LIBRARY_VERSION="vcpkg_${OS_VERSION}_${LLVM_VERSION}_xcode-${XCODE_VERSION}_${ARCH_VERSION}"
-    VCPKG_TARGET_TRIPLET="${ARCH_VERSION}-osx-rel"
+    VCPKG_TARGET_TRIPLET="${VCPKG_TARGET_ARCH}-osx-rel"
   else
     # TODO Arch version
     LIBRARY_VERSION="vcpkg_${OS_VERSION}_${LLVM_VERSION}_${ARCH_VERSION}"
-    VCPKG_TARGET_TRIPLET="${ARCH_VERSION}-linux-rel"
+    VCPKG_TARGET_TRIPLET="${VCPKG_TARGET_ARCH}-linux-rel"
   fi
 
   echo "[-] Library version is ${LIBRARY_VERSION}"
