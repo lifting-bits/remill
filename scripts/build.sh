@@ -187,9 +187,11 @@ function DownloadLibraries
   if [[ "${OS_VERSION}" == "macos-"* ]]; then
     # TODO Figure out Xcode compatibility
     LIBRARY_VERSION="vcpkg_${OS_VERSION}_${LLVM_VERSION}_xcode-${XCODE_VERSION}_${ARCH_VERSION}"
+    VCPKG_TARGET_TRIPLET="${ARCH_VERSION}-osx-rel"
   else
     # TODO Arch version
     LIBRARY_VERSION="vcpkg_${OS_VERSION}_${LLVM_VERSION}_${ARCH_VERSION}"
+    VCPKG_TARGET_TRIPLET="${ARCH_VERSION}-linux-rel"
   fi
 
   echo "[-] Library version is ${LIBRARY_VERSION}"
@@ -215,6 +217,7 @@ function Configure
         -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
         -DCMAKE_VERBOSE_MAKEFILE=True \
         -DCMAKE_TOOLCHAIN_FILE="${DOWNLOAD_DIR}/${LIBRARY_VERSION}/scripts/buildsystems/vcpkg.cmake" \
+        -DVCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET}" \
         ${BUILD_FLAGS} \
         "${SRC_DIR}"
   ) || exit $?
