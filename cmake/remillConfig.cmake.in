@@ -14,46 +14,20 @@
 
 @PACKAGE_INIT@
 
+set(LLVM_MAJOR_VERSION @LLVM_MAJOR_VERSION@)
+set(LLVM_MINOR_VERSION @LLVM_MINOR_VERSION@)
+set(REMILL_LLVM_VERSION @LLVM_MAJOR_VERSION@)
+
+# External libs
+include(CMakeFindDependencyMacro)
+find_dependency(XED)
+find_dependency(glog)
+find_dependency(Z3)
+find_dependency(LLVM)
+
 if(NOT TARGET sleigh::support)
   find_package(sleigh CONFIG REQUIRED COMPONENTS Support Specs)
 endif()
 
-foreach(_comp ${remill_FIND_COMPONENTS})
-  if (NOT "VCPKG_DEPS" STREQUAL _comp)
-    set(remill_FOUND False)
-    set(remill_NOT_FOUND_MESSAGE "Unsupported component: ${_comp}. Only VCPKG_DEPS")
-  endif()
-
-  if ("VCPKG_DEPS" STREQUAL _comp)
-    set(remill_setup_vcpkg True)
-    if(NOT "x@CMAKE_TOOLCHAIN_FILE@x" STREQUAL "xx" AND NOT USE_SYSTEM_DEPENDENCIES)
-      if (EXISTS "@CMAKE_TOOLCHAIN_FILE@")
-        set(CMAKE_TOOLCHAIN_FILE "@CMAKE_TOOLCHAIN_FILE@"
-          CACHE PATH "Location of CMake toolchain file"
-          )
-        include(${CMAKE_TOOLCHAIN_FILE})
-        message(STATUS "Found CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
-        set(vcpkgdeps_FOUND)
-      endif()
-    endif()
-  endif()
-endforeach()
-
-if(NOT remill_setup_vcpkg AND NOT TARGET remill)
-  set(LLVM_MAJOR_VERSION @LLVM_MAJOR_VERSION@)
-  set(LLVM_MINOR_VERSION @LLVM_MINOR_VERSION@)
-  set(REMILL_LLVM_VERSION @LLVM_MAJOR_VERSION@)
-
-  # External libs
-  include(CMakeFindDependencyMacro)
-  find_dependency(XED)
-  find_dependency(glog)
-  find_dependency(Z3)
-  find_dependency(LLVM)
-
-  # Exported Targets
-  include("${CMAKE_CURRENT_LIST_DIR}/remillTargets.cmake")
-
-endif()
-
-set(remill_setup_vcpkg False)
+# Exported Targets
+include("${CMAKE_CURRENT_LIST_DIR}/remillTargets.cmake")
