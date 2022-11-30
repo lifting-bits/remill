@@ -24,10 +24,7 @@ find_dependency(XED)
 find_dependency(glog)
 find_dependency(Z3)
 find_dependency(LLVM)
-
-if(NOT TARGET sleigh::support)
-  find_package(sleigh CONFIG REQUIRED COMPONENTS Support Specs)
-endif()
+find_dependency(sleigh COMPONENTS Support Specs)
 
 # Exported Targets
 include("${CMAKE_CURRENT_LIST_DIR}/remillTargets.cmake")
