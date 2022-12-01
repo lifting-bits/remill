@@ -15,7 +15,6 @@
 @PACKAGE_INIT@
 
 set(REMILL_LLVM_VERSION @REMILL_LLVM_VERSION@)
-set(REMILL_LLVM_VERSION @LLVM_MAJOR_VERSION@)
 
 # External libs
 include(CMakeFindDependencyMacro)
