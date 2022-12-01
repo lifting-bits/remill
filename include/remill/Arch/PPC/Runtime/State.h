@@ -36,6 +36,7 @@ static_assert(0 == __builtin_offsetof(Reg, dword),
 static_assert(0 == __builtin_offsetof(Reg, qword),
               "Invalid packing of `Reg::qword`.");
 
+// General Purpose Registers
 struct alignas(8) GPR final {
 
   // Prevents LLVM from casting a `GPR` into an `i64` to access `X0`.
@@ -101,16 +102,92 @@ struct alignas(8) GPR final {
   Reg x29;
   volatile uint64_t _30;
   Reg x30;
-
   volatile uint64_t _31;
-  Reg sp;  // Stack pointer.
-
-  volatile uint64_t _32;
-  Reg pc;  // Program counter of the CURRENT instruction!
+  Reg x31;
 
 } __attribute__((packed));
 
-static_assert(528 == sizeof(GPR), "Invalid structure packing of `GPR`.");
+static_assert(512 == sizeof(GPR), "Invalid structure packing of `GPR`.");
+
+// Floating Pointer Registers
+struct alignas(8) FPR final {
+
+  // Prevents LLVM from casting an `FPR` into an `i64` to access `X0`.
+  volatile uint64_t _0;
+  Reg x0;
+  volatile uint64_t _1;
+  Reg x1;
+  volatile uint64_t _2;
+  Reg x2;
+  volatile uint64_t _3;
+  Reg x3;
+  volatile uint64_t _4;
+  Reg x4;
+  volatile uint64_t _5;
+  Reg x5;
+  volatile uint64_t _6;
+  Reg x6;
+  volatile uint64_t _7;
+  Reg x7;
+  volatile uint64_t _8;
+  Reg x8;
+  volatile uint64_t _9;
+  Reg x9;
+  volatile uint64_t _10;
+  Reg x10;
+  volatile uint64_t _11;
+  Reg x11;
+  volatile uint64_t _12;
+  Reg x12;
+  volatile uint64_t _13;
+  Reg x13;
+  volatile uint64_t _14;
+  Reg x14;
+  volatile uint64_t _15;
+  Reg x15;
+  volatile uint64_t _16;
+  Reg x16;
+  volatile uint64_t _17;
+  Reg x17;
+  volatile uint64_t _18;
+  Reg x18;
+  volatile uint64_t _19;
+  Reg x19;
+  volatile uint64_t _20;
+  Reg x20;
+  volatile uint64_t _21;
+  Reg x21;
+  volatile uint64_t _22;
+  Reg x22;
+  volatile uint64_t _23;
+  Reg x23;
+  volatile uint64_t _24;
+  Reg x24;
+  volatile uint64_t _25;
+  Reg x25;
+  volatile uint64_t _26;
+  Reg x26;
+  volatile uint64_t _27;
+  Reg x27;
+  volatile uint64_t _28;
+  Reg x28;
+  volatile uint64_t _29;
+  Reg x29;
+  volatile uint64_t _30;
+  Reg x30;
+  volatile uint64_t _31;
+  Reg x31;
+
+} __attribute__((packed));
+
+static_assert(512 == sizeof(FPR), "Invalid structure packing of `FPR`.");
+
+// Read-Only Performance Monitor Registers
+// struct alignas(8) ROPMR final {
+
+// } __attribute__((packed));
+
+// static_assert(0 == sizeof(ROPMR), "Invalid structure packing of `ROPMR`.");
 
 union PSTATE final {
   uint64_t flat;
@@ -300,8 +377,8 @@ struct alignas(16) PPCArchState : public ArchState {
 
 } __attribute__((packed));
 
-static_assert((1152 + 16) == sizeof(PPCArchState),
-              "Invalid packing of `struct State`");
+// static_assert((1152 + 16) == sizeof(PPCArchState),
+//               "Invalid packing of `struct State`");
 
 struct State : public PPCArchState {};
 
