@@ -39,71 +39,71 @@ static_assert(0 == __builtin_offsetof(Reg, qword),
 // General Purpose Registers
 struct alignas(8) GPR final {
 
-  // Prevents LLVM from casting a `GPR` into an `i64` to access `X0`.
+  // Prevents LLVM from casting a `GPR` into an `i64` to access `r0`.
   volatile uint64_t _0;
-  Reg x0;
+  Reg r0;
   volatile uint64_t _1;
-  Reg x1;
+  Reg r1;
   volatile uint64_t _2;
-  Reg x2;
+  Reg r2;
   volatile uint64_t _3;
-  Reg x3;
+  Reg r3;
   volatile uint64_t _4;
-  Reg x4;
+  Reg r4;
   volatile uint64_t _5;
-  Reg x5;
+  Reg r5;
   volatile uint64_t _6;
-  Reg x6;
+  Reg r6;
   volatile uint64_t _7;
-  Reg x7;
+  Reg r7;
   volatile uint64_t _8;
-  Reg x8;
+  Reg r8;
   volatile uint64_t _9;
-  Reg x9;
+  Reg r9;
   volatile uint64_t _10;
-  Reg x10;
+  Reg r10;
   volatile uint64_t _11;
-  Reg x11;
+  Reg r11;
   volatile uint64_t _12;
-  Reg x12;
+  Reg r12;
   volatile uint64_t _13;
-  Reg x13;
+  Reg r13;
   volatile uint64_t _14;
-  Reg x14;
+  Reg r14;
   volatile uint64_t _15;
-  Reg x15;
+  Reg r15;
   volatile uint64_t _16;
-  Reg x16;
+  Reg r16;
   volatile uint64_t _17;
-  Reg x17;
+  Reg r17;
   volatile uint64_t _18;
-  Reg x18;
+  Reg r18;
   volatile uint64_t _19;
-  Reg x19;
+  Reg r19;
   volatile uint64_t _20;
-  Reg x20;
+  Reg r20;
   volatile uint64_t _21;
-  Reg x21;
+  Reg r21;
   volatile uint64_t _22;
-  Reg x22;
+  Reg r22;
   volatile uint64_t _23;
-  Reg x23;
+  Reg r23;
   volatile uint64_t _24;
-  Reg x24;
+  Reg r24;
   volatile uint64_t _25;
-  Reg x25;
+  Reg r25;
   volatile uint64_t _26;
-  Reg x26;
+  Reg r26;
   volatile uint64_t _27;
-  Reg x27;
+  Reg r27;
   volatile uint64_t _28;
-  Reg x28;
+  Reg r28;
   volatile uint64_t _29;
-  Reg x29;
+  Reg r29;
   volatile uint64_t _30;
-  Reg x30;
+  Reg r30;
   volatile uint64_t _31;
-  Reg x31;
+  Reg r31;
 
 } __attribute__((packed));
 
@@ -112,268 +112,197 @@ static_assert(512 == sizeof(GPR), "Invalid structure packing of `GPR`.");
 // Floating Pointer Registers
 struct alignas(8) FPR final {
 
-  // Prevents LLVM from casting an `FPR` into an `i64` to access `X0`.
+  // Prevents LLVM from casting an `FPR` into an `i64` to access `f0`.
   volatile uint64_t _0;
-  Reg x0;
+  Reg f0;
   volatile uint64_t _1;
-  Reg x1;
+  Reg f1;
   volatile uint64_t _2;
-  Reg x2;
+  Reg f2;
   volatile uint64_t _3;
-  Reg x3;
+  Reg f3;
   volatile uint64_t _4;
-  Reg x4;
+  Reg f4;
   volatile uint64_t _5;
-  Reg x5;
+  Reg f5;
   volatile uint64_t _6;
-  Reg x6;
+  Reg f6;
   volatile uint64_t _7;
-  Reg x7;
+  Reg f7;
   volatile uint64_t _8;
-  Reg x8;
+  Reg f8;
   volatile uint64_t _9;
-  Reg x9;
+  Reg f9;
   volatile uint64_t _10;
-  Reg x10;
+  Reg f10;
   volatile uint64_t _11;
-  Reg x11;
+  Reg f11;
   volatile uint64_t _12;
-  Reg x12;
+  Reg f12;
   volatile uint64_t _13;
-  Reg x13;
+  Reg f13;
   volatile uint64_t _14;
-  Reg x14;
+  Reg f14;
   volatile uint64_t _15;
-  Reg x15;
+  Reg f15;
   volatile uint64_t _16;
-  Reg x16;
+  Reg f16;
   volatile uint64_t _17;
-  Reg x17;
+  Reg f17;
   volatile uint64_t _18;
-  Reg x18;
+  Reg f18;
   volatile uint64_t _19;
-  Reg x19;
+  Reg f19;
   volatile uint64_t _20;
-  Reg x20;
+  Reg f20;
   volatile uint64_t _21;
-  Reg x21;
+  Reg f21;
   volatile uint64_t _22;
-  Reg x22;
+  Reg f22;
   volatile uint64_t _23;
-  Reg x23;
+  Reg f23;
   volatile uint64_t _24;
-  Reg x24;
+  Reg f24;
   volatile uint64_t _25;
-  Reg x25;
+  Reg f25;
   volatile uint64_t _26;
-  Reg x26;
+  Reg f26;
   volatile uint64_t _27;
-  Reg x27;
+  Reg f27;
   volatile uint64_t _28;
-  Reg x28;
+  Reg f28;
   volatile uint64_t _29;
-  Reg x29;
+  Reg f29;
   volatile uint64_t _30;
-  Reg x30;
+  Reg f30;
   volatile uint64_t _31;
-  Reg x31;
+  Reg f31;
 
 } __attribute__((packed));
 
 static_assert(512 == sizeof(FPR), "Invalid structure packing of `FPR`.");
 
+// Instruction-Accessible Registers
+struct alignas(8) IAR final {
+
+  // Prevents LLVM from casting an `IAR` into an `i64` to access `cr`.
+  volatile uint64_t _1;
+  Reg cr;
+  volatile uint64_t _2;
+  Reg ctr;
+  volatile uint64_t _3;
+  Reg lr;
+  volatile uint64_t _4;
+  Reg xer;
+  volatile uint64_t _5;
+  Reg spefscr;
+  volatile uint64_t _6;
+  Reg acc;
+
+} __attribute__((packed));
+
 // Read-Only Performance Monitor Registers
-// struct alignas(8) ROPMR final {
+struct alignas(8) UPM final {
+  volatile uint64_t _0;
+  Reg upmgc;
 
-// } __attribute__((packed));
+  // Counter registers
+  volatile uint64_t _1;
+  Reg c0;
+  volatile uint64_t _2;
+  Reg c1;
+  volatile uint64_t _3;
+  Reg c2;
+  volatile uint64_t _4;
+  Reg c3;
 
-// static_assert(0 == sizeof(ROPMR), "Invalid structure packing of `ROPMR`.");
+  // Local control registers
+  volatile uint64_t _5;
+  Reg lca0;
+  volatile uint64_t _6;
+  Reg lca1;
+  volatile uint64_t _7;
+  Reg lca2;
+  volatile uint64_t _8;
+  Reg lca3;
+  volatile uint64_t _9;
+  Reg lcb0;
+  volatile uint64_t _10;
+  Reg lcb1;
+  volatile uint64_t _11;
+  Reg lcb2;
+  volatile uint64_t _12;
+  Reg lcb3;
 
-union PSTATE final {
-  uint64_t flat;
-  struct {
-
-    // Bit 0.
-    uint64_t N : 1;  // Negative condition flag.
-    uint64_t Z : 1;  // Zero condition flag.
-    uint64_t C : 1;  // Carry condition flag.
-    uint64_t V : 1;  // Overflow condition flag.
-
-    // Bit 4.
-    uint64_t D : 1;  // Debug mask bit [AArch64 only].
-    uint64_t A : 1;  // Asynchronous abort mask bit.
-    uint64_t I : 1;  // IRQ mask bit.
-    uint64_t F : 1;  // FIQ mask bit.
-
-    // Bit 8.
-    uint64_t SS : 1;  // Single-step bit.
-    uint64_t IL : 1;  // Illegal state bit.
-    uint64_t EL : 2;  // Exception Level (see above).
-
-    // Bit 12.
-    uint64_t nRW : 1;  // not Register Width: 0=64, 1=32
-    uint64_t SP : 1;  // Stack pointer select: 0=SP0, 1=SPx [AArch64 only]
-    uint64_t Q : 1;  // Cumulative saturation flag [AArch32 only]
-    uint64_t GE : 4;  // Greater than or Equal flags [AArch32 only]
-
-    // Bit 19.
-    uint64_t IT : 8;  // If-then state [AArch32 only]
-    uint64_t J : 1;  // Jazelle state [AArch32 only]
-    uint64_t T : 1;  // Thumb state [AArch32 only]
-    uint64_t E : 1;  // Endian state [AArch32 only]
-    uint64_t M : 5;  // Mode field (see above) [AArch32 only]
-    uint64_t _res0 : 29;  // bits 34-63.
-  } __attribute__((packed));
 } __attribute__((packed));
 
-static_assert(8 == sizeof(PSTATE), "Invalid structure packing of `PSTATE`.");
+// Time-Based Registers
+struct alignas(8) TBR final {
+  volatile uint64_t _0;
+  Reg tbl;
+  volatile uint64_t _1;
+  Reg tbu;
+  volatile uint64_t _2;
+  Reg atbl;
+  volatile uint64_t _3;
+  Reg atbu;
 
-// Condition code register. Really, this is a 32-bit register, but
-// it is accessed 64-bit register instructions: `mrs <Xt>, nzcv`.
-union NZCV {
-  uint64_t flat;
-  struct {
-    uint64_t _0 : 28;
-    uint64_t v : 1;  // Result overflowed, bit 28.
-    uint64_t c : 1;  // Result produced a carry.
-    uint64_t z : 1;  // Result is zero.
-    uint64_t n : 1;  // Result is negative, bit 31.
-    uint64_t _1 : 32;
-  } __attribute__((packed));
 } __attribute__((packed));
 
-static_assert(8 == sizeof(NZCV), "Invalid packing of `union NZCV`.");
+// General Special-Purpose Registers
+struct alignas(8) SPRG final {
+  volatile uint64_t _0;
+  Reg r3;
+  volatile uint64_t _1;
+  Reg r4;
+  volatile uint64_t _2;
+  Reg r5;
+  volatile uint64_t _3;
+  Reg r6;
+  volatile uint64_t _4;
+  Reg r7;
 
-#if COMPILING_WITH_GCC
-using FPURoundingMode = uint64_t;
-using FPUFlushToZeroMode = uint64_t;
-using FPUDefaultNaNMode = uint64_t;
-using FPUHalfPrecisionMode = uint64_t;
-#else
-
-enum FPURoundingMode : uint64_t {
-  kFPURoundToNearestEven,  // RN (round nearest).
-  kFPURoundUpInf,  // RP (round toward plus infinity).
-  kFPURoundDownNegInf,  // RM (round toward minus infinity).
-  kFPURoundToZero  // RZ (round toward zero).
-};
-
-enum FPUFlushToZeroMode : uint64_t {
-  kFlushToZeroDisabled,
-  kFlushToZeroEnabled
-};
-
-enum FPUDefaultNaNMode : uint64_t {
-  kPropagateOriginalNaN,
-  kPropagateDefaultNaN
-};
-
-enum FPUHalfPrecisionMode : uint64_t {
-  kIEEEHalfPrecisionMode,
-  kAlternativeHalfPrecisionMode
-};
-#endif
-
-// Floating point control register. Really, this is a 32-bit register, but
-// it is accessed 64-bit register instructions: `mrs <Xt>, fpcr`.
-union FPCR {
-  uint64_t flat;
-  struct {
-    uint64_t _res0 : 22;  // [21:0]
-    FPURoundingMode rmode : 2;  // [23:22]
-    FPUFlushToZeroMode fz : 1;  // [24]
-    FPUDefaultNaNMode dn : 1;  // [25]
-    FPUHalfPrecisionMode ahp : 1;  // [26]
-    uint64_t _res1 : 5;  // [31:27]
-    uint64_t _1 : 32;
-  } __attribute__((packed));
 } __attribute__((packed));
 
-static_assert(sizeof(FPCR) == 8, "Invalid packing of `union FPCR`.");
+// L1 Cache Configuration
+struct alignas(8) L1CFG final {
+  volatile uint64_t _0;
+  Reg r0;
+  volatile uint64_t _1;
+  Reg r1;
 
-// Floating point status register. Really, this is a 32-bit register, but
-// it is accessed 64-bit register instructions: `mrs <Xt>, fpsr`.
-union FPSR {
-  uint64_t flat;
-  struct {
-    uint64_t ioc : 1;  // Invalid operation cumulative exception bit.
-    uint64_t dzc : 1;  // Division by zero cumulative exception bit.
-    uint64_t ofc : 1;  // Overflow cumulative exception bit.
-    uint64_t ufc : 1;  // Underflow cumulative exception bit.
-    uint64_t ixc : 1;  // Inexact cumulative exception bit.
-    uint64_t _res0 : 2;  // Bits 5 and 6.
-    uint64_t idc : 1;  // Input denormal cumulative exception bit.
-    uint64_t _res1 : 19;  // Bits 8 through 26.
-    uint64_t qc : 1;  // Cumulative saturation bit, bit 27.
-    uint64_t v : 1;  // Result overflowed, bit 28. [AArch32 only]
-    uint64_t c : 1;  // Result produced a carry. [AArch32 only]
-    uint64_t z : 1;  // Result is zero. [AArch32 only]
-    uint64_t n : 1;  // Result is negative, bit 31. [AArch32 only]
-    uint64_t _1 : 32;
-  } __attribute__((packed));
 } __attribute__((packed));
-
-static_assert(sizeof(FPSR) == 8, "Invalid packing of `union FPSR`.");
-
-// System registers affecting control and status of the machine.
-struct alignas(8) SR final {
-  uint64_t _0;
-  Reg tpidr_el0;  // Thread pointer for EL0.
-
-  uint64_t _1;
-  Reg tpidrro_el0;  // Read-only thread pointer for EL0.
-
-  uint8_t _2;
-  uint8_t n;  //  Negative condition flag.
-  uint8_t _3;
-  uint8_t z;  //  Zero condition flag
-  uint8_t _4;
-  uint8_t c;  //  Carry condition flag
-  uint8_t _5;
-  uint8_t v;  //  Overflow condition flag
-
-  uint8_t _6;
-  uint8_t ixc;  // Inexact (cumulative).
-  uint8_t _7;
-  uint8_t ofc;  // Overflow (cumulative).
-  uint8_t _8;
-  uint8_t ufc;  // Underflow (cumulative).
-  uint8_t _9;
-  uint8_t idc;  // Input denormal (cumulative).
-  uint8_t _10;
-  uint8_t ioc;  // Invalid operation (cumulative).
-
-  uint8_t _padding[6];
-} __attribute__((packed));
-
-static_assert(56 == sizeof(SR), "Invalid packing of `struct SR`.");
-
-enum : size_t { kNumVecRegisters = 32 };
-
-struct alignas(16) SIMD {
-  vec128_t v[kNumVecRegisters];
-};
-
-static_assert(512 == sizeof(SIMD), "Invalid packing of `struct SIMD`.");
 
 struct alignas(16) PPCArchState : public ArchState {
-  SIMD simd;  // 512 bytes.
+  GPR gpr;  // 528 bytes.
 
   uint64_t _0;
 
-  GPR gpr;  // 528 bytes.
+  FPR fpr;
 
   uint64_t _1;
 
-  NZCV nzcv;  // 8 bytes (high 4 are unused).
-  FPCR fpcr;  // 8 bytes (high 4 are unused).
-  FPSR fpsr;  // 8 bytes (high 4 are unused).
+  IAR iar;
 
   uint64_t _2;
 
-  SR sr;  // 56 bytes.
+  UPM upm;
 
   uint64_t _3;
+
+  TBR tbr;
+
+  uint64_t _4;
+
+  Reg uspr;  // User Special-Purpose Register
+
+  uint64_t _5;
+
+  SPRG sprg;
+
+  uint64_t _6;
+
+  L1CFG l1cfg;
 
 } __attribute__((packed));
 
