@@ -13,7 +13,6 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.21)
-include(cmake/vcpkg_helper.cmake)
 
 # Setup to use ccache
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
@@ -271,7 +270,6 @@ if(REMILL_ENABLE_INSTALL_TARGET)
   )
 
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/remillConfig.cmake"
-    "${CMAKE_CURRENT_LIST_DIR}/cmake/vcpkg_helper.cmake"
     DESTINATION "${REMILL_INSTALL_LIB_DIR}/cmake/remill"
   )
 

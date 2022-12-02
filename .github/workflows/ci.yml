@@ -50,7 +50,7 @@ jobs:
       - name: Build with build-presets script
         shell: bash
         run: |
-          export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm-${{ matrix.llvm }}_amd64
+          export CMAKE_TOOLCHAIN_FILE=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm-${{ matrix.llvm }}_amd64/scripts/buildsystems/vcpkg.cmake
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
       - name: Install Python Test Deps
@@ -129,7 +129,7 @@ jobs:
         shell: bash
         run: |
           brew install ninja
-          export VCPKG_ROOT=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64
+          export CMAKE_TOOLCHAIN_FILE=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64/scripts/buildsystems/vcpkg.cmake
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
       - name: Run tests

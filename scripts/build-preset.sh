@@ -11,11 +11,11 @@ VCPKG_SUFFIX="-rel"
 set -o pipefail
 
 function sanity_check {
-	if [ -z "${VCPKG_ROOT}" ]; then
-		echo "Please set the VCPKG_ROOT environment variable to the VCPKG root to build against"
+	if [ -z "${CMAKE_TOOLCHAIN_FILE}" ]; then
+		echo "Please set the CMAKE_TOOLCHAIN_FILE environment variable to the CMake toolchain file to build against"
 		exit 1
 	else
-		echo "Building against VCPKG: [${VCPKG_ROOT}]"
+		echo "Building against CMake toolchain file: [${CMAKE_TOOLCHAIN_FILE}]"
 	fi
 
 	if [ -z "${INSTALL_DIR}" ]; then
@@ -36,20 +36,9 @@ function show_usage {
   printf "\tArguments after '--' are passed to CMake during configuration (e.g. -DCMAKE_C_COMPILER=foo)\n"
   printf "\n"
   printf "INSTALL_DIR set to [${INSTALL_DIR}]\n"
-  printf "VCPKG_ROOT set to [${VCPKG_ROOT}]\n"
+  printf "CMAKE_TOOLCHAIN_FILE set to [${CMAKE_TOOLCHAIN_FILE}]\n"
 
   return 0
-}
-
-function compiler_check {
-  printf "Checking for clang/clang++ in [${VCPKG_ROOT}] [${VCPKG_TARGET_TRIPLET}]:\n"
-  for c in ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools/llvm/{clang,clang++}
-  do
-    ver=$(${c} --version)
-    printf "Found a clang [${c}]:\n"
-    printf "${ver}\n"
-  done
-  printf "\n"
 }
 
 function set_arch {
@@ -129,9 +118,6 @@ done
 ARCH=$(set_arch)
 OS=$(set_os)
 export VCPKG_TARGET_TRIPLET=${ARCH}-${OS}${VCPKG_SUFFIX}
-
-compiler_check
-
 
 echo "Configuring [${BUILD_TYPE}] [${ARCH}] against vcpkg [${VCPKG_TARGET_TRIPLET}]..."
 if [[ "${@}" != "" ]]
