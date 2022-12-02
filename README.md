@@ -147,7 +147,7 @@ mkdir build
 cd build
 cmake  \
   -DCMAKE_INSTALL_PREFIX="<path where remill will install>" \
-  -DVCPKG_ROOT="<path to cxx-common directory>/vcpkg"  \
+  -DCMAKE_TOOLCHAIN_FILE="<path to cxx-common directory>/vcpkg/scripts/buildsystems/vcpkg.cmake"  \
   -G Ninja  \
   ..
 cmake --build .
