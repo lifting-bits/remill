@@ -30,6 +30,8 @@
 
 // clang-format on
 
+#include <remill/BC/ABI.h>
+
 #include <array>
 #include <filesystem>
 #include <functional>
@@ -38,8 +40,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include <remill/BC/ABI.h>
 
 namespace llvm {
 class Argument;
@@ -68,6 +68,10 @@ class IntrinsicTable;
 void InitFunctionAttributes(llvm::Function *F);
 
 // Create a call from one lifted function to another.
+llvm::CallInst *AddCall(llvm::IRBuilder<> &builder,
+                        llvm::BasicBlock *source_block, llvm::Value *dest_func,
+                        const IntrinsicTable &intrinsics);
+
 llvm::CallInst *AddCall(llvm::BasicBlock *source_block, llvm::Value *dest_func,
                         const IntrinsicTable &intrinsics);
 
@@ -98,6 +102,9 @@ llvm::Value *LoadStatePointer(llvm::Function *function);
 llvm::Value *LoadStatePointer(llvm::BasicBlock *block);
 
 // Return the current program counter.
+llvm::Value *LoadProgramCounter(llvm::IRBuilder<> &builder,
+                                const IntrinsicTable &intrinsics);
+
 llvm::Value *LoadProgramCounter(llvm::BasicBlock *block,
                                 const IntrinsicTable &intrinsics);
 
@@ -131,6 +138,9 @@ llvm::Value *LoadMemoryPointerArg(llvm::Function *func);
 llvm::Value *LoadProgramCounterArg(llvm::Function *function);
 
 // Return the current memory pointer.
+llvm::Value *LoadMemoryPointer(llvm::IRBuilder<> &builder,
+                               const IntrinsicTable &intrinsics);
+
 llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block,
                                const IntrinsicTable &intrinsics);
 
@@ -139,6 +149,7 @@ llvm::Value *LoadMemoryPointerRef(llvm::BasicBlock *block);
 
 // Return an `llvm::Value *` that is an `i1` (bool type) representing whether
 // or not a conditional branch is taken.
+llvm::Value *LoadBranchTaken(llvm::IRBuilder<> &builder);
 llvm::Value *LoadBranchTaken(llvm::BasicBlock *block);
 
 llvm::Value *LoadBranchTakenRef(llvm::BasicBlock *block);
@@ -155,8 +166,8 @@ bool VerifyModule(llvm::Module *module);
 std::optional<std::string> VerifyModuleMsg(llvm::Module *module);
 
 
-std::unique_ptr<llvm::Module> LoadModuleFromFile(llvm::LLVMContext *context,
-                                                 std::filesystem::path file_name);
+std::unique_ptr<llvm::Module>
+LoadModuleFromFile(llvm::LLVMContext *context, std::filesystem::path file_name);
 
 // Loads the semantics for the `arch`-specific machine, i.e. the machine of the
 // code that we want to lift.
@@ -176,14 +187,15 @@ bool StoreModuleIRToFile(llvm::Module *module, std::string_view file_name,
 
 // Find a semantics bitcode file for the architecture `arch`.
 // Default compile-time created list of directories is searched.
-std::optional<std::filesystem::path> FindSemanticsBitcodeFile(std::string_view arch);
+std::optional<std::filesystem::path>
+FindSemanticsBitcodeFile(std::string_view arch);
 // List of directories to search is provided as second argument - default compile time
 // created list is used as fallback only if `fallback_to_defaults` is set.
 // A "shallow" search happens, searching for file `arch` + ".bc".
 std::optional<std::filesystem::path>
 FindSemanticsBitcodeFile(std::string_view arch,
                          const std::vector<std::filesystem::path> &dirs,
-                         bool fallback_to_defaults=true);
+                         bool fallback_to_defaults = true);
 
 // Return a pointer to the Nth argument (N=0 is the first argument).
 llvm::Argument *NthArgument(llvm::Function *func, size_t index);
@@ -248,6 +260,10 @@ llvm::Type *RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context);
 //
 // Returns the loaded value.
 llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
+                            llvm::IRBuilder<> &builder, llvm::Type *type,
+                            llvm::Value *mem_ptr, llvm::Value *addr);
+
+llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
                             llvm::BasicBlock *block, llvm::Type *type,
                             llvm::Value *mem_ptr, llvm::Value *addr);
 
@@ -257,6 +273,11 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
 // the type into components which can be written to memory.
 //
 // Returns the new value of the memory pointer.
+llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
+                           llvm::IRBuilder<> &builder,
+                           llvm::Value *val_to_store, llvm::Value *mem_ptr,
+                           llvm::Value *addr);
+
 llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
                            llvm::BasicBlock *block, llvm::Value *val_to_store,
                            llvm::Value *mem_ptr, llvm::Value *addr);
