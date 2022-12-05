@@ -20,7 +20,10 @@
 #pragma clang diagnostic fatal "-Wpadded"
 
 #include "remill/Arch/Runtime/State.h"
-#include "remill/Arch/Runtime/Types.h"
+
+#if !defined(INCLUDED_FROM_REMILL)
+#  include "remill/Arch/Runtime/Types.h"
+#endif
 
 struct Reg final {
   union {
@@ -204,7 +207,7 @@ struct alignas(8) IAR final {
 // Read-Only Performance Monitor Registers
 struct alignas(8) UPM final {
   volatile uint64_t _0;
-  Reg upmgc;
+  Reg gc;
 
   // Counter registers
   volatile uint64_t _1;
@@ -273,7 +276,7 @@ struct alignas(8) L1CFG final {
 
 } __attribute__((packed));
 
-struct alignas(16) PPCArchState : public ArchState {
+struct alignas(16) PPCState : public ArchState {
   GPR gpr;  // 528 bytes.
 
   uint64_t _0;
@@ -306,9 +309,9 @@ struct alignas(16) PPCArchState : public ArchState {
 
 } __attribute__((packed));
 
-// static_assert((1152 + 16) == sizeof(PPCArchState),
+// static_assert((1152 + 16) == sizeof(PPCState),
 //               "Invalid packing of `struct State`");
 
-struct State : public PPCArchState {};
+struct State : public PPCState {};
 
 #pragma clang diagnostic pop
