@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.2)
 project(ppc_runtime)
 
 set(PPCRUNTIME_SOURCEFILES
-  BasicBlock.cpp
+  Instructions.cpp
 
   "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
 )
