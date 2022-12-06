@@ -16,7 +16,28 @@
 
 #include "remill/Arch/PPC/Runtime/State.h"
 #include "remill/Arch/Runtime/Float.h"
+#include "remill/Arch/Runtime/Intrinsics.h"
+#include "remill/Arch/Runtime/Operators.h"
 
 // A definition is required to ensure that LLVM doesn't optimize the `State` type out of the bytecode
 // See https://github.com/lifting-bits/remill/pull/631#issuecomment-1279989004f
 State __remill_state;
+
+#define HYPER_CALL state.hyper_call
+
+namespace {
+
+DEF_SEM(HandleUnsupported) {
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kPPCEmulateInstruction);
+}
+
+DEF_SEM(HandleInvalidInstruction) {
+  HYPER_CALL = AsyncHyperCall::kInvalidInstruction;
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
+DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
