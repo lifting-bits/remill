@@ -378,7 +378,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock : public PcodeEmit {
     auto reg_ptr = this->unknown_regs.GetUniquePtr(target_vnode.offset,
                                                    target_vnode.size, bldr);
     print_vardata(this->insn_lifter_parent.GetEngine(), ss, target_vnode);
-    DLOG(ERROR) << "Creating unique for unkown register: " << ss.str() << " "
+    DLOG(ERROR) << "Creating unique for unknown register: " << ss.str() << " "
                 << reg_ptr->getName().str();
 
     return RegisterValue::CreateRegister(reg_ptr);
