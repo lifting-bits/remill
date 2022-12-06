@@ -29,7 +29,11 @@ SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
 llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
                                                 llvm::Value *curr_pc,
                                                 size_t curr_insn_size) const {
-  return nullptr;
+  // NOTE(alex): Just pasted this from x86. This seems right? But then again, I don't understand what the Thumb2 impl is doing so who knows.
+
+  // PC on thumb points to the next instructions next.
+  return bldr.CreateAdd(
+      curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size));
 }
 
 void SleighPPCDecoder::InitializeSleighContext(
@@ -52,8 +56,7 @@ class SleighPPCArch : public ArchBase {
   }
 
   std::string_view ProgramCounterRegisterName(void) const override {
-    // TODO(alex): PPC doesn't expose this. Need to figure out what to do here.
-    return "";
+    return "PC";
   }
 
   OperandLifter::OpLifterPtr
@@ -201,11 +204,29 @@ class SleighPPCArch : public ArchBase {
 
     REG(spr203, l1cfg.r0.qword, u64);
     REG(spr204, l1cfg.r1.qword, u64);
+
+    REG(PC, pc, u64);
   }
 
   void
   FinishLiftedFunctionInitialization(llvm::Module *module,
-                                     llvm::Function *bb_func) const override {}
+                                     llvm::Function *bb_func) const override {
+    auto &context = module->getContext();
+    const auto u64 = llvm::Type::getInt64Ty(context);
+    const auto addr = u64;
+
+    auto &entry_block = bb_func->getEntryBlock();
+    llvm::IRBuilder<> ir(&entry_block);
+
+    const auto pc_arg = NthArgument(bb_func, kPCArgNum);
+    const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
+    ir.CreateStore(pc_arg,
+                   ir.CreateAlloca(addr, nullptr, kNextPCVariableName.data()));
+    ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr,
+                                           kIgnoreNextPCVariableName.data()));
+
+    (void) this->RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
+  }
 
  private:
   SleighPPCDecoder decoder;

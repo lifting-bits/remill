@@ -307,6 +307,10 @@ struct alignas(16) PPCState : public ArchState {
 
   L1CFG l1cfg;
 
+  uint64_t _7;
+
+  Reg pc;  // This isn't exposed via PPC's API however Sleigh uses a "fake" register to maintain the program counter
+
 } __attribute__((packed));
 
 // static_assert((1152 + 16) == sizeof(PPCState),
