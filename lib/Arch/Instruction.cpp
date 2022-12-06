@@ -670,7 +670,7 @@ std::string Instruction::Serialize(void) const {
       case kArchAArch64LittleEndian: ss << "AArch64"; break;
       case kArchSparc32: ss << "SPARC32"; break;
       case kArchSparc64: ss << "SPARC64"; break;
-      case kArchPPC: ss << "POWERPC"; break;
+      case kArchPPC: ss << "PowerPC"; break;
     }
   };
 

@@ -225,7 +225,7 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
     }
 
     case kArchPPC: {
-      DLOG(INFO) << "Using architecture: POWERPC";
+      DLOG(INFO) << "Using architecture: PowerPC";
       return GetSleighPPC(context_, os_name_, arch_name_);
     }
 
