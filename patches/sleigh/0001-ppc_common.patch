@@ -1,0 +1,59 @@
+From 4a5fb8149798b31d3433f17d497c891563ca19ca Mon Sep 17 00:00:00 2001
+From: William Tan <1284324+Ninja3047@users.noreply.github.com>
+Date: Wed, 7 Dec 2022 20:17:11 -0500
+Subject: [PATCH] ppc_common
+
+---
+ .../PowerPC/data/languages/ppc_common.sinc    | 21 +++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
+index 8498e4bdc..5c72cc26c 100644
+--- a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
++++ b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
+@@ -3,6 +3,10 @@
+ # version 1.0
+ 
+ define endian=$(ENDIAN);
++@define INST_NEXT_PTR "pc"
++
++define pcodeop claim_eq;
++
+ 
+ define alignment=2;
+ 
+@@ -467,6 +471,9 @@ vr31_8_15 vr31_8_14 vr31_8_13 vr31_8_12 vr31_8_11 vr31_8_10 vr31_8_9 vr31_8_8 vr
+ ];
+ 
+ @endif
++remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:$(REGISTER_SIZE)=calculated_size; 
++ export insn_size_hinted; }
++
+ # Define context bits
+ define register offset=0x6000 size=4   contextreg;
+ define context contextreg
+@@ -1825,9 +1832,19 @@ macro unpackFPSCR(tmp) {
+ REL_ABS: "a"	is AA = 1 {}
+ REL_ABS:			is AA = 0 {}
+ 
+-addressLI: reloc		is LI & AA=0 	[ reloc = inst_start + LI*4;] 	{ export *[ram]:4 reloc; }
++addressLI: reloc		is LI & AA=0 	 ; remill_insn_size [ reloc = inst_start + LI*4;] { 
++remill_please_dont_use_this_temp_named:$(REGISTER_SIZE)=reloc;
++claim_eq(remill_please_dont_use_this_temp_named,  ($(INST_NEXT_PTR)-remill_insn_size) + LI*4);
++ export *[ram]:4 reloc;
++   }
++ 
+ addressLI: reloc 	is LI & AA=1		[ reloc = LI*4; ]				{ export *[ram]:4 reloc; }
+-addressBD: reloc		is BD & AA=0		[ reloc = inst_start + BD*4; ]	{ export *[ram]:4 reloc; }
++addressBD: reloc		is BD & AA=0		 ; remill_insn_size [ reloc = inst_start + BD*4; ] { 
++remill_please_dont_use_this_temp_name12:$(REGISTER_SIZE)=reloc;
++claim_eq(remill_please_dont_use_this_temp_name12,  ($(INST_NEXT_PTR)-remill_insn_size) + BD*4);
++ export *[ram]:4 reloc;
++   }
++ 
+ addressBD: reloc		is BD & AA=1		[ reloc = BD*4; ]				{ export *[ram]:4 reloc; }
+ 
+ OFF16SH: val		is D0 & D1 & D2 [ val = ((D0 << 6) | (D1 << 1) | D2) << 16; ] { export *[const]:4 val;}
+-- 
+2.37.1 (Apple Git-137.1)
+
