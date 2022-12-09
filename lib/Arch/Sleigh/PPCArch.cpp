@@ -24,7 +24,8 @@ namespace remill {
 namespace sleighppc {
 
 SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
-    : SleighDecoder(arch, "ppc_64_be.sla", "ppc_64.pspec", {}, {}) {}
+    : SleighDecoder(arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
+                    {{"vle", "1"}}, {}) {}
 
 llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
                                                 llvm::Value *curr_pc,

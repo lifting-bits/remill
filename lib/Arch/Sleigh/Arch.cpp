@@ -99,7 +99,7 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   auto pspec_path = ::sleigh::FindSpecFile(pspec_name.c_str());
 
   if (!pspec_path) {
-    LOG(FATAL) << "Couldn't find required spec file: " << sla_name << '\n';
+    LOG(FATAL) << "Couldn't find required pspec file: " << pspec_name << '\n';
   }
   LOG(INFO) << "Using pspec at: " << pspec_path->string();
 
@@ -213,8 +213,8 @@ SleighDecoder::SleighDecoder(
     std::unordered_map<std::string, std::string> context_reg_map_,
     std::unordered_map<std::string, std::string> state_reg_map_)
     : sleigh_ctx(sla_name, pspec_name),
-      sla_name(sla_name),
-      pspec_name(pspec_name),
+      sla_name(std::move(sla_name)),
+      pspec_name(std::move(pspec_name)),
       lifter(nullptr),
       arch(arch_),
       context_reg_mapping(std::move(context_reg_map_)),

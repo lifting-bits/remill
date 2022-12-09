@@ -103,9 +103,9 @@ class SleighDecoder {
       const remill::Arch &arch, std::string sla_name, std::string pspec_name,
       std::unordered_map<std::string, std::string> context_reg_mapping,
       std::unordered_map<std::string, std::string> state_reg_remappings);
-  std::string GetSLAName() const;
+  const std::string &GetSLAName() const;
 
-  std::string GetPSpec() const;
+  const std::string &GetPSpec() const;
   // Decoder specific prep
   virtual void
   InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
