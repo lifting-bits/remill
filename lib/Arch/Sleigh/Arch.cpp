@@ -296,12 +296,12 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
 }
 
 
-std::string SleighDecoder::GetSLAName() const {
+const std::string &SleighDecoder::GetSLAName() const {
   return this->sla_name;
 }
 
 
-std::string SleighDecoder::GetPSpec() const {
+const std::string &SleighDecoder::GetPSpec() const {
   return this->pspec_name;
 }
 
