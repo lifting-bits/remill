@@ -1,1 +1,2 @@
-Example invocation for x86 `python replace_pc_relative_disactions/main.py <target .sinc file> --out <output_patch_file> --inst_next_size_hint "\$(SIZE)" --pc_def register_definitions/x86.ia`
+Example invocation for x86 `python replace_pc_relative_disactions/main.py <target .sinc file> --out_dir <output_directory> --inst_next_size_hint "\$(SIZE)" --pc_def register_definitions/x86.ia`
+Example invocation for PowerPC using `python replace_pc_relative_disactions/main.py <ghidra_dir>/Ghidra/Processors/PowerPC/data/languages/{ppc_common,ppc_embedded,ppc_instructions,ppc_isa,ppc_vle,quicciii}.sinc --pc_def ./register_definitions/powerpc.ia --inst_next_size_hint '$(REGISTER_SIZE)' --base_path <ghidra_dir> --out_dir $PWD/../../patches/sleigh`
