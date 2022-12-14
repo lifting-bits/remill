@@ -23,9 +23,11 @@ namespace remill {
 
 namespace sleighppc {
 
+static const char *kPPCVLERegName = "VLEReg";
+
 SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
     : SleighDecoder(arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
-                    {{"vle", "1"}}, {}) {}
+                    {{"vle", kPPCVLERegName}}, {}) {}
 
 llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
                                                 llvm::Value *curr_pc,
@@ -38,7 +40,9 @@ llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
 }
 
 void SleighPPCDecoder::InitializeSleighContext(
-    remill::sleigh::SingleInstructionSleighContext &ctxt) const {}
+    remill::sleigh::SingleInstructionSleighContext &ctxt) const {
+  ctxt.GetContext().setVariableDefault("vle", 1);
+}
 
 class SleighPPCArch : public ArchBase {
  public:
@@ -49,7 +53,7 @@ class SleighPPCArch : public ArchBase {
   virtual ~SleighPPCArch() = default;
 
   DecodingContext CreateInitialContext(void) const override {
-    return DecodingContext();
+    return DecodingContext().PutContextReg(kPPCVLERegName, 1);
   }
 
   std::string_view StackPointerRegisterName(void) const override {
