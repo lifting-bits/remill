@@ -189,12 +189,28 @@ class SleighPPCArch : public ArchBase {
     REG(F29, fpr.f29.qword, f64);
     REG(F30, fpr.f30.qword, f64);
 
-    // NOTE(alex): CR isn't one of the SPRs in the spec file, figure this out
     REG(CTR, iar.ctr.qword, u64);
     REG(LR, iar.lr.qword, u64);
-    REG(XER, iar.xer.qword, u64);
+    REG(XER, iar.xer.dword, u32);
     REG(SPEFCR, iar.spefscr.qword, u64);
     REG(ACC, iar.acc.qword, u64);
+
+    // These are actually bitflags within XER and CR respectively. These would
+    // normally be subregisters however, Sleigh treats these as entirely
+    // separate registers of size 1.
+    REG(XER_SO, xer_flags.so, u8);
+    REG(XER_OV, xer_flags.ov, u8);
+    REG(XER_CA, xer_flags.ca, u8);
+    REG(XER_COUNT, xer_flags.sl, u8);
+
+    REG(CR0, cr_flags.cr0, u8);
+    REG(CR1, cr_flags.cr1, u8);
+    REG(CR2, cr_flags.cr2, u8);
+    REG(CR3, cr_flags.cr3, u8);
+    REG(CR4, cr_flags.cr4, u8);
+    REG(CR5, cr_flags.cr5, u8);
+    REG(CR6, cr_flags.cr6, u8);
+    REG(CR7, cr_flags.cr7, u8);
 
     // TODO(alex): Do the performance monitor registers too
 
