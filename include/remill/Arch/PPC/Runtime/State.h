@@ -185,6 +185,33 @@ struct alignas(8) FPR final {
 
 static_assert(512 == sizeof(FPR), "Invalid structure packing of `FPR`.");
 
+// These are actually bitflags.
+//
+// Remill's notion of registers operates at a byte granularity so these need to
+// take a full byte.
+struct alignas(8) ConditionReg final {
+
+  uint8_t cr0;
+  uint8_t cr1;
+  uint8_t cr2;
+  uint8_t cr3;
+  uint8_t cr4;
+  uint8_t cr5;
+  uint8_t cr6;
+  uint8_t cr7;
+
+} __attribute__((packed));
+
+struct alignas(8) XERReg final {
+
+  uint8_t so;
+  uint8_t ov;
+  uint8_t ca;
+  uint8_t sl;
+  uint8_t _padding[4];
+
+} __attribute__((packed));
+
 // Instruction-Accessible Registers
 struct alignas(8) IAR final {
 
@@ -206,6 +233,7 @@ struct alignas(8) IAR final {
 
 // Read-Only Performance Monitor Registers
 struct alignas(8) UPM final {
+
   volatile uint64_t _0;
   Reg gc;
 
@@ -241,6 +269,7 @@ struct alignas(8) UPM final {
 
 // Time-Based Registers
 struct alignas(8) TBR final {
+
   volatile uint64_t _0;
   Reg tbl;
   volatile uint64_t _1;
@@ -254,6 +283,7 @@ struct alignas(8) TBR final {
 
 // General Special-Purpose Registers
 struct alignas(8) SPRG final {
+
   volatile uint64_t _0;
   Reg r3;
   volatile uint64_t _1;
@@ -269,6 +299,7 @@ struct alignas(8) SPRG final {
 
 // L1 Cache Configuration
 struct alignas(8) L1CFG final {
+
   volatile uint64_t _0;
   Reg r0;
   volatile uint64_t _1;
@@ -277,6 +308,7 @@ struct alignas(8) L1CFG final {
 } __attribute__((packed));
 
 struct alignas(16) PPCState : public ArchState {
+
   GPR gpr;  // 528 bytes.
 
   uint64_t _0;
@@ -310,6 +342,14 @@ struct alignas(16) PPCState : public ArchState {
   uint64_t _7;
 
   Reg pc;  // This isn't exposed via PPC's API however Sleigh uses a "fake" register to maintain the program counter
+
+  uint64_t _8;
+
+  XERReg xer_flags;
+
+  uint64_t _9;
+
+  ConditionReg cr_flags;
 
 } __attribute__((packed));
 
