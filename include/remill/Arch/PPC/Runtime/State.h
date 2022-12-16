@@ -189,7 +189,7 @@ static_assert(512 == sizeof(FPR), "Invalid structure packing of `FPR`.");
 //
 // Remill's notion of registers operates at a byte granularity so these need to
 // take a full byte.
-struct alignas(8) ConditionReg final {
+struct alignas(8) CRFlags final {
 
   uint8_t cr0;
   uint8_t cr1;
@@ -202,7 +202,7 @@ struct alignas(8) ConditionReg final {
 
 } __attribute__((packed));
 
-struct alignas(8) XERReg final {
+struct alignas(8) XERFlags final {
 
   uint8_t so;
   uint8_t ov;
@@ -345,11 +345,11 @@ struct alignas(16) PPCState : public ArchState {
 
   uint64_t _8;
 
-  XERReg xer_flags;
+  XERFlags xer_flags;
 
   uint64_t _9;
 
-  ConditionReg cr_flags;
+  CRFlags cr_flags;
 
 } __attribute__((packed));
 
