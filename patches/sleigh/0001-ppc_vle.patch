@@ -1,25 +1,17 @@
-From e1626c733ac2131584ceede96c93a7e4302388b7 Mon Sep 17 00:00:00 2001
+From f84f07be17cd7594d32f49f2c3095e65d6f3c393 Mon Sep 17 00:00:00 2001
 From: William Tan <1284324+Ninja3047@users.noreply.github.com>
-Date: Wed, 7 Dec 2022 20:17:12 -0500
+Date: Mon, 19 Dec 2022 16:29:10 -0500
 Subject: [PATCH] ppc_vle
 
 ---
- .../PowerPC/data/languages/ppc_vle.sinc       | 71 +++++++++++++++----
- 1 file changed, 58 insertions(+), 13 deletions(-)
+ .../PowerPC/data/languages/ppc_vle.sinc       | 68 +++++++++++++++----
+ 1 file changed, 55 insertions(+), 13 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
-index 3b6283470..9c8a13a5c 100644
+index 3b6283470..b6d763bd0 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
-@@ -1,4 +1,7 @@
- 
-+
-+remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:$(REGISTER_SIZE)=calculated_size; 
-+ export insn_size_hinted; }
- CC16: "lt"		is BI16_VLE=0 & BO16_VLE=1 & BI16_VLE { tmp:1 = 0; getCrBit(cr0, BI16_VLE, tmp); export tmp; }
- CC16: "le"		is BI16_VLE=1 & BO16_VLE=0 & BI16_VLE { tmp:1 = 0; getCrBit(cr0, BI16_VLE, tmp); tmp = !tmp; export tmp; }
- CC16: "eq"		is BI16_VLE=2 & BO16_VLE=1 & BI16_VLE { tmp:1 = 0; getCrBit(cr0, BI16_VLE, tmp); export tmp; }
-@@ -20,9 +23,24 @@ CC32: "ns"		is BI_CC_VLE=3 & BO_VLE=0 & BI_CR_VLE & BI_CC_VLE { tmp:1 = 0; getCr
+@@ -20,9 +20,24 @@ CC32: "ns"		is BI_CC_VLE=3 & BO_VLE=0 & BI_CR_VLE & BI_CC_VLE { tmp:1 = 0; getCr
  CC32: "dnz"		is BO_VLE=2 {CTR = CTR-1; tmp:1 = (CTR != 0); export tmp; }
  CC32: "dz"		is BO_VLE=3 {CTR = CTR-1; tmp:1 = (CTR == 0); export tmp; }
  
@@ -47,7 +39,7 @@ index 3b6283470..9c8a13a5c 100644
  
  d8PlusRaAddress: S8IMM(A)					is S8IMM & A			{tmp:$(REGISTER_SIZE) = A+S8IMM; export tmp;  }
  d8PlusRaOrZeroAddress: S8IMM(RA_OR_ZERO)	is S8IMM & RA_OR_ZERO	{tmp:$(REGISTER_SIZE) = RA_OR_ZERO+S8IMM; export tmp; }
-@@ -53,38 +71,65 @@ IMM16B: val						is IMM_0_10_VLE & IMM_16_20_VLE [ val = (IMM_16_20_VLE << 11) |
+@@ -53,38 +68,65 @@ IMM16B: val						is IMM_0_10_VLE & IMM_16_20_VLE [ val = (IMM_16_20_VLE << 11) |
  	goto addrBD24;
  }
  

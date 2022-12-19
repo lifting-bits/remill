@@ -1,27 +1,17 @@
-From 4e4f5b257b567dc43af644dfdb9db76132603027 Mon Sep 17 00:00:00 2001
+From aa64d2d91c4d8cba234533e8ef619d01cbc81ef2 Mon Sep 17 00:00:00 2001
 From: William Tan <1284324+Ninja3047@users.noreply.github.com>
-Date: Wed, 7 Dec 2022 20:17:12 -0500
+Date: Mon, 19 Dec 2022 16:29:11 -0500
 Subject: [PATCH] quicciii
 
 ---
- .../PowerPC/data/languages/quicciii.sinc          | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+ .../Processors/PowerPC/data/languages/quicciii.sinc  | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc b/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
-index 8b7977bce..272d1639c 100644
+index 8b7977bce..13b381559 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
-@@ -15,6 +15,9 @@ define pcodeop moveToPerformanceMonitorRegister;
- define pcodeop invalidateTLB;
- 
- #dcblc 0,0,r0		#FIXME
-+
-+remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:$(REGISTER_SIZE)=calculated_size; 
-+ export insn_size_hinted; }
- :dcblc CT,RA_OR_ZERO,B	is OP=31 & CT & B & XOP_1_10=390 & BIT_0=0 & RA_OR_ZERO
- {
-         ea:$(REGISTER_SIZE) = RA_OR_ZERO + B;
-@@ -62,13 +65,21 @@ define pcodeop invalidateTLB;
+@@ -62,13 +62,21 @@ define pcodeop invalidateTLB;
  }
  
  :isel^CC_X_OPm D,RA_OR_ZERO,B,CC_X_OP  is OP=31 & D & RA_OR_ZERO & B & CC_X_OP & CC_X_OPm & XOP_1_5=15

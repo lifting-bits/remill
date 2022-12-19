@@ -1,6 +1,6 @@
-From 4a5fb8149798b31d3433f17d497c891563ca19ca Mon Sep 17 00:00:00 2001
+From bd02af97c29961dc6544cccdee57526c3812dc15 Mon Sep 17 00:00:00 2001
 From: William Tan <1284324+Ninja3047@users.noreply.github.com>
-Date: Wed, 7 Dec 2022 20:17:11 -0500
+Date: Mon, 19 Dec 2022 16:29:09 -0500
 Subject: [PATCH] ppc_common
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] ppc_common
  1 file changed, 19 insertions(+), 2 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
-index 8498e4bdc..5c72cc26c 100644
+index 8498e4bdc..761a2e9a0 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
 @@ -3,6 +3,10 @@
@@ -22,16 +22,16 @@ index 8498e4bdc..5c72cc26c 100644
  
  define alignment=2;
  
-@@ -467,6 +471,9 @@ vr31_8_15 vr31_8_14 vr31_8_13 vr31_8_12 vr31_8_11 vr31_8_10 vr31_8_9 vr31_8_8 vr
- ];
- 
- @endif
+@@ -1200,6 +1204,9 @@ attach names [ vrDD vrAD vrBD vrSD vrCD]
+     [ v0  v1  v2  v3  v4  v5  v6  v7  v8  v9  v10 v11 v12 v13 v14 v15
+       v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 ];
+       
++
 +remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:$(REGISTER_SIZE)=calculated_size; 
 + export insn_size_hinted; }
-+
- # Define context bits
- define register offset=0x6000 size=4   contextreg;
- define context contextreg
+ vrD: vrDD	is vrDD & vrDR { export vrDR; }      
+ vrA: vrAD	is vrAD & vrAR { export vrAR; }      
+ vrB: vrBD	is vrBD & vrBR { export vrBR; }      
 @@ -1825,9 +1832,19 @@ macro unpackFPSCR(tmp) {
  REL_ABS: "a"	is AA = 1 {}
  REL_ABS:			is AA = 0 {}

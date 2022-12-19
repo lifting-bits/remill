@@ -1,27 +1,17 @@
-From 70b65f81333079c816f71c70b886aa636a03c508 Mon Sep 17 00:00:00 2001
+From 9bf1ba10175be998e5406fbcde7faec0fddf11f9 Mon Sep 17 00:00:00 2001
 From: William Tan <1284324+Ninja3047@users.noreply.github.com>
-Date: Wed, 7 Dec 2022 20:17:12 -0500
+Date: Mon, 19 Dec 2022 16:29:10 -0500
 Subject: [PATCH] ppc_isa
 
 ---
- .../PowerPC/data/languages/ppc_isa.sinc       | 55 ++++++++++++++-----
- 1 file changed, 41 insertions(+), 14 deletions(-)
+ .../PowerPC/data/languages/ppc_isa.sinc       | 52 ++++++++++++++-----
+ 1 file changed, 38 insertions(+), 14 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
-index 10f0cc691..e0697546b 100644
+index 10f0cc691..ffc603048 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
-@@ -19,6 +19,9 @@
- # binutils: power6.d:  b0:      7c 05 37 ec     dcbz    r5,r6
- # name	 dcbz	 code	 7c0007ec	 mask	 ff07e0ff00000000	 flags	 @PPC 	 operands	31	38	0	0	0	0	0	0	 																																																																																																																																																																																																																																														
- define pcodeop DataCaseBlockSetToZero;
-+
-+remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:$(REGISTER_SIZE)=calculated_size; 
-+ export insn_size_hinted; }
- :dcbz A,B is $(NOTVLE) & OP=31 & A & B & XOP_1_10=1014 { DataCaseBlockSetToZero(A,B); } # 
- 
- # PowerISA II: 4.3.2 Data Cache Instructions
-@@ -2377,15 +2380,25 @@ define pcodeop InstructionCacheBlockLockSetX;
+@@ -2377,15 +2377,25 @@ define pcodeop InstructionCacheBlockLockSetX;
  }
  
  :b^CC^"ctar" 	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH=0 & LK=0 & BITS_13_15=0 & XOP_1_10=560
@@ -53,7 +43,7 @@ index 10f0cc691..e0697546b 100644
  
  :b^CC^"ctarl"  	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH=0 & LK=1 & BITS_13_15=0 & XOP_1_10=560
  										[ linkreg=0; globalset(inst_start,linkreg); ]
-@@ -2403,16 +2416,26 @@ define pcodeop InstructionCacheBlockLockSetX;
+@@ -2403,16 +2413,26 @@ define pcodeop InstructionCacheBlockLockSetX;
  }
  
  :b^CC^"ctar" BI_CR  		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH=0 & LK=0 & BITS_13_15=0 & XOP_1_10=560
@@ -86,7 +76,7 @@ index 10f0cc691..e0697546b 100644
  
  :b^CC^"ctarl" BI_CR 		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH=0 & LK=1 & BITS_13_15=0 & XOP_1_10=560
  										[ linkreg=0; globalset(inst_start,linkreg); ]
-@@ -2530,9 +2553,13 @@ define pcodeop InstructionCacheBlockLockSetX;
+@@ -2530,9 +2550,13 @@ define pcodeop InstructionCacheBlockLockSetX;
  #######################
  # v3.0
  
