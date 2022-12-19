@@ -226,16 +226,14 @@ def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out
             first_constructor_offset = next(
                 construct_pat.finditer(target)).start()
             print("first constructor at: " + str(first_constructor_offset))
-            target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
-                                             re.finditer("@endif", target)), key=lambda elem: elem.end(), default=None)
-
-            target_insert_loc = target_insert_match.end(
-            ) if target_insert_match else (first_constructor_offset)
+            target_insert_loc = first_constructor_offset
 
             total_output += target[endian_def.end()
                                    if endian_def is not None else 0: target_insert_loc]
 
-            total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
+            if endian_def is not None:
+                # This should be defined once and it MUST be defined after all context definitions
+                total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
 
             last_offset = target_insert_loc
             cont = Context()
