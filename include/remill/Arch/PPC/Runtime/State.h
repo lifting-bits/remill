@@ -307,6 +307,16 @@ struct alignas(8) L1CFG final {
 
 } __attribute__((packed));
 
+// Signals
+//
+// These are signals that are commonly found on PPC devices
+// They are implemented as registers here as Sleigh treats them that way
+struct alignas(8) Signals final {
+  volatile uint64_t _0;
+  Reg tea;  // Transfer Error Acknowledge
+  uint8_t _padding[8];
+};
+
 struct alignas(16) PPCState : public ArchState {
 
   GPR gpr;  // 528 bytes.
@@ -350,6 +360,10 @@ struct alignas(16) PPCState : public ArchState {
   uint64_t _9;
 
   CRFlags cr_flags;
+
+  uint64_t _10;
+
+  Signals signals;
 
 } __attribute__((packed));
 

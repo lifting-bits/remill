@@ -227,6 +227,8 @@ class SleighPPCArch : public ArchBase {
     REG(SPR204, l1cfg.r1.qword, u64);
 
     REG(PC, pc, u64);
+
+    REG(TEA, signals.tea.qword, u64);
   }
 
   void
