@@ -34,6 +34,3 @@ target_link_libraries(
 
 set_property(TARGET run-thumb-tests PROPERTY ENABLE_EXPORTS ON)
 set_property(TARGET run-thumb-tests PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-message(STATUS "Adding test: thumb as run-thumb-tests")
-add_test(NAME "thumb" COMMAND "run-thumb-tests")

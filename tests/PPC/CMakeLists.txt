@@ -34,6 +34,3 @@ target_link_libraries(
 
 set_property(TARGET run-ppc-tests PROPERTY ENABLE_EXPORTS ON)
 set_property(TARGET run-ppc-tests PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-message(STATUS "Adding test: ppc as run-ppc-tests")
-add_test(NAME "PPC" COMMAND "run-ppc-tests")
