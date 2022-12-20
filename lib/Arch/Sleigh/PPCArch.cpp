@@ -76,11 +76,11 @@ class SleighPPCArch : public ArchBase {
   }
 
   uint64_t MinInstructionAlign(const DecodingContext &) const override {
-    return 4;
+    return 2;
   }
 
   uint64_t MinInstructionSize(const DecodingContext &) const override {
-    return 4;
+    return 2;
   }
 
   uint64_t MaxInstructionSize(const DecodingContext &, bool) const override {
