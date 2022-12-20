@@ -1,6 +1,7 @@
 import argparse
 import re
 from typing import Dict, List, Match, Optional, Set, Tuple
+from pathlib import Path
 import os
 import tempfile
 import subprocess
@@ -198,23 +199,15 @@ def build_constructor(env: Environment, constructor: Match[str]) -> Optional[str
 
 ENDIAN_DEF_REGEX = "define\s*endian\s*=[\w()$]+;"
 
-
-def main():
-    prsr = argparse.ArgumentParser("Disassembly action replacer")
-    prsr.add_argument("target_file")
-    prsr.add_argument("--pc_def", required=True)
-    prsr.add_argument("--inst_next_size_hint", required=True)
-    prsr.add_argument("--base_path", required=True)
-    prsr.add_argument("--commit_message", required=True)
-    prsr.add_argument("--out", required=True)
-
-    args = prsr.parse_args()
+def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out_dir):
     print(CONSTRUCTOR_BASE_REGEX)
     construct_pat = re.compile(CONSTRUCTOR_BASE_REGEX)
 
+    commit_message = f"{Path(target_file).stem}"
+
     total_output = ""
-    with open(args.target_file, 'r') as target_f:
-        with open(args.pc_def) as pc_def_file:
+    with open(target_file, 'r') as target_f:
+        with open(pc_def_path) as pc_def_file:
             pc_def = pc_def_file.read()
 
             target = target_f.read()
@@ -225,23 +218,22 @@ def main():
             if endian_def is not None:
                 total_output += target[0:endian_def.end()]
 
-            # can insert our defs here
-            total_output += "\n" + pc_def
-            total_output += "\ndefine pcodeop claim_eq;\n"
+                # can insert our defs here
+                # we only want to define this once in the file that also defines the endian-ness
+                total_output += "\n" + pc_def
+                total_output += "\ndefine pcodeop claim_eq;\n"
 
             first_constructor_offset = next(
                 construct_pat.finditer(target)).start()
             print("first constructor at: " + str(first_constructor_offset))
-            target_insert_match = max(filter(lambda k: k.end() < first_constructor_offset,
-                                             re.finditer("@endif", target)), key=lambda elem: elem.end(), default=None)
-
-            target_insert_loc = target_insert_match.end(
-            ) if target_insert_match else (first_constructor_offset)
+            target_insert_loc = first_constructor_offset
 
             total_output += target[endian_def.end()
                                    if endian_def is not None else 0: target_insert_loc]
 
-            total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{args.inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
+            if endian_def is not None:
+                # This should be defined once and it MUST be defined after all context definitions
+                total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
 
             last_offset = target_insert_loc
             cont = Context()
@@ -249,7 +241,7 @@ def main():
                 total_output += constructor.string[last_offset:constructor.start()]
                 last_offset = constructor.end()
                 env = Environment(cont,
-                                  args.inst_next_size_hint, [InstStartReplacer(), InstNextReplacer()])
+                                  inst_next_size_hint, [InstStartReplacer(), InstNextReplacer()])
                 act_section = constructor.group("action_section")
                 if act_section:
                     statements = act_section[
@@ -267,22 +259,37 @@ def main():
             total_output += target[last_offset:]
 
             # compute the patch header
-            src_and_dst = os.path.relpath(args.target_file, args.base_path)
+            src_and_dst = os.path.relpath(target_file, base_path)
 
             # compute the patch
 
-    with open(args.target_file, 'w') as target_f:
+    with open(target_file, 'w') as target_f:
         target_f.write(total_output)
 
-    res = subprocess.run(["git", "commit", "-a", "-m", args.commit_message],
-                         cwd=args.base_path, capture_output=True)
+    res = subprocess.run(["git", "commit", "-a", "-m", commit_message],
+                         cwd=base_path, capture_output=True)
 
     print(res)
     print(subprocess.run(
-        ["git", "format-patch", "-1", "HEAD", "-o", args.out], cwd=args.base_path, capture_output=True))
+        ["git", "format-patch", "-1", "HEAD", "-o", out_dir], cwd=base_path, capture_output=True))
 
     subprocess.run(
-        ["git", "reset", "--hard", "HEAD~1"], cwd=args.base_path, capture_output=True)
+        ["git", "reset", "--hard", "HEAD~1"], cwd=base_path, capture_output=True)
+
+
+def main():
+    prsr = argparse.ArgumentParser("Disassembly action replacer")
+    prsr.add_argument("target_files", nargs="+", help="List of files to patch")
+    prsr.add_argument("--pc_def", required=True, help="Path to file containing definition of INST_NEXT_PTR")
+    prsr.add_argument("--inst_next_size_hint", required=True, help="Number of bytes of the PC register")
+    prsr.add_argument("--base_path", required=True, help="Path to Ghidra git repo")
+    prsr.add_argument("--out_dir", required=True)
+
+    args = prsr.parse_args()
+
+    for target in args.target_files:
+        print(f"Processing {target}")
+        generate_patch(target, args.pc_def, args.inst_next_size_hint, args.base_path, args.out_dir)
 
 
 if __name__ == "__main__":
