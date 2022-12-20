@@ -57,7 +57,7 @@ class SleighPPCArch : public ArchBase {
   }
 
   std::string_view StackPointerRegisterName(void) const override {
-    return "r1";
+    return "R1";
   }
 
   std::string_view ProgramCounterRegisterName(void) const override {
