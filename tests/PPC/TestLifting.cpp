@@ -449,3 +449,67 @@ TEST(PPCVLELifts, PPCVLEStoreMultipleGeneralPurposeRegisters) {
   TestSpecRunner runner(curr_context);
   runner.RunTestSpec(spec);
 }
+
+// VLE Load Multiple Volatile Special Purpose Registers
+TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
+  llvm::LLVMContext curr_context;
+  // e_ldmvsprw 0x0(r1)
+  std::string insn_data("\x18\x21\x10\x00", 4);
+
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryNormal,
+                      {{"pc", 0x12},
+                       {"r1", 0x13370},
+                       {"cr", 0x0},
+                       {"lr", 0x0},
+                       {"ctr", 0x0},
+                       {"xer", 0x0}},
+                      {{"pc", 0x12 + 4},
+                       {"r1", 0x13370},
+                       {"cr", 0x11223344},
+                       {"lr", 0x55667788},
+                       {"ctr", 0x99aabbcc},
+                       {"xer", 0xddeeff00}});
+  spec.AddPrecWrite<uint32_t>(0x13370, 0x11223344);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x4, 0x55667788);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x8, 0x99aabbcc);
+  spec.AddPrecWrite<uint32_t>(0x13370+0xc, 0xddeeff00);
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
+}
+
+// VLE Store Multiple Volatile Special Purpose Registers
+TEST(PPCVLELifts, PPCVLEStoreMultipleSpecialPurposeRegisters) {
+  llvm::LLVMContext curr_context;
+  // e_stmvsprw 0x0(r1)
+  std::string insn_data("\x18\x21\x11\x00", 4);
+
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryNormal,
+                      {{"pc", 0x12},
+                       {"r1", 0x13370},
+                       {"cr", 0x11223344},
+                       {"lr", 0x55667788},
+                       {"ctr", 0x99aabbcc},
+                       {"xer", 0xddeeff00}},
+                      {{"pc", 0x12 + 4},
+                       {"r1", 0x13370},
+                       {"cr", 0x11223344},
+                       {"lr", 0x55667788},
+                       {"ctr", 0x99aabbcc},
+                       {"xer", 0xddeeff00}});
+  spec.AddPostRead<uint32_t>(0x13370, 0x11223344);
+  spec.AddPostRead<uint32_t>(0x13370+0x4, 0x55667788);
+  spec.AddPostRead<uint32_t>(0x13370+0x8, 0x99aabbcc);
+  spec.AddPostRead<uint32_t>(0x13370+0xc, 0xddeeff00);
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
+}
