@@ -33,11 +33,19 @@ const static std::unordered_map<std::string,
                                 std::function<uint64_t &(PPCState &)>>
     reg_to_accessor = {
         {"pc", [](PPCState &st) -> uint64_t & { return st.pc.qword; }},
-        {"lr", [](PPCState &st) -> uint64_t & { return st.iar.lr.qword; }},
+        {"r0", [](PPCState &st) -> uint64_t & { return st.gpr.r0.qword; }},
         {"r1", [](PPCState &st) -> uint64_t & { return st.gpr.r1.qword; }},
+        {"r2", [](PPCState &st) -> uint64_t & { return st.gpr.r2.qword; }},
         {"r3", [](PPCState &st) -> uint64_t & { return st.gpr.r3.qword; }},
         {"r4", [](PPCState &st) -> uint64_t & { return st.gpr.r4.qword; }},
         {"r5", [](PPCState &st) -> uint64_t & { return st.gpr.r5.qword; }},
+        {"r6", [](PPCState &st) -> uint64_t & { return st.gpr.r6.qword; }},
+        {"r7", [](PPCState &st) -> uint64_t & { return st.gpr.r7.qword; }},
+        {"r8", [](PPCState &st) -> uint64_t & { return st.gpr.r8.qword; }},
+        {"r9", [](PPCState &st) -> uint64_t & { return st.gpr.r9.qword; }},
+        {"r10", [](PPCState &st) -> uint64_t & { return st.gpr.r10.qword; }},
+        {"r11", [](PPCState &st) -> uint64_t & { return st.gpr.r11.qword; }},
+        {"r12", [](PPCState &st) -> uint64_t & { return st.gpr.r12.qword; }},
         {"cr", [](PPCState &st) -> uint64_t & { return st.iar.cr.qword; }},
         {"lr", [](PPCState &st) -> uint64_t & { return st.iar.lr.qword; }},
         {"ctr", [](PPCState &st) -> uint64_t & { return st.iar.ctr.qword; }},
@@ -105,6 +113,7 @@ class TestOutputSpec {
   void CheckCondition(PPCState &state, std::string reg, uint64_t value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
+      LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex << accessor->second(state) << " Expected: " << std::hex << value;
       CHECK_EQ(accessor->second(state), value);
     }
   }
@@ -122,6 +131,7 @@ class TestOutputSpec {
   void AddPostRead(uint64_t addr, T value) {
     this->expected_memory_conditions.push_back(
         [addr, value](test_runner::MemoryHandler &mem_hand) {
+          LOG(INFO) << "Mem: " << std::hex << addr << " Actual: " << std::hex << mem_hand.ReadMemory<T>(addr) << " Expected: " << std::hex << value;
           CHECK_EQ(mem_hand.ReadMemory<T>(addr), value);
         });
   }
@@ -333,30 +343,52 @@ TEST(PPCVLELifts, PPCVLEBranch) {
   runner.RunTestSpec(spec);
 }
 
-// VLE Load Multiple Volatile Special Purpose Registers
-TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
+// VLE Load Multiple Volatile General Purpose Registers
+// Instruction only operates on the 32bit register sizes
+TEST(PPCVLELifts, PPCVLELoadMultipleGeneralPurposeRegisters) {
   llvm::LLVMContext curr_context;
-  // e_ldmvsprw 0x0(r1)
-  std::string insn_data("\x18\x21\x10\x00", 4);
+  // e_ldmvgprw 0x0(r1)
+  std::string insn_data("\x18\x01\x10\x00", 4);
 
   TestOutputSpec spec(0x12, insn_data,
                       remill::Instruction::Category::kCategoryNormal,
                       {{"pc", 0x12},
                        {"r1", 0x13370},
-                       {"cr", 0x0},
-                       {"lr", 0x0},
-                       {"ctr", 0x0},
-                       {"xer", 0x0}},
+                       {"r0", 0x0},
+                       {"r3", 0x0},
+                       {"r4", 0x0},
+                       {"r5", 0x0},
+                       {"r6", 0x0},
+                       {"r7", 0x0},
+                       {"r8", 0x0},
+                       {"r9", 0x0},
+                       {"r10", 0x0},
+                       {"r11", 0x0},
+                       {"r12", 0x0}},
                       {{"pc", 0x12 + 4},
                        {"r1", 0x13370},
-                       {"cr", 0x1122334455667788},
-                       {"lr", 0x2211443366558877},
-                       {"ctr", 0xaabbccddeeff},
-                       {"xer", 0xbbaaddccffee}});
-  spec.AddPrecWrite<uint64_t>(0x13370, 0x1122334455667788);
-  spec.AddPrecWrite<uint64_t>(0x13370+0x8, 0x2211443366558877);
-  spec.AddPrecWrite<uint64_t>(0x13370+0x10, 0xaabbccddeeff);
-  spec.AddPrecWrite<uint64_t>(0x13370+0x18, 0xbbaaddccffee);
+                       {"r0", 0x11223344},
+                       {"r3", 0x22114433},
+                       {"r4", 0x99aabbcc},
+                       {"r5", 0xaa99ccbb},
+                       {"r6", 0x88776655},
+                       {"r7", 0x77885566},
+                       {"r8", 0x00ffeedd},
+                       {"r9", 0xff00ddee},
+                       {"r10", 0x44332211},
+                       {"r11", 0xccbbaa99},
+                       {"r12", 0xbbcc99aa}});
+  spec.AddPrecWrite<uint32_t>(0x13370, 0x11223344);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x4, 0x22114433);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x8, 0x99aabbcc);
+  spec.AddPrecWrite<uint32_t>(0x13370+0xc, 0xaa99ccbb);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x10, 0x88776655);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x14, 0x77885566);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x18, 0x00ffeedd);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x1c, 0xff00ddee);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x20, 0x44332211);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x24, 0xccbbaa99);
+  spec.AddPrecWrite<uint32_t>(0x13370+0x28, 0xbbcc99aa);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
@@ -365,30 +397,51 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
   runner.RunTestSpec(spec);
 }
 
-// VLE Store Multiple Volatile Special Purpose Registers
-TEST(PPCVLELifts, PPCVLEStoreMultipleSpecialPurposeRegisters) {
+// VLE Store Multiple Volatile General Purpose Registers
+TEST(PPCVLELifts, PPCVLEStoreMultipleGeneralPurposeRegisters) {
   llvm::LLVMContext curr_context;
-  // e_stmvsprw 0x0(r1)
-  std::string insn_data("\x18\x21\x11\x00", 4);
+  // e_stmvgprw 0x0(r1)
+  std::string insn_data("\x18\x01\x11\x00", 4);
 
   TestOutputSpec spec(0x12, insn_data,
                       remill::Instruction::Category::kCategoryNormal,
                       {{"pc", 0x12},
                        {"r1", 0x13370},
-                       {"cr", 0x1122334455667788},
-                       {"lr", 0x2211443366558877},
-                       {"ctr", 0xaabbccddeeff},
-                       {"xer", 0xbbaaddccffee}},
+                       {"r0", 0x11223344},
+                       {"r3", 0x22114433},
+                       {"r4", 0x99aabbcc},
+                       {"r5", 0xaa99ccbb},
+                       {"r6", 0x88776655},
+                       {"r7", 0x77885566},
+                       {"r8", 0x00ffeedd},
+                       {"r9", 0xff00ddee},
+                       {"r10", 0x44332211},
+                       {"r11", 0xccbbaa99},
+                       {"r12", 0xbbcc99aa}},
                       {{"pc", 0x12 + 4},
                        {"r1", 0x13370},
-                       {"cr", 0x1122334455667788},
-                       {"lr", 0x2211443366558877},
-                       {"ctr", 0xaabbccddeeff},
-                       {"xer", 0xbbaaddccffee}});
-  spec.AddPostRead<uint64_t>(0x13370, 0x1122334455667788);
-  spec.AddPostRead<uint64_t>(0x13370+0x8, 0x2211443366558877);
-  spec.AddPostRead<uint64_t>(0x13370+0x10, 0xaabbccddeeff);
-  spec.AddPostRead<uint64_t>(0x13370+0x18, 0xbbaaddccffee);
+                       {"r0", 0x11223344},
+                       {"r3", 0x22114433},
+                       {"r4", 0x99aabbcc},
+                       {"r5", 0xaa99ccbb},
+                       {"r6", 0x88776655},
+                       {"r7", 0x77885566},
+                       {"r8", 0x00ffeedd},
+                       {"r9", 0xff00ddee},
+                       {"r10", 0x44332211},
+                       {"r11", 0xccbbaa99},
+                       {"r12", 0xbbcc99aa}});
+  spec.AddPostRead<uint32_t>(0x13370, 0x11223344);
+  spec.AddPostRead<uint32_t>(0x13370+0x4, 0x22114433);
+  spec.AddPostRead<uint32_t>(0x13370+0x8, 0x99aabbcc);
+  spec.AddPostRead<uint32_t>(0x13370+0xc, 0xaa99ccbb);
+  spec.AddPostRead<uint32_t>(0x13370+0x10, 0x88776655);
+  spec.AddPostRead<uint32_t>(0x13370+0x14, 0x77885566);
+  spec.AddPostRead<uint32_t>(0x13370+0x18, 0x00ffeedd);
+  spec.AddPostRead<uint32_t>(0x13370+0x1c, 0xff00ddee);
+  spec.AddPostRead<uint32_t>(0x13370+0x20, 0x44332211);
+  spec.AddPostRead<uint32_t>(0x13370+0x24, 0xccbbaa99);
+  spec.AddPostRead<uint32_t>(0x13370+0x28, 0xbbcc99aa);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
