@@ -513,3 +513,49 @@ TEST(PPCVLELifts, PPCVLEStoreMultipleSpecialPurposeRegisters) {
   TestSpecRunner runner(curr_context);
   runner.RunTestSpec(spec);
 }
+
+// Rotate Left Word Immediate then AND with Mask
+// Tests internal conditional branches in pcode
+// Disabled since we don't support lifting instructions with internal control flow
+TEST(PPCVLELifts, DISABLED_PPCVLERotateLeftWordImmediateAndMask) {
+  llvm::LLVMContext curr_context;
+  // e_rlwinm r6, r5, 0x1e, 0x1d, 0x1f
+  // n >> 2 & 7
+  // (n & 31) >> 2
+  std::string insn_data("\x74\xa6\xf7\x7f");
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryNormal,
+                      {{"pc", 0x12},
+                       {"r5", 0x1337},
+                       {"r6", 0x0}},
+                      {{"pc", 0x12 + 4},
+                       {"r5", 0x1337},
+                       {"r6", 0x5}});
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
+}
+
+// Convert Floating-Point Double-Precision from Signed Integer
+TEST(PPCVLELifts, DISABLED_PPCVLEConvertDoubleFromSignedInteger) {
+  llvm::LLVMContext curr_context;
+  // e_efdcfsi r5, r4
+  std::string insn_data("\x10\xa0\x22\xf1");
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryNormal,
+                      {{"pc", 0x12},
+                       {"r4", 0x1337},
+                       {"r5", 0x0}},
+                      {{"pc", 0x12 + 4},
+                       {"r4", 0x1337},
+                       {"r5", 0x4094e40000000000}});
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
+}
