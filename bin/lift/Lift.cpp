@@ -16,6 +16,8 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/IRBuilder.h>
@@ -395,7 +397,9 @@ int main(int argc, char *argv[]) {
     llvm::Value *trace_args[remill::kNumBlockArgs] = {};
     trace_args[remill::kStatePointerArgNum] = state_ptr;
     trace_args[remill::kMemoryPointerArgNum] = mem_ptr;
-    trace_args[remill::kPCArgNum] = trace_pc;
+    trace_args[remill::kPCArgNum] = llvm::ConstantInt::get(
+        llvm::IntegerType::get(context, arch->address_size),
+        FLAGS_entry_address, false);
 
     mem_ptr = ir.CreateCall(entry_trace, trace_args);
 
