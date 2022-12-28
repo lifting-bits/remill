@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include <sleigh/libsleigh.hh>
+#include <sleigh/pcoderaw.hh>
 #include <unordered_map>
 
 namespace remill::sleigh {
@@ -32,6 +33,9 @@ class ContextUpdater {
 
   // Applies a pcode op to the held context, this may produce a complete context
   void ApplyPcodeOp(const RemillPcodeOp &op);
+
+  std::optional<std::string> GetRemillReg(const VarnodeData &);
+
 
   // May have a complete context
   std::optional<DecodingContext> GetContext() const;
