@@ -31,6 +31,7 @@ add_library(remill_bc STATIC
   Optimizer.cpp
   TraceLifter.cpp
   SleighLifter.cpp
+  PcodeCFG.cpp
   Util.cpp
 )
 
