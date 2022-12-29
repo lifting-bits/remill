@@ -92,6 +92,10 @@ const static std::unordered_map<std::string,
          [](PPCState &st) -> std::reference_wrapper<uint64_t> {
            return st.iar.cr.qword;
          }},
+        {"cr0",
+         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+           return st.cr_flags.cr0;
+         }},
         {"lr",
          [](PPCState &st) -> std::reference_wrapper<uint64_t> {
            return st.iar.lr.qword;
@@ -342,6 +346,46 @@ TEST(PPCVLELifts, PPCVLEAdd) {
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"r4", uint64_t(0xcc)}, {"r3", uint64_t(0xdd)}, {"pc", uint64_t(0x12)}},
       {{"r5", uint64_t(0x1a9)}, {"pc", uint64_t(0x16)}});
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
+}
+
+// Add two registers and record
+TEST(PPCVLELifts, PPCVLEAddRecord) {
+  llvm::LLVMContext curr_context;
+  // add. r5, r4, r3
+  // result is positive so cr0[1] is set which is the third bit in little endian
+  std::string insn_data("\x7C\xA4\x1A\x15", 4);
+  TestOutputSpec spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
+      {{"r4", uint64_t(0xcc)}, {"r3", uint64_t(0xdd)}, {"cr0", uint8_t(0)}, {"pc", uint64_t(0x12)}},
+      {{"r5", uint64_t(0x1a9)}, {"cr0", uint8_t(0b100)}, {"pc", uint64_t(0x16)}});
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
+}
+
+// Add two registers and set overflow
+TEST(PPCVLELifts, PPCVLEAddOverflow) {
+  llvm::LLVMContext curr_context;
+  // addo r5, r4, r3
+  std::string insn_data("\x7C\xA4\x1E\x14", 4);
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryNormal,
+                      {{"r4", uint64_t(5000000000000000000)},
+                       {"r3", uint64_t(5000000000000000000)},
+                       {"xer_ov", uint8_t(0x0)},
+                       {"xer_so", uint8_t(0x0)},
+                       {"pc", uint64_t(0x12)}},
+                      {{"r5", uint64_t(0x8ac7230489e80000)},
+                       {"xer_ov", uint8_t(0x1)},
+                       {"xer_so", uint8_t(0x1)},
+                       {"pc", uint64_t(0x16)}});
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
