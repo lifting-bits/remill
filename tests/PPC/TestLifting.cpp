@@ -184,8 +184,8 @@ class TestOutputSpec {
     if (accessor != reg_to_accessor.end()) {
       auto actual =
           std::any_cast<std::reference_wrapper<T>>(accessor->second(state));
-      LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex << actual
-                << " Expected: " << std::hex << value;
+      LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex << static_cast<uint64_t>(actual.get())
+                << " Expected: " << std::hex << static_cast<uint64_t>(value);
       CHECK_EQ(actual, value);
     }
   }
