@@ -118,6 +118,11 @@ PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) {
 }
 
 
+PcodeBlock::PcodeBlock(size_t base_index)
+    : base_index(base_index),
+      ops(),
+      block_exit(Exit{InstrExit{}}) {}
+
 PcodeCFG PcodeCFGBuilder::Build() {
 
   auto starts = this->GetBlockStarts();
@@ -125,6 +130,14 @@ PcodeCFG PcodeCFGBuilder::Build() {
   starts.assign(s.begin(), s.end());
 
   std::unordered_map<size_t, PcodeBlock> blocks;
+
+  if (this->linear_ops.empty()) {
+    // There is no insturction at 0 to build a block at
+    // build an empty block so we transfer through to exit by terminating the block
+    blocks.insert({0, PcodeBlock(0)});
+    return blocks;
+  }
+
   for (size_t i = 0; i < starts.size(); i++) {
     auto next_start = this->linear_ops.size();
     if ((i + 1) < starts.size()) {
