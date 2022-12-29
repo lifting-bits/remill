@@ -25,6 +25,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
 #include <remill/Arch/Arch.h>
@@ -436,6 +437,8 @@ int main(int argc, char *argv[]) {
 
     guide.slp_vectorize = true;
     guide.loop_vectorize = true;
+
+    CHECK(!llvm::verifyModule(dest_module, &llvm::errs()));
     remill::OptimizeBareModule(&dest_module, guide);
   }
 
