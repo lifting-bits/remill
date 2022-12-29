@@ -51,6 +51,9 @@ class PcodeBlock {
   std::vector<RemillPcodeOp> ops;
   std::variant<Exit, ConditionalExit> block_exit;
 
+  // Default block with an instruction exit and no ops.
+  PcodeBlock(size_t base_index);
+
   PcodeBlock(size_t base_index, std::vector<RemillPcodeOp> ops,
              std::variant<Exit, ConditionalExit> block_exit);
 };
