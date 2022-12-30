@@ -839,6 +839,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       auto lifted_lhs = this->LiftIntegerInParam(bldr, lhs);
       auto lifted_rhs = this->LiftIntegerInParam(bldr, rhs);
       if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
+        DLOG(INFO) << "Binop op: " << get_opname(opc);
         DLOG(INFO) << "Binop with lhs: "
                    << remill::LLVMThingToString(*lifted_lhs);
         DLOG(INFO) << "Binop with rhs: "
@@ -1084,8 +1085,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       if (lifted_lhs.has_value()) {
         DLOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
         auto new_size = lhs.size - rhs.offset;
-        auto *subpiece_lhs = bldr.CreateTrunc(
-            *lifted_lhs, llvm::IntegerType::get(this->context, new_size * 8));
+        auto *subpiece_lhs = bldr.CreateLShr(
+            *lifted_lhs, rhs.offset * 8);
 
         if (new_size < outvar->size) {
           subpiece_lhs = bldr.CreateZExt(
