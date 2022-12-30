@@ -800,7 +800,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       // directs dont read the address of the variable, the offset is the jump
       // TODO(Ian): handle other address spaces
       auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
-          bldr, lhs, llvm::IntegerType::get(this->context, lhs.size * 8));
+          bldr, lhs, this->insn_lifter_parent.GetWordType());
 
 
       auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
