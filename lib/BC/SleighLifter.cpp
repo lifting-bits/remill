@@ -303,6 +303,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
   // Generic sleigh arch
   std::vector<std::string> user_op_names;
 
+  llvm::BasicBlock *entry_block;
   llvm::BasicBlock *exit_block;
 
   size_t curr_id;
@@ -350,6 +351,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         uniques(target_block->getContext()),
         unknown_regs(target_block->getContext()),
         user_op_names(user_op_names_),
+        entry_block(target_block),
         exit_block(exit_block_),
         curr_id(0),
         to_lift_btaken(to_lift_btaken_) {}
@@ -396,10 +398,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return *res;
     }
 
+    // Uniques must be allocated in the entry block
+    llvm::IRBuilder<> entry_bldr(entry_block);
+
     std::stringstream ss;
 
-    auto reg_ptr = this->unknown_regs.GetUniquePtr(target_vnode.offset,
-                                                   target_vnode.size, bldr);
+    auto reg_ptr = this->unknown_regs.GetUniquePtr(
+        target_vnode.offset, target_vnode.size, entry_bldr);
     print_vardata(this->insn_lifter_parent.GetEngine(), ss, target_vnode);
     DLOG(ERROR) << "Creating unique for unknown register: " << ss.str() << " "
                 << reg_ptr->getName().str();
@@ -435,7 +440,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
       return ConstantValue::CreatConstant(cst_v);
     } else if (space_name == "unique") {
-      auto reg_ptr = this->uniques.GetUniquePtr(vnode.offset, vnode.size, bldr);
+      // Uniques must be allocated in the entry block
+      llvm::IRBuilder<> entry_bldr(entry_block);
+
+      auto reg_ptr =
+          this->uniques.GetUniquePtr(vnode.offset, vnode.size, entry_bldr);
       return RegisterValue::CreateRegister(reg_ptr);
     } else {
       LOG(FATAL) << "Unhandled memory space: " << space_name;
