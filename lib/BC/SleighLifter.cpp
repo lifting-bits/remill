@@ -1363,14 +1363,26 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
            if (lhs->getType() != rhs->getType()) {
              rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
            }
-           return bldr.CreateShl(lhs, rhs);
+           // If the number of bits we're shifting exceeds the bit width of the
+           // other operand, the result should be zero.
+           auto *max_shift = llvm::ConstantInt::get(
+               lhs->getType(), lhs->getType()->getIntegerBitWidth());
+           return bldr.CreateSelect(bldr.CreateICmpSGT(rhs, max_shift),
+                                    llvm::ConstantInt::get(lhs->getType(), 0),
+                                    bldr.CreateShl(lhs, rhs));
          }},
         {OpCode::CPUI_INT_RIGHT,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
            if (lhs->getType() != rhs->getType()) {
              rhs = bldr.CreateZExtOrTrunc(rhs, lhs->getType());
            }
-           return bldr.CreateLShr(lhs, rhs);
+           // If the number of bits we're shifting exceeds the bit width of the
+           // other operand, the result should be zero.
+           auto *max_shift = llvm::ConstantInt::get(
+               lhs->getType(), lhs->getType()->getIntegerBitWidth());
+           return bldr.CreateSelect(bldr.CreateICmpSGT(rhs, max_shift),
+                                    llvm::ConstantInt::get(lhs->getType(), 0),
+                                    bldr.CreateLShr(lhs, rhs));
          }},
         {OpCode::CPUI_INT_SRIGHT,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
