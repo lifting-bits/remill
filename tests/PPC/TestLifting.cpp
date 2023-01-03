@@ -664,16 +664,35 @@ TEST(PPCVLELifts, DISABLED_PPCVLERotateLeftWordImmediateAndMask) {
 }
 
 // Convert Floating-Point Double-Precision from Signed Integer
-TEST(PPCVLELifts, DISABLED_PPCVLEConvertDoubleFromSignedInteger) {
+TEST(PPCVLELifts, PPCVLEConvertDoubleFromSignedInteger) {
   llvm::LLVMContext curr_context;
-  // e_efdcfsi r5, r4
+  // efdcfsi r5, r4
   std::string insn_data("\x10\xa0\x22\xf1");
   TestOutputSpec spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"pc", uint64_t(0x12)}, {"r4", uint64_t(0x1337)}, {"r5", uint64_t(0x0)}},
       {{"pc", uint64_t(0x12 + 4)},
        {"r4", uint64_t(0x1337)},
-       {"r5", uint64_t(0x4094e40000000000)}});
+       {"r5", uint64_t(0x40b3370000000000)}});
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
+}
+
+// Convert Floating-Point Single-Precision from Signed Integer
+TEST(PPCVLELifts, PPCVLEConvertFloatFromSignedInteger) {
+  llvm::LLVMContext curr_context;
+  // efscfsi r5, r4
+  std::string insn_data("\x10\xa0\x22\xd1");
+  TestOutputSpec spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(0x12)}, {"r4", uint64_t(0x1337)}, {"r5", uint64_t(0x0)}},
+      {{"pc", uint64_t(0x12 + 4)},
+       {"r4", uint64_t(0x1337)},
+       {"r5", uint64_t(0x4599b800)}});
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
