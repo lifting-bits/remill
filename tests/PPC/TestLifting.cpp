@@ -736,8 +736,7 @@ TEST(PPCVLELifts, DISABLED_PPCVLEStoreMultipleSpecialPurposeRegisters) {
 
 // Rotate Left Word Immediate then AND with Mask
 // Tests internal conditional branches in pcode
-// Disabled since we don't support lifting instructions with internal control flow
-TEST(PPCVLELifts, DISABLED_PPCVLERotateLeftWordImmediateAndMask) {
+TEST(PPCVLELifts, PPCVLERotateLeftWordImmediateAndMask) {
   llvm::LLVMContext curr_context;
   // e_rlwinm r6, r5, 0x1e, 0x1d, 0x1f
   // n >> 2 & 7
