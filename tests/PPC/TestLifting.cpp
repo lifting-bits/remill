@@ -212,7 +212,8 @@ class TestOutputSpec {
     if (accessor != reg_to_accessor.end()) {
       auto actual =
           std::any_cast<std::reference_wrapper<T>>(accessor->second(state));
-      LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex << static_cast<uint64_t>(actual.get())
+      LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
+                << static_cast<uint64_t>(actual.get())
                 << " Expected: " << std::hex << static_cast<uint64_t>(value);
       CHECK_EQ(actual, value);
     }
@@ -387,10 +388,15 @@ TEST(PPCVLELifts, PPCVLEAddRecord) {
   // add. r5, r4, r3
   // result is positive so cr0[1] is set which is the third bit in little endian
   std::string insn_data("\x7C\xA4\x1A\x15", 4);
-  TestOutputSpec spec(
-      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
-      {{"r4", uint64_t(0xcc)}, {"r3", uint64_t(0xdd)}, {"cr0", uint8_t(0)}, {"pc", uint64_t(0x12)}},
-      {{"r5", uint64_t(0x1a9)}, {"cr0", uint8_t(0b100)}, {"pc", uint64_t(0x16)}});
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryNormal,
+                      {{"r4", uint64_t(0xcc)},
+                       {"r3", uint64_t(0xdd)},
+                       {"cr0", uint8_t(0)},
+                       {"pc", uint64_t(0x12)}},
+                      {{"r5", uint64_t(0x1a9)},
+                       {"cr0", uint8_t(0b100)},
+                       {"pc", uint64_t(0x16)}});
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif

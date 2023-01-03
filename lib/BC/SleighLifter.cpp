@@ -1086,8 +1086,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       if (lifted_lhs.has_value()) {
         DLOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
         auto new_size = lhs.size - rhs.offset;
-        auto *subpiece_lhs = bldr.CreateLShr(
-            *lifted_lhs, rhs.offset * 8);
+        auto *subpiece_lhs = bldr.CreateLShr(*lifted_lhs, rhs.offset * 8);
 
         if (new_size < outvar->size) {
           subpiece_lhs = bldr.CreateZExt(
@@ -1538,7 +1537,6 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
   DLOG(INFO) << "Secondary lift of bytes: " << llvm::toHex(inst.bytes);
   auto target_func = this->DefineInstructionFunction(inst, target_mod);
-
 
   llvm::BasicBlock *target_block = &target_func->getEntryBlock();
   llvm::IRBuilder<> ir(target_block);
