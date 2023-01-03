@@ -96,6 +96,34 @@ const static std::unordered_map<std::string,
          [](PPCState &st) -> std::reference_wrapper<uint8_t> {
            return st.cr_flags.cr0;
          }},
+        {"cr1",
+         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+           return st.cr_flags.cr1;
+         }},
+        {"cr2",
+         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+           return st.cr_flags.cr2;
+         }},
+        {"cr3",
+         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+           return st.cr_flags.cr3;
+         }},
+        {"cr4",
+         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+           return st.cr_flags.cr4;
+         }},
+        {"cr5",
+         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+           return st.cr_flags.cr5;
+         }},
+        {"cr6",
+         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+           return st.cr_flags.cr6;
+         }},
+        {"cr7",
+         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+           return st.cr_flags.cr7;
+         }},
         {"lr",
          [](PPCState &st) -> std::reference_wrapper<uint64_t> {
            return st.iar.lr.qword;
@@ -587,16 +615,33 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
                       {{"pc", uint64_t(0x12)},
                        {"r1", uint64_t(0x13370)},
                        {"cr", uint64_t(0x0)},
+                       {"cr0", uint8_t(0x0)},
+                       {"cr1", uint8_t(0x0)},
+                       {"cr2", uint8_t(0x0)},
+                       {"cr3", uint8_t(0x0)},
+                       {"cr4", uint8_t(0x0)},
+                       {"cr5", uint8_t(0x0)},
+                       {"cr6", uint8_t(0x0)},
+                       {"cr7", uint8_t(0x0)},
                        {"lr", uint64_t(0x0)},
                        {"ctr", uint64_t(0x0)},
                        {"xer", uint64_t(0x0)}},
                       {{"pc", uint64_t(0x12 + 4)},
                        {"r1", uint64_t(0x13370)},
                        //{"cr", 0x11223344},
+                       // each crN register is 4-bits
+                       {"cr0", uint8_t(0x1)},
+                       {"cr1", uint8_t(0x2)},
+                       {"cr2", uint8_t(0x3)},
+                       {"cr3", uint8_t(0x4)},
+                       {"cr4", uint8_t(0x5)},
+                       {"cr5", uint8_t(0x6)},
+                       {"cr6", uint8_t(0x7)},
+                       {"cr7", uint8_t(0x8)},
                        {"lr", uint64_t(0x55667788)},
                        {"ctr", uint64_t(0x99aabbcc)},
                        {"xer", uint64_t(0xddeeff00)}});
-  spec.AddPrecWrite<uint32_t>(0x13370, 0x11223344);
+  spec.AddPrecWrite<uint32_t>(0x13370, 0x87654321);
   spec.AddPrecWrite<uint32_t>(0x13370 + 0x4, 0x55667788);
   spec.AddPrecWrite<uint32_t>(0x13370 + 0x8, 0x99aabbcc);
   spec.AddPrecWrite<uint32_t>(0x13370 + 0xc, 0xddeeff00);
@@ -609,7 +654,8 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
 }
 
 // VLE Store Multiple Volatile Special Purpose Registers
-TEST(PPCVLELifts, PPCVLEStoreMultipleSpecialPurposeRegisters) {
+// Disabled for now due to bug in Ghidra pcode for this instruction
+TEST(PPCVLELifts, DISABLED_PPCVLEStoreMultipleSpecialPurposeRegisters) {
   llvm::LLVMContext curr_context;
   // e_stmvsprw 0x0(r1)
   std::string insn_data("\x18\x21\x11\x00", 4);
@@ -621,14 +667,29 @@ TEST(PPCVLELifts, PPCVLEStoreMultipleSpecialPurposeRegisters) {
                        {"cr", uint64_t(0x11223344)},
                        {"lr", uint64_t(0x55667788)},
                        {"ctr", uint64_t(0x99aabbcc)},
+                       {"cr0", uint8_t(0x1)},
+                       {"cr1", uint8_t(0x2)},
+                       {"cr2", uint8_t(0x3)},
+                       {"cr3", uint8_t(0x4)},
+                       {"cr4", uint8_t(0x5)},
+                       {"cr5", uint8_t(0x6)},
+                       {"cr6", uint8_t(0x7)},
+                       {"cr7", uint8_t(0x8)},
                        {"xer", uint64_t(0xddeeff00)}},
                       {{"pc", uint64_t(0x12 + 4)},
                        {"r1", uint64_t(0x13370)},
-                       {"cr", uint64_t(0x11223344)},
+                       {"cr0", uint8_t(0x1)},
+                       {"cr1", uint8_t(0x2)},
+                       {"cr2", uint8_t(0x3)},
+                       {"cr3", uint8_t(0x4)},
+                       {"cr4", uint8_t(0x5)},
+                       {"cr5", uint8_t(0x6)},
+                       {"cr6", uint8_t(0x7)},
+                       {"cr7", uint8_t(0x8)},
                        {"lr", uint64_t(0x55667788)},
                        {"ctr", uint64_t(0x99aabbcc)},
                        {"xer", uint64_t(0xddeeff00)}});
-  //spec.AddPostRead<uint32_t>(0x13370, 0x11223344);
+  spec.AddPostRead<uint32_t>(0x13370, 0x87654321);
   spec.AddPostRead<uint32_t>(0x13370 + 0x4, 0x55667788);
   spec.AddPostRead<uint32_t>(0x13370 + 0x8, 0x99aabbcc);
   spec.AddPostRead<uint32_t>(0x13370 + 0xc, 0xddeeff00);
