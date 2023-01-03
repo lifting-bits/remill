@@ -467,9 +467,8 @@ inline const remill::DecodingContext kVLEContext =
 // VLE long relative conditional branch
 TEST(PPCVLELifts, PPCVLECondBranch) {
   llvm::LLVMContext curr_context;
-  // e_bne 0xfffffffa (-0x6)
-  std::string insn_data("\x7a\x02\xff\xfa", 4);
-  //TestOutputSpec spec(0x12, insn_data, remill::Instruction::Category::kCategoryConditionalBranch);
+  // e_beq 0xfffffffa (-0x6)
+  std::string insn_data("\x7a\x12\xff\xfa", 4);
   auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
   ASSERT_TRUE(maybe_flow.has_value());
   auto act_insn = *maybe_flow;
@@ -484,6 +483,17 @@ TEST(PPCVLELifts, PPCVLECondBranch) {
       std::get<remill::Instruction::ConditionalInstruction>(act_insn.flows);
 
   EXPECT_EQ(expected_condjmp, act_insn.flows);
+
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryConditionalBranch,
+                      {{"pc", uint64_t(0x10)}, {"cr0", uint8_t(0b10)}},
+                      {{"pc", uint64_t(0xa)}, {"cr0", uint8_t(0b10)}});
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
 }
 
 // VLE long relative branch
