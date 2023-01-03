@@ -1369,7 +1369,7 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
            // other operand, the result should be zero.
            auto *max_shift = llvm::ConstantInt::get(
                lhs->getType(), lhs->getType()->getIntegerBitWidth());
-           return bldr.CreateSelect(bldr.CreateICmpSGT(rhs, max_shift),
+           return bldr.CreateSelect(bldr.CreateICmpSGE(rhs, max_shift),
                                     llvm::ConstantInt::get(lhs->getType(), 0),
                                     bldr.CreateShl(lhs, rhs));
          }},
@@ -1382,7 +1382,7 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
            // other operand, the result should be zero.
            auto *max_shift = llvm::ConstantInt::get(
                lhs->getType(), lhs->getType()->getIntegerBitWidth());
-           return bldr.CreateSelect(bldr.CreateICmpSGT(rhs, max_shift),
+           return bldr.CreateSelect(bldr.CreateICmpSGE(rhs, max_shift),
                                     llvm::ConstantInt::get(lhs->getType(), 0),
                                     bldr.CreateLShr(lhs, rhs));
          }},
