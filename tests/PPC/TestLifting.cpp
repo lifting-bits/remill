@@ -513,6 +513,23 @@ TEST(PPCVLELifts, PPCVLEBranch) {
   runner.RunTestSpec(spec);
 }
 
+// VLE short compare immediate
+TEST(PPCVLELifts, PPCVLECompareImmediate) {
+  llvm::LLVMContext curr_context;
+  // se_cmpi r7, 0x0
+  std::string insn_data("\x2a\x07");
+  // cr1[2], set when result is zero
+  TestOutputSpec spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(0x12)}, {"r7", uint64_t(0x0)}, {"cr0", uint8_t(0)}},
+      {{"pc", uint64_t(0x12 + 2)}, {"cr0", uint8_t(0b10)}});
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner runner(curr_context);
+  runner.RunTestSpec(spec);
+}
+
 // VLE Load Multiple Volatile General Purpose Registers
 // Instruction only operates on the 32bit register sizes
 TEST(PPCVLELifts, PPCVLELoadMultipleGeneralPurposeRegisters) {
