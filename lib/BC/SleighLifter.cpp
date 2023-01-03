@@ -572,9 +572,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       }
       case OpCode::CPUI_FLOAT_INT2FLOAT: {
         auto int2float_inval = this->LiftIntegerInParam(bldr, input_var);
-        if (int2float_inval.has_value()) {
-          auto *converted = bldr.CreateSIToFP(
-              *int2float_inval, llvm::Type::getFloatTy(this->context));
+        auto new_float_type = this->GetFloatTypeOfByteSize(outvar->size);
+        if (int2float_inval.has_value() && new_float_type) {
+          auto *converted =
+              bldr.CreateSIToFP(*int2float_inval, *new_float_type);
           return this->LiftStoreIntoOutParam(
               bldr, this->CastFloatResult(bldr, *outvar, converted), outvar);
         }
