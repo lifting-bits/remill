@@ -444,6 +444,52 @@ TEST(PPCVLELifts, PPCVLECompareImmediate) {
   runner.RunTestSpec(spec);
 }
 
+// VLE Store word
+TEST(PPCVLELifts, PPCVLEStoreWord) {
+  llvm::LLVMContext curr_context;
+  // e_stw r5, 0x10(r4)
+  std::string insn_data("\x54\xa4\x00\x10", 4);
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r5", uint64_t(0x13371337)},
+                                 {"r4", uint64_t(0xdeadbee0)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"r5", uint64_t(0x13371337)},
+                                 {"r4", uint64_t(0xdeadbee0)}},
+                                reg_to_accessor);
+  spec.AddPrecWrite<uint32_t>(0xdeadbee0 + 0x10, 0x0);
+  spec.AddPostRead<uint32_t>(0xdeadbee0 + 0x10, 0x13371337);
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  runner.RunTestSpec(spec);
+}
+
+// Load word and zero
+TEST(PPCVLELifts, PPCVLELoadWordAndZero) {
+  llvm::LLVMContext curr_context;
+  // e_lwz r5, 0x10(r4)
+  std::string insn_data("\x50\xa4\x00\x10", 4);
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r5", uint64_t(0x0)},
+                                 {"r4", uint64_t(0xdeadbee0)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"r5", uint64_t(0x13371337)},
+                                 {"r4", uint64_t(0xdeadbee0)}},
+                                reg_to_accessor);
+  spec.AddPrecWrite<uint32_t>(0xdeadbee0 + 0x10, 0x13371337);
+  spec.AddPostRead<uint32_t>(0xdeadbee0 + 0x10, 0x13371337);
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  runner.RunTestSpec(spec);
+}
+
 // VLE Load Multiple Volatile General Purpose Registers
 // Instruction only operates on the 32bit register sizes
 TEST(PPCVLELifts, PPCVLELoadMultipleGeneralPurposeRegisters) {
@@ -723,9 +769,7 @@ TEST(PPCVLELifts, DISABLED_PPCVLESyscall) {
   std::string insn_data("\x7c\x00\x00\x48", 4);
   TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
-      {{"pc", uint64_t(0x12)}},
-      {{"pc", uint64_t(0x12 + 4)}},
-      reg_to_accessor);
+      {{"pc", uint64_t(0x12)}}, {{"pc", uint64_t(0x12 + 4)}}, reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
