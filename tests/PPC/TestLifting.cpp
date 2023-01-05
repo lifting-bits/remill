@@ -604,7 +604,7 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
 }
 
 // VLE Store Multiple Volatile Special Purpose Registers
-// Disabled for now due to bug in Ghidra pcode for this instruction
+// TODO(wtan): Disabled for now due to bug in Ghidra pcode for this instruction
 TEST(PPCVLELifts, DISABLED_PPCVLEStoreMultipleSpecialPurposeRegisters) {
   llvm::LLVMContext curr_context;
   // e_stmvsprw 0x0(r1)
@@ -706,6 +706,25 @@ TEST(PPCVLELifts, PPCVLEConvertFloatFromSignedInteger) {
       {{"pc", uint64_t(0x12 + 4)},
        {"r4", uint64_t(0x1337)},
        {"r5", uint64_t(0x4599b800)}},
+      reg_to_accessor);
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  runner.RunTestSpec(spec);
+}
+
+// Test syscall
+// TODO(wtan): Disabled, callother not supported
+TEST(PPCVLELifts, DISABLED_PPCVLESyscall) {
+  llvm::LLVMContext curr_context;
+  // e_sc
+  std::string insn_data("\x7c\x00\x00\x48", 4);
+  TestOutputSpec<PPCState> spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(0x12)}},
+      {{"pc", uint64_t(0x12 + 4)}},
       reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
