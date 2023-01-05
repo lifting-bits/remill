@@ -431,7 +431,7 @@ TEST(PPCVLELifts, PPCVLEBranch) {
 TEST(PPCVLELifts, PPCVLECompareImmediate) {
   llvm::LLVMContext curr_context;
   // se_cmpi r7, 0x0
-  std::string insn_data("\x2a\x07");
+  std::string insn_data("\x2a\x07", 2);
   // cr1[2], set when result is zero
   TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
@@ -659,7 +659,7 @@ TEST(PPCVLELifts, PPCVLERotateLeftWordImmediateAndMask) {
   // e_rlwinm r6, r5, 0x1e, 0x1d, 0x1f
   // n >> 2 & 7
   // (n & 31) >> 2
-  std::string insn_data("\x74\xa6\xf7\x7f");
+  std::string insn_data("\x74\xa6\xf7\x7f", 4);
   TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"pc", uint64_t(0x12)}, {"r5", uint64_t(0x1337)}, {"r6", uint64_t(0x0)}},
@@ -679,7 +679,7 @@ TEST(PPCVLELifts, PPCVLERotateLeftWordImmediateAndMask) {
 TEST(PPCVLELifts, PPCVLEConvertDoubleFromSignedInteger) {
   llvm::LLVMContext curr_context;
   // efdcfsi r5, r4
-  std::string insn_data("\x10\xa0\x22\xf1");
+  std::string insn_data("\x10\xa0\x22\xf1", 4);
   TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"pc", uint64_t(0x12)}, {"r4", uint64_t(0x1337)}, {"r5", uint64_t(0x0)}},
@@ -699,7 +699,7 @@ TEST(PPCVLELifts, PPCVLEConvertDoubleFromSignedInteger) {
 TEST(PPCVLELifts, PPCVLEConvertFloatFromSignedInteger) {
   llvm::LLVMContext curr_context;
   // efscfsi r5, r4
-  std::string insn_data("\x10\xa0\x22\xd1");
+  std::string insn_data("\x10\xa0\x22\xd1", 4);
   TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"pc", uint64_t(0x12)}, {"r4", uint64_t(0x1337)}, {"r5", uint64_t(0x0)}},
