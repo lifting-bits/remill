@@ -23,6 +23,7 @@
 #include <remill/BC/Optimizer.h>
 #include <remill/BC/Version.h>
 #include <remill/OS/OS.h>
+#include <test_runner/TestOutputSpec.h>
 #include <test_runner/TestRunner.h>
 
 #include <unordered_map>
@@ -146,7 +147,6 @@ const static std::unordered_map<std::string,
          }},
 };
 
-
 std::optional<remill::Instruction>
 GetFlows(std::string_view bytes, uint64_t address, uint64_t vle_val) {
 
@@ -172,125 +172,10 @@ GetFlows(std::string_view bytes, uint64_t address, uint64_t vle_val) {
 }
 }  // namespace
 
+using test_runner::TestOutputSpec;
 
-using MemoryModifier = std::function<void(test_runner::MemoryHandler &)>;
-
-struct RegisterPrecondition {
-  std::string register_name;
-  std::variant<uint64_t, uint8_t> enforced_value;
-};
-
-struct MemoryPostcondition {
-  uint64_t addr;
-  std::vector<uint8_t> bytes;
-};
-
-class TestOutputSpec {
- public:
-  uint64_t addr;
-  std::string target_bytes;
-
- private:
-  remill::Instruction::Category expected_category;
-  std::vector<RegisterPrecondition> register_preconditions;
-  std::vector<RegisterPrecondition> register_postconditions;
-  std::vector<MemoryModifier> initial_memory_conditions;
-  std::vector<MemoryModifier> expected_memory_conditions;
-
-  template <typename T>
-  void ApplyCondition(PPCState &state, std::string reg, T value) const {
-    auto accessor = reg_to_accessor.find(reg);
-    if (accessor != reg_to_accessor.end()) {
-      std::any_cast<std::reference_wrapper<T>>(accessor->second(state)).get() =
-          value;
-    }
-  }
-
-  template <typename T>
-  void CheckCondition(PPCState &state, std::string reg, T value) const {
-    auto accessor = reg_to_accessor.find(reg);
-    if (accessor != reg_to_accessor.end()) {
-      auto actual =
-          std::any_cast<std::reference_wrapper<T>>(accessor->second(state));
-      LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
-                << static_cast<uint64_t>(actual.get())
-                << " Expected: " << std::hex << static_cast<uint64_t>(value);
-      CHECK_EQ(actual, value);
-    }
-  }
-
- public:
-  template <typename T>
-  void AddPrecWrite(uint64_t addr, T value) {
-    this->initial_memory_conditions.push_back(
-        [addr, value](test_runner::MemoryHandler &mem_hand) {
-          mem_hand.WriteMemory(addr, value);
-        });
-  }
-
-  template <typename T>
-  void AddPostRead(uint64_t addr, T value) {
-    this->expected_memory_conditions.push_back(
-        [addr, value](test_runner::MemoryHandler &mem_hand) {
-          LOG(INFO) << "Mem: " << std::hex << addr << " Actual: " << std::hex
-                    << mem_hand.ReadMemory<T>(addr) << " Expected: " << std::hex
-                    << value;
-          CHECK_EQ(mem_hand.ReadMemory<T>(addr), value);
-        });
-  }
-
-  const std::vector<MemoryModifier> &GetMemoryPrecs() const {
-    return this->initial_memory_conditions;
-  }
-
-  const std::vector<MemoryModifier> &GetMemoryPosts() const {
-    return this->expected_memory_conditions;
-  }
-
-  TestOutputSpec(uint64_t disas_addr, std::string target_bytes,
-                 remill::Instruction::Category expected_category,
-                 std::vector<RegisterPrecondition> register_preconditions,
-                 std::vector<RegisterPrecondition> register_postconditions)
-      : addr(disas_addr),
-        target_bytes(target_bytes),
-        expected_category(expected_category),
-        register_preconditions(std::move(register_preconditions)),
-        register_postconditions(std::move(register_postconditions)) {}
-
-
-  void SetupTestPreconditions(PPCState &state) const {
-    for (auto prec : this->register_preconditions) {
-      std::visit(
-          [this, &state, prec](auto &&arg) {
-            using T = std::decay_t<decltype(arg)>;
-            this->ApplyCondition<T>(state, prec.register_name, arg);
-          },
-          prec.enforced_value);
-    }
-  }
-
-  void CheckLiftedInstruction(const remill::Instruction &lifted) const {
-    CHECK_EQ(lifted.category, this->expected_category);
-  }
-
-  void CheckResultingState(PPCState &state) const {
-    for (auto post : this->register_postconditions) {
-      std::visit(
-          [this, &state, post](auto &&arg) {
-            using T = std::decay_t<decltype(arg)>;
-            this->CheckCondition<T>(state, post.register_name, arg);
-          },
-          post.enforced_value);
-    }
-  }
-
-  void CheckResultingMemory(test_runner::MemoryHandler &mem_hand) const {
-    for (const auto &post : this->GetMemoryPosts()) {
-      post(mem_hand);
-    }
-  }
-};
-
+template <typename State, typename = typename std::enable_if_t<
+                              std::is_base_of<ArchState, State>::value>>
 class TestSpecRunner {
  private:
   test_runner::LiftingTester lifter;
@@ -299,15 +184,15 @@ class TestSpecRunner {
   llvm::support::endianness endian;
 
  public:
-  TestSpecRunner(llvm::LLVMContext &context)
+  TestSpecRunner(llvm::LLVMContext &context, remill::ArchName archname)
       : lifter(test_runner::LiftingTester(context, remill::OSName::kOSLinux,
-                                          remill::ArchName::kArchPPC)),
+                                          archname)),
         tst_ctr(0),
         endian(lifter.GetArch()->MemoryAccessIsLittleEndian()
                    ? llvm::support::endianness::little
                    : llvm::support::endianness::big) {}
 
-  void RunTestSpec(const TestOutputSpec &test) {
+  void RunTestSpec(const TestOutputSpec<State> &test) {
     std::stringstream ss;
     ss << "test_disas_func_" << this->tst_ctr++;
 
@@ -326,19 +211,11 @@ class TestSpecRunner {
 
     auto new_func = test_runner::CopyFunctionIntoNewModule(
         justFuncMod.get(), lifted_func, new_mod);
-    PPCState st = {};
+    State st = {};
 
 
     test.CheckLiftedInstruction(maybe_func->second);
     test_runner::RandomizeState(st, this->rbe);
-
-    /*
-    st.sr.z = test_runner::random_boolean_flag(this->rbe);
-    st.sr.c = test_runner::random_boolean_flag(this->rbe);
-    st.sr.v = test_runner::random_boolean_flag(this->rbe);
-    st.sr.z = test_runner::random_boolean_flag(this->rbe);
-    st.sr.n = test_runner::random_boolean_flag(this->rbe);
-    */
 
     test.SetupTestPreconditions(st);
     auto mem_hand = std::make_unique<test_runner::MemoryHandler>(this->endian);
@@ -347,9 +224,9 @@ class TestSpecRunner {
       prec(*mem_hand);
     }
 
-    test_runner::ExecuteLiftedFunction<PPCState, uint64_t>(
+    test_runner::ExecuteLiftedFunction<State, uint64_t>(
         new_func, test.target_bytes.length(), &st, mem_hand.get(),
-        [](PPCState *st) { return st->pc.qword; });
+        [](State *st) { return st->pc.qword; });
 
     LOG(INFO) << "Pc after execute " << st.pc.qword;
     test.CheckResultingState(st);
@@ -371,14 +248,14 @@ TEST(PPCVLELifts, PPCVLEAdd) {
   llvm::LLVMContext curr_context;
   // add r5, r4, r3
   std::string insn_data("\x7C\xA4\x1A\x14", 4);
-  TestOutputSpec spec(
+  TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"r4", uint64_t(0xcc)}, {"r3", uint64_t(0xdd)}, {"pc", uint64_t(0x12)}},
-      {{"r5", uint64_t(0x1a9)}, {"pc", uint64_t(0x16)}});
+      {{"r5", uint64_t(0x1a9)}, {"pc", uint64_t(0x16)}}, reg_to_accessor);
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -388,19 +265,20 @@ TEST(PPCVLELifts, PPCVLEAddRecord) {
   // add. r5, r4, r3
   // result is positive so cr0[1] is set which is the third bit in little endian
   std::string insn_data("\x7C\xA4\x1A\x15", 4);
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryNormal,
-                      {{"r4", uint64_t(0xcc)},
-                       {"r3", uint64_t(0xdd)},
-                       {"cr0", uint8_t(0)},
-                       {"pc", uint64_t(0x12)}},
-                      {{"r5", uint64_t(0x1a9)},
-                       {"cr0", uint8_t(0b100)},
-                       {"pc", uint64_t(0x16)}});
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"r4", uint64_t(0xcc)},
+                                 {"r3", uint64_t(0xdd)},
+                                 {"cr0", uint8_t(0)},
+                                 {"pc", uint64_t(0x12)}},
+                                {{"r5", uint64_t(0x1a9)},
+                                 {"cr0", uint8_t(0b100)},
+                                 {"pc", uint64_t(0x16)}},
+                                reg_to_accessor);
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -409,21 +287,22 @@ TEST(PPCVLELifts, PPCVLEAddOverflow) {
   llvm::LLVMContext curr_context;
   // addo r5, r4, r3
   std::string insn_data("\x7C\xA4\x1E\x14", 4);
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryNormal,
-                      {{"r4", uint64_t(5000000000000000000)},
-                       {"r3", uint64_t(5000000000000000000)},
-                       {"xer_ov", uint8_t(0x0)},
-                       {"xer_so", uint8_t(0x0)},
-                       {"pc", uint64_t(0x12)}},
-                      {{"r5", uint64_t(0x8ac7230489e80000)},
-                       {"xer_ov", uint8_t(0x1)},
-                       {"xer_so", uint8_t(0x1)},
-                       {"pc", uint64_t(0x16)}});
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"r4", uint64_t(5000000000000000000)},
+                                 {"r3", uint64_t(5000000000000000000)},
+                                 {"xer_ov", uint8_t(0x0)},
+                                 {"xer_so", uint8_t(0x0)},
+                                 {"pc", uint64_t(0x12)}},
+                                {{"r5", uint64_t(0x8ac7230489e80000)},
+                                 {"xer_ov", uint8_t(0x1)},
+                                 {"xer_so", uint8_t(0x1)},
+                                 {"pc", uint64_t(0x16)}},
+                                reg_to_accessor);
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -432,15 +311,15 @@ TEST(PPCVLELifts, PPCVLEBranchLinkRegister) {
   llvm::LLVMContext curr_context;
   // se_blr
   std::string insn_data("\x00\x04", 2);
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryFunctionReturn,
-                      {{"lr", uint64_t(0x4)}, {"pc", uint64_t(0x12)}},
-                      {{"lr", uint64_t(0x4)}, {"pc", uint64_t(0x4)}});
+  TestOutputSpec<PPCState> spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryFunctionReturn,
+      {{"lr", uint64_t(0x4)}, {"pc", uint64_t(0x12)}},
+      {{"lr", uint64_t(0x4)}, {"pc", uint64_t(0x4)}}, reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -449,15 +328,15 @@ TEST(PPCVLELifts, PPCVLEBranchLinkRegisterAndLink) {
   llvm::LLVMContext curr_context;
   // se_blrl
   std::string insn_data("\x00\x05", 2);
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryFunctionReturn,
-                      {{"lr", uint64_t(0x4)}, {"pc", uint64_t(0x12)}},
-                      {{"lr", uint64_t(0x14)}, {"pc", uint64_t(0x4)}});
+  TestOutputSpec<PPCState> spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryFunctionReturn,
+      {{"lr", uint64_t(0x4)}, {"pc", uint64_t(0x12)}},
+      {{"lr", uint64_t(0x14)}, {"pc", uint64_t(0x4)}}, reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -484,15 +363,49 @@ TEST(PPCVLELifts, PPCVLECondBranch) {
 
   EXPECT_EQ(expected_condjmp, act_insn.flows);
 
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryConditionalBranch,
-                      {{"pc", uint64_t(0x10)}, {"cr0", uint8_t(0b10)}},
-                      {{"pc", uint64_t(0xa)}, {"cr0", uint8_t(0b10)}});
+  TestOutputSpec<PPCState> spec(
+      0x12, insn_data,
+      remill::Instruction::Category::kCategoryConditionalBranch,
+      {{"pc", uint64_t(0x10)}, {"cr0", uint8_t(0b10)}},
+      {{"pc", uint64_t(0xa)}, {"cr0", uint8_t(0b10)}}, reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  runner.RunTestSpec(spec);
+}
+
+// VLE long relative conditional branch
+TEST(PPCVLELifts, PPCVLECondBranch2) {
+  llvm::LLVMContext curr_context;
+  // e_beq 0xfffffffa (-0x6)
+  std::string insn_data("\x7a\x12\xff\xfa", 4);
+  auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto act_insn = *maybe_flow;
+
+  remill::Instruction::InstructionFlowCategory expected_condjmp =
+      remill::Instruction::ConditionalInstruction(
+          remill::Instruction::DirectJump(
+              remill::Instruction::DirectFlow(0xdeadbee0 - 0x6, kVLEContext)),
+          remill::Instruction::FallthroughFlow(kVLEContext));
+
+  auto actual_condjmp =
+      std::get<remill::Instruction::ConditionalInstruction>(act_insn.flows);
+
+  EXPECT_EQ(expected_condjmp, act_insn.flows);
+
+  TestOutputSpec<PPCState> spec(
+      0x12, insn_data,
+      remill::Instruction::Category::kCategoryConditionalBranch,
+      {{"pc", uint64_t(0x10)}, {"cr0", uint8_t(0b0)}},
+      {{"pc", uint64_t(0x14)}, {"cr0", uint8_t(0b0)}}, reg_to_accessor);
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -502,14 +415,15 @@ TEST(PPCVLELifts, PPCVLEBranch) {
   // e_b 0x5a
   std::string insn_data("\x78\x00\x00\x5a", 4);
   // offset PC by 0x1000012 to also test that relative PC lifting works correctly
-  TestOutputSpec spec(
+  TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryDirectJump,
-      {{"pc", uint64_t(0x1000012)}}, {{"pc", uint64_t(0x1000012 + 0x5a)}});
+      {{"pc", uint64_t(0x1000012)}}, {{"pc", uint64_t(0x1000012 + 0x5a)}},
+      reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -519,14 +433,14 @@ TEST(PPCVLELifts, PPCVLECompareImmediate) {
   // se_cmpi r7, 0x0
   std::string insn_data("\x2a\x07");
   // cr1[2], set when result is zero
-  TestOutputSpec spec(
+  TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"pc", uint64_t(0x12)}, {"r7", uint64_t(0x0)}, {"cr0", uint8_t(0)}},
-      {{"pc", uint64_t(0x12 + 2)}, {"cr0", uint8_t(0b10)}});
+      {{"pc", uint64_t(0x12 + 2)}, {"cr0", uint8_t(0b10)}}, reg_to_accessor);
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -537,34 +451,35 @@ TEST(PPCVLELifts, PPCVLELoadMultipleGeneralPurposeRegisters) {
   // e_ldmvgprw 0x0(r1)
   std::string insn_data("\x18\x01\x10\x00", 4);
 
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryNormal,
-                      {{"pc", uint64_t(0x12)},
-                       {"r1", uint64_t(0x13370)},
-                       {"r0", uint64_t(0x0)},
-                       {"r3", uint64_t(0x0)},
-                       {"r4", uint64_t(0x0)},
-                       {"r5", uint64_t(0x0)},
-                       {"r6", uint64_t(0x0)},
-                       {"r7", uint64_t(0x0)},
-                       {"r8", uint64_t(0x0)},
-                       {"r9", uint64_t(0x0)},
-                       {"r10", uint64_t(0x0)},
-                       {"r11", uint64_t(0x0)},
-                       {"r12", uint64_t(0x0)}},
-                      {{"pc", uint64_t(0x12 + 4)},
-                       {"r1", uint64_t(0x13370)},
-                       {"r0", uint64_t(0x11223344)},
-                       {"r3", uint64_t(0x22114433)},
-                       {"r4", uint64_t(0x99aabbcc)},
-                       {"r5", uint64_t(0xaa99ccbb)},
-                       {"r6", uint64_t(0x88776655)},
-                       {"r7", uint64_t(0x77885566)},
-                       {"r8", uint64_t(0x00ffeedd)},
-                       {"r9", uint64_t(0xff00ddee)},
-                       {"r10", uint64_t(0x44332211)},
-                       {"r11", uint64_t(0xccbbaa99)},
-                       {"r12", uint64_t(0xbbcc99aa)}});
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r1", uint64_t(0x13370)},
+                                 {"r0", uint64_t(0x0)},
+                                 {"r3", uint64_t(0x0)},
+                                 {"r4", uint64_t(0x0)},
+                                 {"r5", uint64_t(0x0)},
+                                 {"r6", uint64_t(0x0)},
+                                 {"r7", uint64_t(0x0)},
+                                 {"r8", uint64_t(0x0)},
+                                 {"r9", uint64_t(0x0)},
+                                 {"r10", uint64_t(0x0)},
+                                 {"r11", uint64_t(0x0)},
+                                 {"r12", uint64_t(0x0)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"r1", uint64_t(0x13370)},
+                                 {"r0", uint64_t(0x11223344)},
+                                 {"r3", uint64_t(0x22114433)},
+                                 {"r4", uint64_t(0x99aabbcc)},
+                                 {"r5", uint64_t(0xaa99ccbb)},
+                                 {"r6", uint64_t(0x88776655)},
+                                 {"r7", uint64_t(0x77885566)},
+                                 {"r8", uint64_t(0x00ffeedd)},
+                                 {"r9", uint64_t(0xff00ddee)},
+                                 {"r10", uint64_t(0x44332211)},
+                                 {"r11", uint64_t(0xccbbaa99)},
+                                 {"r12", uint64_t(0xbbcc99aa)}},
+                                reg_to_accessor);
   spec.AddPrecWrite<uint32_t>(0x13370, 0x11223344);
   spec.AddPrecWrite<uint32_t>(0x13370 + 0x4, 0x22114433);
   spec.AddPrecWrite<uint32_t>(0x13370 + 0x8, 0x99aabbcc);
@@ -580,7 +495,7 @@ TEST(PPCVLELifts, PPCVLELoadMultipleGeneralPurposeRegisters) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -590,34 +505,35 @@ TEST(PPCVLELifts, PPCVLEStoreMultipleGeneralPurposeRegisters) {
   // e_stmvgprw 0x0(r1)
   std::string insn_data("\x18\x01\x11\x00", 4);
 
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryNormal,
-                      {{"pc", uint64_t(0x12)},
-                       {"r1", uint64_t(0x13370)},
-                       {"r0", uint64_t(0x11223344)},
-                       {"r3", uint64_t(0x22114433)},
-                       {"r4", uint64_t(0x99aabbcc)},
-                       {"r5", uint64_t(0xaa99ccbb)},
-                       {"r6", uint64_t(0x88776655)},
-                       {"r7", uint64_t(0x77885566)},
-                       {"r8", uint64_t(0x00ffeedd)},
-                       {"r9", uint64_t(0xff00ddee)},
-                       {"r10", uint64_t(0x44332211)},
-                       {"r11", uint64_t(0xccbbaa99)},
-                       {"r12", uint64_t(0xbbcc99aa)}},
-                      {{"pc", uint64_t(0x12 + 4)},
-                       {"r1", uint64_t(0x13370)},
-                       {"r0", uint64_t(0x11223344)},
-                       {"r3", uint64_t(0x22114433)},
-                       {"r4", uint64_t(0x99aabbcc)},
-                       {"r5", uint64_t(0xaa99ccbb)},
-                       {"r6", uint64_t(0x88776655)},
-                       {"r7", uint64_t(0x77885566)},
-                       {"r8", uint64_t(0x00ffeedd)},
-                       {"r9", uint64_t(0xff00ddee)},
-                       {"r10", uint64_t(0x44332211)},
-                       {"r11", uint64_t(0xccbbaa99)},
-                       {"r12", uint64_t(0xbbcc99aa)}});
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r1", uint64_t(0x13370)},
+                                 {"r0", uint64_t(0x11223344)},
+                                 {"r3", uint64_t(0x22114433)},
+                                 {"r4", uint64_t(0x99aabbcc)},
+                                 {"r5", uint64_t(0xaa99ccbb)},
+                                 {"r6", uint64_t(0x88776655)},
+                                 {"r7", uint64_t(0x77885566)},
+                                 {"r8", uint64_t(0x00ffeedd)},
+                                 {"r9", uint64_t(0xff00ddee)},
+                                 {"r10", uint64_t(0x44332211)},
+                                 {"r11", uint64_t(0xccbbaa99)},
+                                 {"r12", uint64_t(0xbbcc99aa)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"r1", uint64_t(0x13370)},
+                                 {"r0", uint64_t(0x11223344)},
+                                 {"r3", uint64_t(0x22114433)},
+                                 {"r4", uint64_t(0x99aabbcc)},
+                                 {"r5", uint64_t(0xaa99ccbb)},
+                                 {"r6", uint64_t(0x88776655)},
+                                 {"r7", uint64_t(0x77885566)},
+                                 {"r8", uint64_t(0x00ffeedd)},
+                                 {"r9", uint64_t(0xff00ddee)},
+                                 {"r10", uint64_t(0x44332211)},
+                                 {"r11", uint64_t(0xccbbaa99)},
+                                 {"r12", uint64_t(0xbbcc99aa)}},
+                                reg_to_accessor);
   spec.AddPostRead<uint32_t>(0x13370, 0x11223344);
   spec.AddPostRead<uint32_t>(0x13370 + 0x4, 0x22114433);
   spec.AddPostRead<uint32_t>(0x13370 + 0x8, 0x99aabbcc);
@@ -633,7 +549,7 @@ TEST(PPCVLELifts, PPCVLEStoreMultipleGeneralPurposeRegisters) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -643,37 +559,38 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
   // e_ldmvsprw 0x0(r1)
   std::string insn_data("\x18\x21\x10\x00", 4);
 
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryNormal,
-                      {{"pc", uint64_t(0x12)},
-                       {"r1", uint64_t(0x13370)},
-                       {"cr", uint64_t(0x0)},
-                       {"cr0", uint8_t(0x0)},
-                       {"cr1", uint8_t(0x0)},
-                       {"cr2", uint8_t(0x0)},
-                       {"cr3", uint8_t(0x0)},
-                       {"cr4", uint8_t(0x0)},
-                       {"cr5", uint8_t(0x0)},
-                       {"cr6", uint8_t(0x0)},
-                       {"cr7", uint8_t(0x0)},
-                       {"lr", uint64_t(0x0)},
-                       {"ctr", uint64_t(0x0)},
-                       {"xer", uint64_t(0x0)}},
-                      {{"pc", uint64_t(0x12 + 4)},
-                       {"r1", uint64_t(0x13370)},
-                       //{"cr", 0x11223344},
-                       // each crN register is 4-bits
-                       {"cr0", uint8_t(0x1)},
-                       {"cr1", uint8_t(0x2)},
-                       {"cr2", uint8_t(0x3)},
-                       {"cr3", uint8_t(0x4)},
-                       {"cr4", uint8_t(0x5)},
-                       {"cr5", uint8_t(0x6)},
-                       {"cr6", uint8_t(0x7)},
-                       {"cr7", uint8_t(0x8)},
-                       {"lr", uint64_t(0x55667788)},
-                       {"ctr", uint64_t(0x99aabbcc)},
-                       {"xer", uint64_t(0xddeeff00)}});
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r1", uint64_t(0x13370)},
+                                 {"cr", uint64_t(0x0)},
+                                 {"cr0", uint8_t(0x0)},
+                                 {"cr1", uint8_t(0x0)},
+                                 {"cr2", uint8_t(0x0)},
+                                 {"cr3", uint8_t(0x0)},
+                                 {"cr4", uint8_t(0x0)},
+                                 {"cr5", uint8_t(0x0)},
+                                 {"cr6", uint8_t(0x0)},
+                                 {"cr7", uint8_t(0x0)},
+                                 {"lr", uint64_t(0x0)},
+                                 {"ctr", uint64_t(0x0)},
+                                 {"xer", uint64_t(0x0)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"r1", uint64_t(0x13370)},
+                                 //{"cr", 0x11223344},
+                                 // each crN register is 4-bits
+                                 {"cr0", uint8_t(0x1)},
+                                 {"cr1", uint8_t(0x2)},
+                                 {"cr2", uint8_t(0x3)},
+                                 {"cr3", uint8_t(0x4)},
+                                 {"cr4", uint8_t(0x5)},
+                                 {"cr5", uint8_t(0x6)},
+                                 {"cr6", uint8_t(0x7)},
+                                 {"cr7", uint8_t(0x8)},
+                                 {"lr", uint64_t(0x55667788)},
+                                 {"ctr", uint64_t(0x99aabbcc)},
+                                 {"xer", uint64_t(0xddeeff00)}},
+                                reg_to_accessor);
   spec.AddPrecWrite<uint32_t>(0x13370, 0x87654321);
   spec.AddPrecWrite<uint32_t>(0x13370 + 0x4, 0x55667788);
   spec.AddPrecWrite<uint32_t>(0x13370 + 0x8, 0x99aabbcc);
@@ -682,7 +599,7 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -693,35 +610,36 @@ TEST(PPCVLELifts, DISABLED_PPCVLEStoreMultipleSpecialPurposeRegisters) {
   // e_stmvsprw 0x0(r1)
   std::string insn_data("\x18\x21\x11\x00", 4);
 
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryNormal,
-                      {{"pc", uint64_t(0x12)},
-                       {"r1", uint64_t(0x13370)},
-                       {"cr", uint64_t(0x11223344)},
-                       {"lr", uint64_t(0x55667788)},
-                       {"ctr", uint64_t(0x99aabbcc)},
-                       {"cr0", uint8_t(0x1)},
-                       {"cr1", uint8_t(0x2)},
-                       {"cr2", uint8_t(0x3)},
-                       {"cr3", uint8_t(0x4)},
-                       {"cr4", uint8_t(0x5)},
-                       {"cr5", uint8_t(0x6)},
-                       {"cr6", uint8_t(0x7)},
-                       {"cr7", uint8_t(0x8)},
-                       {"xer", uint64_t(0xddeeff00)}},
-                      {{"pc", uint64_t(0x12 + 4)},
-                       {"r1", uint64_t(0x13370)},
-                       {"cr0", uint8_t(0x1)},
-                       {"cr1", uint8_t(0x2)},
-                       {"cr2", uint8_t(0x3)},
-                       {"cr3", uint8_t(0x4)},
-                       {"cr4", uint8_t(0x5)},
-                       {"cr5", uint8_t(0x6)},
-                       {"cr6", uint8_t(0x7)},
-                       {"cr7", uint8_t(0x8)},
-                       {"lr", uint64_t(0x55667788)},
-                       {"ctr", uint64_t(0x99aabbcc)},
-                       {"xer", uint64_t(0xddeeff00)}});
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r1", uint64_t(0x13370)},
+                                 {"cr", uint64_t(0x11223344)},
+                                 {"lr", uint64_t(0x55667788)},
+                                 {"ctr", uint64_t(0x99aabbcc)},
+                                 {"cr0", uint8_t(0x1)},
+                                 {"cr1", uint8_t(0x2)},
+                                 {"cr2", uint8_t(0x3)},
+                                 {"cr3", uint8_t(0x4)},
+                                 {"cr4", uint8_t(0x5)},
+                                 {"cr5", uint8_t(0x6)},
+                                 {"cr6", uint8_t(0x7)},
+                                 {"cr7", uint8_t(0x8)},
+                                 {"xer", uint64_t(0xddeeff00)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"r1", uint64_t(0x13370)},
+                                 {"cr0", uint8_t(0x1)},
+                                 {"cr1", uint8_t(0x2)},
+                                 {"cr2", uint8_t(0x3)},
+                                 {"cr3", uint8_t(0x4)},
+                                 {"cr4", uint8_t(0x5)},
+                                 {"cr5", uint8_t(0x6)},
+                                 {"cr6", uint8_t(0x7)},
+                                 {"cr7", uint8_t(0x8)},
+                                 {"lr", uint64_t(0x55667788)},
+                                 {"ctr", uint64_t(0x99aabbcc)},
+                                 {"xer", uint64_t(0xddeeff00)}},
+                                reg_to_accessor);
   spec.AddPostRead<uint32_t>(0x13370, 0x87654321);
   spec.AddPostRead<uint32_t>(0x13370 + 0x4, 0x55667788);
   spec.AddPostRead<uint32_t>(0x13370 + 0x8, 0x99aabbcc);
@@ -730,7 +648,7 @@ TEST(PPCVLELifts, DISABLED_PPCVLEStoreMultipleSpecialPurposeRegisters) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -742,17 +660,18 @@ TEST(PPCVLELifts, PPCVLERotateLeftWordImmediateAndMask) {
   // n >> 2 & 7
   // (n & 31) >> 2
   std::string insn_data("\x74\xa6\xf7\x7f");
-  TestOutputSpec spec(
+  TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"pc", uint64_t(0x12)}, {"r5", uint64_t(0x1337)}, {"r6", uint64_t(0x0)}},
       {{"pc", uint64_t(0x12 + 4)},
        {"r5", uint64_t(0x1337)},
-       {"r6", uint64_t(0x5)}});
+       {"r6", uint64_t(0x5)}},
+      reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -761,17 +680,18 @@ TEST(PPCVLELifts, PPCVLEConvertDoubleFromSignedInteger) {
   llvm::LLVMContext curr_context;
   // efdcfsi r5, r4
   std::string insn_data("\x10\xa0\x22\xf1");
-  TestOutputSpec spec(
+  TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"pc", uint64_t(0x12)}, {"r4", uint64_t(0x1337)}, {"r5", uint64_t(0x0)}},
       {{"pc", uint64_t(0x12 + 4)},
        {"r4", uint64_t(0x1337)},
-       {"r5", uint64_t(0x40b3370000000000)}});
+       {"r5", uint64_t(0x40b3370000000000)}},
+      reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
 
@@ -780,16 +700,17 @@ TEST(PPCVLELifts, PPCVLEConvertFloatFromSignedInteger) {
   llvm::LLVMContext curr_context;
   // efscfsi r5, r4
   std::string insn_data("\x10\xa0\x22\xd1");
-  TestOutputSpec spec(
+  TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
       {{"pc", uint64_t(0x12)}, {"r4", uint64_t(0x1337)}, {"r5", uint64_t(0x0)}},
       {{"pc", uint64_t(0x12 + 4)},
        {"r4", uint64_t(0x1337)},
-       {"r5", uint64_t(0x4599b800)}});
+       {"r5", uint64_t(0x4599b800)}},
+      reg_to_accessor);
 
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner runner(curr_context);
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
   runner.RunTestSpec(spec);
 }
