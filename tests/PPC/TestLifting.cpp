@@ -761,6 +761,28 @@ TEST(PPCVLELifts, PPCVLEConvertFloatFromSignedInteger) {
   runner.RunTestSpec(spec);
 }
 
+// Convert Floating-Point Single-Precision to Signed Integer
+TEST(PPCVLELifts, PPCVLEConvertFloatToSignedInteger) {
+  llvm::LLVMContext curr_context;
+  // efsctsi r5, r4
+  std::string insn_data("\x10\xa0\x22\xd5", 4);
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r4", uint64_t(0x4599b800)},
+                                 {"r5", uint64_t(0x0)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"r4", uint64_t(0x4599b800)},
+                                 {"r5", uint64_t(0x1337)}},
+                                reg_to_accessor);
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  runner.RunTestSpec(spec);
+}
+
 // Test syscall
 // TODO(wtan): Disabled, callother not supported
 TEST(PPCVLELifts, DISABLED_PPCVLESyscall) {
