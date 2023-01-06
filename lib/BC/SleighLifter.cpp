@@ -508,9 +508,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
-    llvm::Function *intrinsic = llvm::Intrinsic::getDeclaration(
-        bldr.GetInsertBlock()->getModule(), intrinsic_id);
     llvm::Value *intrinsic_args[] = {*inval};
+    llvm::Function *intrinsic =
+        llvm::Intrinsic::getDeclaration(bldr.GetInsertBlock()->getModule(),
+                                        intrinsic_id, {(*inval)->getType()});
     return this->LiftStoreIntoOutParam(
         bldr,
         this->CastFloatResult(bldr, *outvar,
