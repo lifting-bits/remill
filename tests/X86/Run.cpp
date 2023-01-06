@@ -50,9 +50,12 @@ DEFINE_bool(
 
 namespace {
 
+// SIGSTKSZ is no longer constant in glibc 2.34+
+const size_t REMILL_SIGSTKSZ = 4096 * 16;
+
 struct alignas(128) Stack {
   uint8_t _redzone1[128];
-  uint8_t bytes[(SIGSTKSZ / 128) * 128];
+  uint8_t bytes[(REMILL_SIGSTKSZ / 128) * 128];
   uint8_t _redzone2[128];
 };
 
@@ -1261,7 +1264,7 @@ static void SetupSignals(void) {
 
   stack_t sig_stack;
   sig_stack.ss_sp = &gSigStack;
-  sig_stack.ss_size = SIGSTKSZ;
+  sig_stack.ss_size = REMILL_SIGSTKSZ;
   sig_stack.ss_flags = 0;
   sigaltstack(&sig_stack, nullptr);
 }
