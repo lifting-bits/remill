@@ -380,6 +380,12 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
 #  endif
 
+#elif defined(REMILL_HYPERCALL_PPC)
+
+    case SyncHyperCall::kPPCEmulateInstruction:
+      mem = __remill_ppc_emulate_instruction(mem);
+      break;
+
 #endif
 
     default: __builtin_unreachable(); break;
