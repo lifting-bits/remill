@@ -16,14 +16,18 @@
 
 #pragma once
 
+#include <glog/logging.h>
+#include <remill/Arch/Arch.h>
 #include <test_runner/TestRunner.h>
 
 #include <any>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace test_runner {
 
-using MemoryModifier = std::function<void(test_runner::MemoryHandler &)>;
+using MemoryModifier = std::function<void(MemoryHandler &)>;
 
 struct RegisterPrecondition {
   std::string register_name;
@@ -78,7 +82,7 @@ class TestOutputSpec {
   template <typename T>
   void AddPrecWrite(uint64_t addr, T value) {
     this->initial_memory_conditions.push_back(
-        [addr, value](test_runner::MemoryHandler &mem_hand) {
+        [addr, value](MemoryHandler &mem_hand) {
           mem_hand.WriteMemory(addr, value);
         });
   }
@@ -86,7 +90,7 @@ class TestOutputSpec {
   template <typename T>
   void AddPostRead(uint64_t addr, T value) {
     this->expected_memory_conditions.push_back(
-        [addr, value](test_runner::MemoryHandler &mem_hand) {
+        [addr, value](MemoryHandler &mem_hand) {
           LOG(INFO) << "Mem: " << std::hex << addr << " Actual: " << std::hex
                     << mem_hand.ReadMemory<T>(addr) << " Expected: " << std::hex
                     << value;
@@ -143,7 +147,7 @@ class TestOutputSpec {
     }
   }
 
-  void CheckResultingMemory(test_runner::MemoryHandler &mem_hand) const {
+  void CheckResultingMemory(MemoryHandler &mem_hand) const {
     for (const auto &post : this->GetMemoryPosts()) {
       post(mem_hand);
     }
