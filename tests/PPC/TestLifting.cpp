@@ -623,7 +623,6 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
                                  {"xer", uint64_t(0x0)}},
                                 {{"pc", uint64_t(0x12 + 4)},
                                  {"r1", uint64_t(0x13370)},
-                                 //{"cr", 0x11223344},
                                  // each crN register is 4-bits
                                  {"cr0", uint8_t(0x1)},
                                  {"cr1", uint8_t(0x2)},
