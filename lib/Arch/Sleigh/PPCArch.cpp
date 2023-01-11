@@ -189,6 +189,7 @@ class SleighPPCArch : public ArchBase {
     REG(F29, fpr.f29.qword, f64);
     REG(F30, fpr.f30.qword, f64);
 
+    REG(CRALL, iar.cr.qword, u64);
     REG(CTR, iar.ctr.qword, u64);
     REG(LR, iar.lr.qword, u64);
     REG(XER, iar.xer.dword, u32);
