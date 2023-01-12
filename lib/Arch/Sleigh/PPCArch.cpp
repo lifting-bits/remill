@@ -109,9 +109,7 @@ class SleighPPCArch : public ArchBase {
     auto u8 = llvm::Type::getInt8Ty(*context);
     auto u32 = llvm::Type::getInt32Ty(*context);
     auto u64 = llvm::Type::getInt64Ty(*context);
-    auto u128 = llvm::Type::getInt128Ty(*context);
 
-    auto f32 = llvm::Type::getFloatTy(*context);
     auto f64 = llvm::Type::getDoubleTy(*context);
 
 #define OFFSET_OF(type, access) \
