@@ -98,7 +98,7 @@ class SleighPPCArch : public ArchBase {
   }
 
   llvm::DataLayout DataLayout(void) const override {
-    return llvm::DataLayout("");
+    return llvm::DataLayout("E-p:32:32");
   }
 
   void PopulateRegisterTable(void) const override {
