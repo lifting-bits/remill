@@ -29,7 +29,7 @@ namespace test_runner {
 
 using MemoryModifier = std::function<void(MemoryHandler &)>;
 
-struct RegisterPrecondition {
+struct RegisterCondition {
   std::string register_name;
   std::variant<uint64_t, uint8_t> enforced_value;
 };
@@ -49,8 +49,8 @@ class TestOutputSpec {
 
  private:
   remill::Instruction::Category expected_category;
-  std::vector<RegisterPrecondition> register_preconditions;
-  std::vector<RegisterPrecondition> register_postconditions;
+  std::vector<RegisterCondition> register_preconditions;
+  std::vector<RegisterCondition> register_postconditions;
   std::vector<MemoryModifier> initial_memory_conditions;
   std::vector<MemoryModifier> expected_memory_conditions;
   std::unordered_map<std::string, std::function<std::any(State &)>>
@@ -109,8 +109,8 @@ class TestOutputSpec {
   TestOutputSpec(
       uint64_t disas_addr, std::string target_bytes,
       remill::Instruction::Category expected_category,
-      std::vector<RegisterPrecondition> register_preconditions,
-      std::vector<RegisterPrecondition> register_postconditions,
+      std::vector<RegisterCondition> register_preconditions,
+      std::vector<RegisterCondition> register_postconditions,
       std::unordered_map<std::string, std::function<std::any(State &)>>
           reg_to_accessor)
       : addr(disas_addr),
