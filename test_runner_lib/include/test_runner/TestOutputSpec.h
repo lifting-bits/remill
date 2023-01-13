@@ -28,10 +28,12 @@
 namespace test_runner {
 
 using MemoryModifier = std::function<void(MemoryHandler &)>;
+using RegisterValue = std::variant<uint64_t, uint8_t>;
+using RegisterValueRef = std::variant<std::reference_wrapper<uint64_t>, std::reference_wrapper<uint8_t>>;
 
 struct RegisterCondition {
   std::string register_name;
-  std::variant<uint64_t, uint8_t> enforced_value;
+  RegisterValue enforced_value;
 };
 
 struct MemoryPostcondition {
@@ -53,28 +55,34 @@ class TestOutputSpec {
   std::vector<RegisterCondition> register_postconditions;
   std::vector<MemoryModifier> initial_memory_conditions;
   std::vector<MemoryModifier> expected_memory_conditions;
-  std::unordered_map<std::string, std::function<std::any(State &)>>
+  std::unordered_map<std::string, std::function<RegisterValueRef(State &)>>
       reg_to_accessor;
 
   template <typename T>
-  void ApplyCondition(State &state, std::string reg, T value) const {
+  void ApplyCondition(State &state, const std::string reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
-      std::any_cast<std::reference_wrapper<T>>(accessor->second(state)).get() =
-          value;
+      std::visit(
+            [value](auto &&arg) {
+              arg.get() = value;
+            },
+            accessor->second(state));
     }
   }
 
   template <typename T>
-  void CheckCondition(State &state, std::string reg, T value) const {
+  void CheckCondition(State &state, const std::string reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
-      auto actual =
-          std::any_cast<std::reference_wrapper<T>>(accessor->second(state));
-      LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
-                << static_cast<uint64_t>(actual.get())
-                << " Expected: " << std::hex << static_cast<uint64_t>(value);
-      CHECK_EQ(actual, value);
+      std::visit(
+            [state, reg, value](auto &&arg) {
+              auto actual = arg.get();
+              LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
+                        << static_cast<uint64_t>(actual)
+                        << " Expected: " << std::hex << static_cast<uint64_t>(value);
+              CHECK_EQ(actual, value);
+            },
+            accessor->second(state));
     }
   }
 
@@ -111,7 +119,7 @@ class TestOutputSpec {
       remill::Instruction::Category expected_category,
       std::vector<RegisterCondition> register_preconditions,
       std::vector<RegisterCondition> register_postconditions,
-      std::unordered_map<std::string, std::function<std::any(State &)>>
+      std::unordered_map<std::string, std::function<RegisterValueRef(State &)>>
           reg_to_accessor)
       : addr(disas_addr),
         target_bytes(target_bytes),

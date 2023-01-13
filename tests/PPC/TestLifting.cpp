@@ -31,118 +31,118 @@
 namespace {
 
 const static std::unordered_map<std::string,
-                                std::function<std::any(PPCState &)>>
+                                std::function<test_runner::RegisterValueRef(PPCState &)>>
     reg_to_accessor = {
         {"pc",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.pc.qword);
          }},
         {"r0",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r0.qword);
          }},
         {"r1",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r1.qword);
          }},
         {"r2",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r2.qword);
          }},
         {"r3",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r3.qword);
          }},
         {"r4",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r4.qword);
          }},
         {"r5",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r5.qword);
          }},
         {"r6",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r6.qword);
          }},
         {"r7",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r7.qword);
          }},
         {"r8",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r8.qword);
          }},
         {"r9",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return (st.gpr.r9.qword);
          }},
         {"r10",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.gpr.r10.qword;
          }},
         {"r11",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.gpr.r11.qword;
          }},
         {"r12",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.gpr.r12.qword;
          }},
         {"cr",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.iar.cr.qword;
          }},
         {"cr0",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.cr_flags.cr0;
          }},
         {"cr1",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.cr_flags.cr1;
          }},
         {"cr2",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.cr_flags.cr2;
          }},
         {"cr3",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.cr_flags.cr3;
          }},
         {"cr4",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.cr_flags.cr4;
          }},
         {"cr5",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.cr_flags.cr5;
          }},
         {"cr6",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.cr_flags.cr6;
          }},
         {"cr7",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.cr_flags.cr7;
          }},
         {"lr",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.iar.lr.qword;
          }},
         {"ctr",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.iar.ctr.qword;
          }},
         {"xer",
-         [](PPCState &st) -> std::reference_wrapper<uint64_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.iar.xer.qword;
          }},
         {"xer_so",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.xer_flags.so;
          }},
         {"xer_ov",
-         [](PPCState &st) -> std::reference_wrapper<uint8_t> {
+         [](PPCState &st) -> test_runner::RegisterValueRef {
            return st.xer_flags.ov;
          }},
 };
