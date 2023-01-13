@@ -174,8 +174,7 @@ GetFlows(std::string_view bytes, uint64_t address, uint64_t vle_val) {
 
 using test_runner::TestOutputSpec;
 
-template <typename State, typename = typename std::enable_if_t<
-                              std::is_base_of<ArchState, State>::value>>
+template <test_runner::State S>
 class TestSpecRunner {
  private:
   test_runner::LiftingTester lifter;
@@ -192,7 +191,7 @@ class TestSpecRunner {
                    ? llvm::support::endianness::little
                    : llvm::support::endianness::big) {}
 
-  void RunTestSpec(const TestOutputSpec<State> &test) {
+  void RunTestSpec(const TestOutputSpec<S> &test) {
     std::stringstream ss;
     ss << "test_disas_func_" << this->tst_ctr++;
 
@@ -211,8 +210,7 @@ class TestSpecRunner {
 
     auto new_func = test_runner::CopyFunctionIntoNewModule(
         just_func_mod.get(), lifted_func, new_mod);
-    State st = {};
-
+    S st = {};
 
     test.CheckLiftedInstruction(maybe_func->second);
     test_runner::RandomizeState(st, this->rbe);
@@ -224,9 +222,9 @@ class TestSpecRunner {
       prec(*mem_hand);
     }
 
-    test_runner::ExecuteLiftedFunction<State, uint64_t>(
+    test_runner::ExecuteLiftedFunction<S, uint64_t>(
         new_func, test.target_bytes.length(), &st, mem_hand.get(),
-        [](State *st) { return st->pc.qword; });
+        [](S *st) { return st->pc.qword; });
 
     LOG(INFO) << "Pc after execute " << st.pc.qword;
     test.CheckResultingState(st);

@@ -42,8 +42,10 @@ struct MemoryPostcondition {
 };
 
 
-template <typename State, typename = typename std::enable_if_t<
-                              std::is_base_of<ArchState, State>::value>>
+template <typename T>
+concept State = std::is_base_of_v<ArchState, T>;
+
+template <State S>
 class TestOutputSpec {
  public:
   uint64_t addr;
@@ -55,11 +57,11 @@ class TestOutputSpec {
   std::vector<RegisterCondition> register_postconditions;
   std::vector<MemoryModifier> initial_memory_conditions;
   std::vector<MemoryModifier> expected_memory_conditions;
-  std::unordered_map<std::string, std::function<RegisterValueRef(State &)>>
+  std::unordered_map<std::string, std::function<RegisterValueRef(S &)>>
       reg_to_accessor;
 
   template <typename T>
-  void ApplyCondition(State &state, const std::string reg, T value) const {
+  void ApplyCondition(S &state, const std::string reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
       std::visit(
@@ -71,7 +73,7 @@ class TestOutputSpec {
   }
 
   template <typename T>
-  void CheckCondition(State &state, const std::string reg, T value) const {
+  void CheckCondition(S &state, const std::string reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
       std::visit(
@@ -119,7 +121,7 @@ class TestOutputSpec {
       remill::Instruction::Category expected_category,
       std::vector<RegisterCondition> register_preconditions,
       std::vector<RegisterCondition> register_postconditions,
-      std::unordered_map<std::string, std::function<RegisterValueRef(State &)>>
+      std::unordered_map<std::string, std::function<RegisterValueRef(S &)>>
           reg_to_accessor)
       : addr(disas_addr),
         target_bytes(std::move(target_bytes)),
@@ -129,7 +131,7 @@ class TestOutputSpec {
         reg_to_accessor(std::move(reg_to_accessor)) {}
 
 
-  void SetupTestPreconditions(State &state) const {
+  void SetupTestPreconditions(S &state) const {
     for (auto prec : this->register_preconditions) {
       std::visit(
           [this, &state, prec](auto &&arg) {
@@ -144,7 +146,7 @@ class TestOutputSpec {
     CHECK_EQ(lifted.category, this->expected_category);
   }
 
-  void CheckResultingState(State &state) const {
+  void CheckResultingState(S &state) const {
     for (auto post : this->register_postconditions) {
       std::visit(
           [this, &state, post](auto &&arg) {
