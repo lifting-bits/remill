@@ -122,11 +122,11 @@ class TestOutputSpec {
       std::unordered_map<std::string, std::function<RegisterValueRef(State &)>>
           reg_to_accessor)
       : addr(disas_addr),
-        target_bytes(target_bytes),
+        target_bytes(std::move(target_bytes)),
         expected_category(expected_category),
         register_preconditions(std::move(register_preconditions)),
         register_postconditions(std::move(register_postconditions)),
-        reg_to_accessor(reg_to_accessor) {}
+        reg_to_accessor(std::move(reg_to_accessor)) {}
 
 
   void SetupTestPreconditions(State &state) const {
