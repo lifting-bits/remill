@@ -564,7 +564,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         auto nan_inval = this->LiftFloatInParam(bldr, input_var);
         if (nan_inval.has_value()) {
           // LLVM trunk has an `isnan` intrinsic but to support older versions, I think we need to do this.
-          auto *isnan_check = bldr.CreateZExt(
+          auto isnan_check = bldr.CreateZExt(
               bldr.CreateNot(bldr.CreateFCmpORD(*nan_inval, *nan_inval)),
               llvm::IntegerType::get(this->context, outvar->size * 8));
           return this->LiftStoreIntoOutParam(bldr, isnan_check, outvar);
@@ -575,7 +575,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         auto int2float_inval = this->LiftIntegerInParam(bldr, input_var);
         auto new_float_type = this->GetFloatTypeOfByteSize(outvar->size);
         if (int2float_inval.has_value() && new_float_type) {
-          auto *converted =
+          auto converted =
               bldr.CreateSIToFP(*int2float_inval, *new_float_type);
           return this->LiftStoreIntoOutParam(
               bldr, this->CastFloatResult(bldr, *outvar, converted), outvar);
@@ -600,7 +600,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         auto trunc_inval = this->LiftFloatInParam(bldr, input_var);
         if (trunc_inval.has_value()) {
           // Should this be UI?
-          auto *converted = bldr.CreateFPToSI(
+          auto converted = bldr.CreateFPToSI(
               *trunc_inval,
               llvm::IntegerType::get(this->context, outvar->size * 8));
           return this->LiftStoreIntoOutParam(bldr, converted, outvar);
@@ -683,9 +683,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       case OpCode::CPUI_INT_SEXT: {
         auto zext_inval = this->LiftIntegerInParam(bldr, input_var);
         if (zext_inval.has_value()) {
-          auto *zext_type =
+          auto zext_type =
               llvm::IntegerType::get(this->context, outvar->size * 8);
-          auto *zext_op = (opc == OpCode::CPUI_INT_ZEXT)
+          auto zext_op = (opc == OpCode::CPUI_INT_ZEXT)
                               ? bldr.CreateZExt(*zext_inval, zext_type)
                               : bldr.CreateSExt(*zext_inval, zext_type);
           return this->LiftStoreIntoOutParam(bldr, zext_op, outvar);
@@ -1068,14 +1068,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
       if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
         // Widen the most significant operand and then left shift it to make room for the least significant operand.
-        auto *ms_operand = bldr.CreateZExt(
+        auto ms_operand = bldr.CreateZExt(
             *lifted_lhs, llvm::IntegerType::get(this->context, outvar->size));
-        auto *shifted_ms_operand = bldr.CreateShl(
+        auto shifted_ms_operand = bldr.CreateShl(
             ms_operand, llvm::ConstantInt::get(
                             llvm::Type::getInt8Ty(this->context), rhs.size));
 
         // Now concatenate them with an OR.
-        auto *concat = bldr.CreateOr(shifted_ms_operand, *lifted_rhs);
+        auto concat = bldr.CreateOr(shifted_ms_operand, *lifted_rhs);
         return this->LiftStoreIntoOutParam(bldr, concat, outvar);
       }
     }
@@ -1087,7 +1087,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       if (lifted_lhs.has_value()) {
         DLOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
         auto new_size = lhs.size - rhs.offset;
-        auto *subpiece_lhs = bldr.CreateLShr(*lifted_lhs, rhs.offset * 8);
+        auto subpiece_lhs = bldr.CreateLShr(*lifted_lhs, rhs.offset * 8);
 
         if (new_size < outvar->size) {
           subpiece_lhs = bldr.CreateZExt(
@@ -1144,7 +1144,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         auto lifted_addr = this->LiftInParam(
                  bldr, param0, this->insn_lifter_parent.GetWordType()),
              lifted_index = this->LiftIntegerInParam(bldr, param1);
-        auto *elem_size = llvm::ConstantInt::get(
+        auto elem_size = llvm::ConstantInt::get(
             llvm::IntegerType::get(this->context, param2.size * 8),
             param2.offset);
         if (lifted_addr.has_value() && lifted_index.has_value()) {
@@ -1367,7 +1367,7 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
            }
            // If the number of bits we're shifting exceeds the bit width of the
            // other operand, the result should be zero.
-           auto *max_shift = llvm::ConstantInt::get(
+           auto max_shift = llvm::ConstantInt::get(
                lhs->getType(), lhs->getType()->getIntegerBitWidth());
            return bldr.CreateSelect(bldr.CreateICmpSGE(rhs, max_shift),
                                     llvm::ConstantInt::get(lhs->getType(), 0),
@@ -1380,7 +1380,7 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
            }
            // If the number of bits we're shifting exceeds the bit width of the
            // other operand, the result should be zero.
-           auto *max_shift = llvm::ConstantInt::get(
+           auto max_shift = llvm::ConstantInt::get(
                lhs->getType(), lhs->getType()->getIntegerBitWidth());
            return bldr.CreateSelect(bldr.CreateICmpSGE(rhs, max_shift),
                                     llvm::ConstantInt::get(lhs->getType(), 0),
