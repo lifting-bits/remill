@@ -30,8 +30,8 @@
 
 namespace {
 
-const static std::unordered_map<std::string,
-                                std::function<test_runner::RegisterValueRef(PPCState &)>>
+const static std::unordered_map<
+    std::string, std::function<test_runner::RegisterValueRef(PPCState &)>>
     reg_to_accessor = {
         {"pc",
          [](PPCState &st) -> test_runner::RegisterValueRef {
@@ -184,7 +184,8 @@ class TestSpecRunner {
 
  public:
   TestSpecRunner(llvm::LLVMContext &context)
-      : lifter(test_runner::LiftingTester(context, remill::OSName::kOSLinux, remill::kArchPPC)),
+      : lifter(test_runner::LiftingTester(context, remill::OSName::kOSLinux,
+                                          remill::kArchPPC)),
         tst_ctr(0),
         endian(lifter.GetArch()->MemoryAccessIsLittleEndian()
                    ? llvm::support::endianness::little

@@ -29,7 +29,8 @@ namespace test_runner {
 
 using MemoryModifier = std::function<void(MemoryHandler &)>;
 using RegisterValue = std::variant<uint64_t, uint8_t>;
-using RegisterValueRef = std::variant<std::reference_wrapper<uint64_t>, std::reference_wrapper<uint8_t>>;
+using RegisterValueRef = std::variant<std::reference_wrapper<uint64_t>,
+                                      std::reference_wrapper<uint8_t>>;
 
 struct RegisterCondition {
   std::string register_name;
@@ -64,11 +65,8 @@ class TestOutputSpec {
   void ApplyCondition(S &state, const std::string reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
-      std::visit(
-            [value](auto &&arg) {
-              arg.get() = value;
-            },
-            accessor->second(state));
+      std::visit([value](auto &&arg) { arg.get() = value; },
+                 accessor->second(state));
     }
   }
 
@@ -77,14 +75,15 @@ class TestOutputSpec {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
       std::visit(
-            [state, reg, value](auto &&arg) {
-              auto actual = arg.get();
-              LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
-                        << static_cast<uint64_t>(actual)
-                        << " Expected: " << std::hex << static_cast<uint64_t>(value);
-              CHECK_EQ(actual, value);
-            },
-            accessor->second(state));
+          [state, reg, value](auto &&arg) {
+            auto actual = arg.get();
+            LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
+                      << static_cast<uint64_t>(actual)
+                      << " Expected: " << std::hex
+                      << static_cast<uint64_t>(value);
+            CHECK_EQ(actual, value);
+          },
+          accessor->second(state));
     }
   }
 
