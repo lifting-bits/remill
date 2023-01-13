@@ -183,9 +183,8 @@ class TestSpecRunner {
   llvm::support::endianness endian;
 
  public:
-  TestSpecRunner(llvm::LLVMContext &context, remill::ArchName archname)
-      : lifter(test_runner::LiftingTester(context, remill::OSName::kOSLinux,
-                                          archname)),
+  TestSpecRunner(llvm::LLVMContext &context)
+      : lifter(test_runner::LiftingTester(context, remill::OSName::kOSLinux, remill::kArchPPC)),
         tst_ctr(0),
         endian(lifter.GetArch()->MemoryAccessIsLittleEndian()
                    ? llvm::support::endianness::little
@@ -253,7 +252,7 @@ TEST(PPCVLELifts, PPCVLEAdd) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -276,7 +275,7 @@ TEST(PPCVLELifts, PPCVLEAddRecord) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -300,7 +299,7 @@ TEST(PPCVLELifts, PPCVLEAddOverflow) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -317,7 +316,7 @@ TEST(PPCVLELifts, PPCVLEBranchLinkRegister) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -334,7 +333,7 @@ TEST(PPCVLELifts, PPCVLEBranchLinkRegisterAndLink) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -370,7 +369,7 @@ TEST(PPCVLELifts, PPCVLECondBranch) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -403,7 +402,7 @@ TEST(PPCVLELifts, PPCVLECondBranch2) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -421,7 +420,7 @@ TEST(PPCVLELifts, PPCVLEBranch) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -438,7 +437,7 @@ TEST(PPCVLELifts, PPCVLECompareImmediate) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -461,7 +460,7 @@ TEST(PPCVLELifts, PPCVLEStoreWord) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -484,7 +483,7 @@ TEST(PPCVLELifts, PPCVLELoadWordAndZero) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -539,7 +538,7 @@ TEST(PPCVLELifts, PPCVLELoadMultipleGeneralPurposeRegisters) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -593,7 +592,7 @@ TEST(PPCVLELifts, PPCVLEStoreMultipleGeneralPurposeRegisters) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -642,7 +641,7 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -691,7 +690,7 @@ TEST(PPCVLELifts, DISABLED_PPCVLEStoreMultipleSpecialPurposeRegisters) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -714,7 +713,7 @@ TEST(PPCVLELifts, PPCVLERotateLeftWordImmediateAndMask) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -734,7 +733,7 @@ TEST(PPCVLELifts, PPCVLEConvertDoubleFromSignedInteger) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -754,7 +753,7 @@ TEST(PPCVLELifts, PPCVLEConvertFloatFromSignedInteger) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -776,7 +775,7 @@ TEST(PPCVLELifts, PPCVLEConvertFloatToSignedInteger) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
 
@@ -793,6 +792,6 @@ TEST(PPCVLELifts, DISABLED_PPCVLESyscall) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
   curr_context.enableOpaquePointers();
 #endif
-  TestSpecRunner<PPCState> runner(curr_context, remill::kArchPPC);
+  TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec);
 }
