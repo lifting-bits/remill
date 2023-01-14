@@ -37,12 +37,6 @@ struct RegisterCondition {
   RegisterValue enforced_value;
 };
 
-struct MemoryPostcondition {
-  uint64_t addr;
-  std::vector<uint8_t> bytes;
-};
-
-
 template <typename T>
 concept State = std::is_base_of_v<ArchState, T>;
 
@@ -53,13 +47,16 @@ class TestOutputSpec {
   std::string target_bytes;
 
  private:
+  using RegisterAccessorMap = std::unordered_map<std::string, std::function<RegisterValueRef(S &)>>;
+  using RegisterConditionList = std::vector<RegisterCondition>;
+  using MemoryConditionList = std::vector<MemoryModifier>;
+
   remill::Instruction::Category expected_category;
-  std::vector<RegisterCondition> register_preconditions;
-  std::vector<RegisterCondition> register_postconditions;
-  std::vector<MemoryModifier> initial_memory_conditions;
-  std::vector<MemoryModifier> expected_memory_conditions;
-  std::unordered_map<std::string, std::function<RegisterValueRef(S &)>>
-      reg_to_accessor;
+  RegisterConditionList register_preconditions;
+  RegisterConditionList register_postconditions;
+  MemoryConditionList initial_memory_conditions;
+  MemoryConditionList expected_memory_conditions;
+  RegisterAccessorMap reg_to_accessor;
 
   template <typename T>
   void ApplyCondition(S &state, const std::string reg, T value) const {
@@ -75,7 +72,7 @@ class TestOutputSpec {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
       std::visit(
-          [state, reg, value](auto &&arg) {
+          [reg, value](auto &&arg) {
             auto actual = arg.get();
             LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
                       << static_cast<uint64_t>(actual)
@@ -118,10 +115,9 @@ class TestOutputSpec {
   TestOutputSpec(
       uint64_t disas_addr, std::string target_bytes,
       remill::Instruction::Category expected_category,
-      std::vector<RegisterCondition> register_preconditions,
-      std::vector<RegisterCondition> register_postconditions,
-      std::unordered_map<std::string, std::function<RegisterValueRef(S &)>>
-          reg_to_accessor)
+      RegisterConditionList register_preconditions,
+      RegisterConditionList register_postconditions,
+      RegisterAccessorMap reg_to_accessor)
       : addr(disas_addr),
         target_bytes(std::move(target_bytes)),
         expected_category(expected_category),
