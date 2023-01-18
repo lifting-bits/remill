@@ -47,7 +47,8 @@ class TestOutputSpec {
   std::string target_bytes;
 
  private:
-  using RegisterAccessorMap = std::unordered_map<std::string, std::function<RegisterValueRef(S &)>>;
+  using RegisterAccessorMap =
+      std::unordered_map<std::string, std::function<RegisterValueRef(S &)>>;
   using RegisterConditionList = std::vector<RegisterCondition>;
   using MemoryConditionList = std::vector<MemoryModifier>;
 
@@ -112,12 +113,11 @@ class TestOutputSpec {
     return this->expected_memory_conditions;
   }
 
-  TestOutputSpec(
-      uint64_t disas_addr, std::string target_bytes,
-      remill::Instruction::Category expected_category,
-      RegisterConditionList register_preconditions,
-      RegisterConditionList register_postconditions,
-      RegisterAccessorMap reg_to_accessor)
+  TestOutputSpec(uint64_t disas_addr, std::string target_bytes,
+                 remill::Instruction::Category expected_category,
+                 RegisterConditionList register_preconditions,
+                 RegisterConditionList register_postconditions,
+                 RegisterAccessorMap reg_to_accessor)
       : addr(disas_addr),
         target_bytes(std::move(target_bytes)),
         expected_category(expected_category),
