@@ -146,6 +146,12 @@ void InitFunctionAttributes(llvm::Function *function) {
 llvm::CallInst *AddCall(llvm::BasicBlock *source_block, llvm::Value *dest_func,
                         const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(source_block);
+  return AddCall(ir, source_block, dest_func, intrinsics);
+}
+
+llvm::CallInst *AddCall(llvm::IRBuilder<> &ir, llvm::BasicBlock *source_block,
+                        llvm::Value *dest_func,
+                        const IntrinsicTable &intrinsics) {
   auto args = LiftedFunctionArgs(source_block, intrinsics);
   if (auto func = llvm::dyn_cast<llvm::Function>(dest_func); func) {
     return ir.CreateCall(func, args);
@@ -280,7 +286,13 @@ llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {
 llvm::Value *LoadProgramCounter(llvm::BasicBlock *block,
                                 const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(intrinsics.pc_type, LoadProgramCounterRef(block));
+  return LoadProgramCounter(ir, intrinsics);
+}
+
+llvm::Value *LoadProgramCounter(llvm::IRBuilder<> &ir,
+                                const IntrinsicTable &intrinsics) {
+  return ir.CreateLoad(intrinsics.pc_type,
+                       LoadProgramCounterRef(ir.GetInsertBlock()));
 }
 
 // Return a reference to the current program counter.
@@ -327,13 +339,24 @@ void StoreProgramCounter(llvm::BasicBlock *block, uint64_t pc,
 llvm::Value *LoadMemoryPointer(llvm::BasicBlock *block,
                                const IntrinsicTable &intrinsics) {
   llvm::IRBuilder<> ir(block);
-  return ir.CreateLoad(intrinsics.mem_ptr_type, LoadMemoryPointerRef(block));
+  return LoadMemoryPointer(ir, intrinsics);
+}
+
+llvm::Value *LoadMemoryPointer(llvm::IRBuilder<> &ir,
+                               const IntrinsicTable &intrinsics) {
+  return ir.CreateLoad(intrinsics.mem_ptr_type,
+                       LoadMemoryPointerRef(ir.GetInsertBlock()));
 }
 
 // Return an `llvm::Value *` that is an `i1` (bool type) representing whether
 // or not a conditional branch is taken.
 llvm::Value *LoadBranchTaken(llvm::BasicBlock *block) {
   llvm::IRBuilder<> ir(block);
+  return LoadBranchTaken(ir);
+}
+
+llvm::Value *LoadBranchTaken(llvm::IRBuilder<> &ir) {
+  auto block = ir.GetInsertBlock();
   auto i8_type = llvm::Type::getInt8Ty(block->getContext());
   auto cond = ir.CreateLoad(
       i8_type,
@@ -1851,12 +1874,19 @@ llvm::Type *RecontextualizeType(llvm::Type *type, llvm::LLVMContext &context) {
   return RecontextualizeType(type, context, cache);
 }
 
+llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
+                            llvm::BasicBlock *block, llvm::Type *type,
+                            llvm::Value *mem_ptr, llvm::Value *addr) {
+  llvm::IRBuilder<> ir(block);
+  return LoadFromMemory(intrinsics, ir, type, mem_ptr, addr);
+}
+
 // Produce a sequence of instructions that will load values from
 // memory, building up the correct type. This will invoke the various
 // memory read intrinsics in order to match the right type, or
 // recursively build up the right type.
 llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
-                            llvm::BasicBlock *block, llvm::Type *type,
+                            llvm::IRBuilder<> &ir, llvm::Type *type,
                             llvm::Value *mem_ptr, llvm::Value *addr) {
 
   const auto initial_addr = addr;
@@ -1865,8 +1895,6 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
   llvm::DataLayout dl(module);
   llvm::Value *args_2[2] = {mem_ptr, addr};
   auto index_type = llvm::Type::getIntNTy(context, dl.getPointerSizeInBits(0));
-
-  llvm::IRBuilder<> ir(block);
 
   switch (type->getTypeID()) {
     case llvm::Type::HalfTyID: {
@@ -1947,8 +1975,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
         addr = ir.CreateAdd(initial_addr, llvm::ConstantInt::get(
                                               addr->getType(), offset, false));
         auto elem_val =
-            LoadFromMemory(intrinsics, block, elem_type, mem_ptr, addr);
-        ir.SetInsertPoint(block);
+            LoadFromMemory(intrinsics, ir, elem_type, mem_ptr, addr);
         unsigned indexes[] = {i};
         val = ir.CreateInsertValue(val, elem_val, indexes);
       }
@@ -1969,8 +1996,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
                                               addr->getType(), offset, false));
         unsigned indexes[] = {static_cast<unsigned>(index)};
         auto elem_val =
-            LoadFromMemory(intrinsics, block, elem_type, mem_ptr, addr);
-        ir.SetInsertPoint(block);
+            LoadFromMemory(intrinsics, ir, elem_type, mem_ptr, addr);
         val = ir.CreateInsertValue(val, elem_val, indexes);
       }
       return val;
@@ -1984,8 +2010,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
       auto intptr_type =
           llvm::IntegerType::get(context, static_cast<unsigned>(size_bits));
       auto addr_val =
-          LoadFromMemory(intrinsics, block, intptr_type, mem_ptr, addr);
-      ir.SetInsertPoint(block);
+          LoadFromMemory(intrinsics, ir, intptr_type, mem_ptr, addr);
       return ir.CreateIntToPtr(addr_val, ptr_type);
     }
 
@@ -2002,8 +2027,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
         addr = ir.CreateAdd(initial_addr, llvm::ConstantInt::get(
                                               addr->getType(), offset, false));
         auto elem_val =
-            LoadFromMemory(intrinsics, block, elem_type, mem_ptr, addr);
-        ir.SetInsertPoint(block);
+            LoadFromMemory(intrinsics, ir, elem_type, mem_ptr, addr);
         val =
             ir.CreateInsertElement(val, elem_val, static_cast<unsigned>(index));
       }
@@ -2031,6 +2055,13 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
 llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
                            llvm::BasicBlock *block, llvm::Value *val_to_store,
                            llvm::Value *mem_ptr, llvm::Value *addr) {
+  llvm::IRBuilder<> ir(block);
+  return StoreToMemory(intrinsics, ir, val_to_store, mem_ptr, addr);
+}
+
+llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
+                           llvm::IRBuilder<> &ir, llvm::Value *val_to_store,
+                           llvm::Value *mem_ptr, llvm::Value *addr) {
 
   const auto initial_addr = addr;
   auto module = intrinsics.error->getParent();
@@ -2038,8 +2069,6 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
   llvm::DataLayout dl(module);
   llvm::Value *args_3[3] = {mem_ptr, addr, val_to_store};
   auto index_type = llvm::Type::getInt32Ty(context);
-
-  llvm::IRBuilder<> ir(block);
 
   auto type = val_to_store->getType();
   switch (type->getTypeID()) {
@@ -2127,9 +2156,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
             llvm::ConstantInt::get(addr->getType(), offset, false));
         unsigned indexes[] = {i};
         const auto elem_val = ir.CreateExtractValue(val_to_store, indexes);
-        mem_ptr =
-            StoreToMemory(intrinsics, block, elem_val, mem_ptr, elem_addr);
-        ir.SetInsertPoint(block);
+        mem_ptr = StoreToMemory(intrinsics, ir, elem_val, mem_ptr, elem_addr);
       }
       return mem_ptr;
     }
@@ -2149,9 +2176,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
             llvm::ConstantInt::get(addr->getType(), offset, false));
         unsigned indexes[] = {static_cast<unsigned>(index)};
         auto elem_val = ir.CreateExtractValue(val_to_store, indexes);
-        mem_ptr =
-            StoreToMemory(intrinsics, block, elem_val, mem_ptr, elem_addr);
-        ir.SetInsertPoint(block);
+        mem_ptr = StoreToMemory(intrinsics, ir, elem_val, mem_ptr, elem_addr);
         offset += elem_size;
         index += 1;
       }
@@ -2165,7 +2190,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       auto size_bits = dl.getTypeAllocSizeInBits(ptr_type);
       auto intptr_type =
           llvm::IntegerType::get(context, static_cast<unsigned>(size_bits));
-      return StoreToMemory(intrinsics, block,
+      return StoreToMemory(intrinsics, ir,
                            ir.CreatePtrToInt(val_to_store, intptr_type),
                            mem_ptr, addr);
     }
@@ -2185,9 +2210,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
             llvm::ConstantInt::get(addr->getType(), offset, false));
         auto elem_val =
             ir.CreateExtractElement(val_to_store, static_cast<unsigned>(index));
-        mem_ptr =
-            StoreToMemory(intrinsics, block, elem_val, mem_ptr, elem_addr);
-        ir.SetInsertPoint(block);
+        mem_ptr = StoreToMemory(intrinsics, ir, elem_val, mem_ptr, elem_addr);
         offset += elem_size;
         index += 1;
       }

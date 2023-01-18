@@ -98,7 +98,7 @@ class SleighPPCArch : public ArchBase {
   }
 
   llvm::DataLayout DataLayout(void) const override {
-    return llvm::DataLayout("");
+    return llvm::DataLayout("E-p:32:32");
   }
 
   void PopulateRegisterTable(void) const override {
@@ -109,9 +109,7 @@ class SleighPPCArch : public ArchBase {
     auto u8 = llvm::Type::getInt8Ty(*context);
     auto u32 = llvm::Type::getInt32Ty(*context);
     auto u64 = llvm::Type::getInt64Ty(*context);
-    auto u128 = llvm::Type::getInt128Ty(*context);
 
-    auto f32 = llvm::Type::getFloatTy(*context);
     auto f64 = llvm::Type::getDoubleTy(*context);
 
 #define OFFSET_OF(type, access) \
@@ -189,6 +187,7 @@ class SleighPPCArch : public ArchBase {
     REG(F29, fpr.f29.qword, f64);
     REG(F30, fpr.f30.qword, f64);
 
+    REG(CRALL, iar.cr.qword, u64);
     REG(CTR, iar.ctr.qword, u64);
     REG(LR, iar.lr.qword, u64);
     REG(XER, iar.xer.dword, u32);
