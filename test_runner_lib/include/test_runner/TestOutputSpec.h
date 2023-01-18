@@ -66,6 +66,7 @@ class TestOutputSpec {
       std::visit([value](auto &&arg) { arg.get() = value; },
                  accessor->second(state));
     }
+    throw std::runtime_error(std::string("Unknown reg: ") + reg);
   }
 
   template <typename T>
@@ -83,6 +84,7 @@ class TestOutputSpec {
           },
           accessor->second(state));
     }
+    throw std::runtime_error(std::string("Unknown reg: ") + reg);
   }
 
  public:
