@@ -198,10 +198,10 @@ class TestSpecRunner {
     auto maybe_func =
         lifter.LiftInstructionFunction(ss.str(), test.target_bytes, test.addr);
 
-
     CHECK(maybe_func.has_value());
     auto lifted_func = maybe_func->first;
 
+    // Copy lifted function into new module to optimize out intrinsics that aren't used in the lifted function
     auto new_mod = llvm::CloneModule(*lifted_func->getParent());
     remill::OptimizeBareModule(new_mod.get());
 
