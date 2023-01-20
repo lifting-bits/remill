@@ -60,7 +60,7 @@ class TestOutputSpec {
   RegisterAccessorMap reg_to_accessor;
 
   template <typename T>
-  void ApplyCondition(S &state, const std::string reg, T value) const {
+  void ApplyCondition(S &state, const std::string &reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
       std::visit([value](auto &&arg) { arg.get() = value; },
@@ -70,7 +70,7 @@ class TestOutputSpec {
   }
 
   template <typename T>
-  void CheckCondition(S &state, const std::string reg, T value) const {
+  void CheckCondition(S &state, const std::string &reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
       std::visit(
