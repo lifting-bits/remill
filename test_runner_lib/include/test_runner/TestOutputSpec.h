@@ -63,7 +63,7 @@ class TestOutputSpec {
   void ApplyCondition(S &state, const std::string &reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
-      std::visit([value](auto &&arg) { arg.get() = value; },
+      std::visit([=](auto &&arg) { arg.get() = value; },
                  accessor->second(state));
     }
     throw std::runtime_error(std::string("Unknown reg: ") + reg);
@@ -74,7 +74,7 @@ class TestOutputSpec {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
       std::visit(
-          [reg, value](auto &&arg) {
+          [=](auto &&arg) {
             auto actual = arg.get();
             LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
                       << static_cast<uint64_t>(actual)
@@ -91,7 +91,7 @@ class TestOutputSpec {
   template <typename T>
   void AddPrecWrite(uint64_t addr, T value) {
     this->initial_memory_conditions.push_back(
-        [addr, value](MemoryHandler &mem_hand) {
+        [=](MemoryHandler &mem_hand) {
           mem_hand.WriteMemory(addr, value);
         });
   }
@@ -99,7 +99,7 @@ class TestOutputSpec {
   template <typename T>
   void AddPostRead(uint64_t addr, T value) {
     this->expected_memory_conditions.push_back(
-        [addr, value](MemoryHandler &mem_hand) {
+        [=](MemoryHandler &mem_hand) {
           LOG(INFO) << "Mem: " << std::hex << addr << " Actual: " << std::hex
                     << mem_hand.ReadMemory<T>(addr) << " Expected: " << std::hex
                     << value;
@@ -131,7 +131,7 @@ class TestOutputSpec {
   void SetupTestPreconditions(S &state) const {
     for (auto prec : this->register_preconditions) {
       std::visit(
-          [this, &state, prec](auto &&arg) {
+          [&](auto &arg) {
             using T = std::decay_t<decltype(arg)>;
             this->ApplyCondition<T>(state, prec.register_name, arg);
           },
@@ -146,7 +146,7 @@ class TestOutputSpec {
   void CheckResultingState(S &state) const {
     for (auto post : this->register_postconditions) {
       std::visit(
-          [this, &state, post](auto &&arg) {
+          [&](auto &arg) {
             using T = std::decay_t<decltype(arg)>;
             this->CheckCondition<T>(state, post.register_name, arg);
           },
