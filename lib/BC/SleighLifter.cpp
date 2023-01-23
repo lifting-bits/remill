@@ -1084,15 +1084,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
       if (lifted_lhs.has_value()) {
         DLOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
-        auto new_size = lhs.size - rhs.offset;
-        auto *subpiece_lhs = bldr.CreateLShr(
-            *lifted_lhs, rhs.offset * 8);
+        auto *subpiece_lhs = bldr.CreateLShr(*lifted_lhs, rhs.offset * 8);
 
-        if (new_size < outvar->size) {
+        if (lhs.size < outvar->size) {
           subpiece_lhs = bldr.CreateZExt(
               subpiece_lhs,
               llvm::IntegerType::get(this->context, 8 * outvar->size));
-        } else if (new_size > outvar->size) {
+        } else if (lhs.size > outvar->size) {
           subpiece_lhs = bldr.CreateTrunc(
               subpiece_lhs,
               llvm::IntegerType::get(this->context, 8 * outvar->size));
