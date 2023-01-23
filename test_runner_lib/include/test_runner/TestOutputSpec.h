@@ -65,8 +65,9 @@ class TestOutputSpec {
     if (accessor != reg_to_accessor.end()) {
       std::visit([=](auto &&arg) { arg.get() = value; },
                  accessor->second(state));
+    } else {
+      throw std::runtime_error(std::string("Unknown reg: ") + reg);
     }
-    throw std::runtime_error(std::string("Unknown reg: ") + reg);
   }
 
   template <typename T>
@@ -83,8 +84,9 @@ class TestOutputSpec {
             CHECK_EQ(actual, value);
           },
           accessor->second(state));
+    } else {
+      throw std::runtime_error(std::string("Unknown reg: ") + reg);
     }
-    throw std::runtime_error(std::string("Unknown reg: ") + reg);
   }
 
  public:
