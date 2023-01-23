@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
+
 namespace test_runner {
 
 using MemoryModifier = std::function<void(MemoryHandler &)>;
@@ -63,8 +64,12 @@ class TestOutputSpec {
   void ApplyCondition(S &state, const std::string &reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
-      std::visit([=](auto &&arg) { arg.get() = value; },
-                 accessor->second(state));
+      auto wrapper = accessor->second(state);
+      if (auto underlying = std::get_if<std::reference_wrapper<T>>(&wrapper)) {
+        underlying->get() = value;
+      } else {
+        throw std::runtime_error(std::string("Reg value " + reg + " has incorrect type"));
+      }
     } else {
       throw std::runtime_error(std::string("Unknown reg: ") + reg);
     }
@@ -74,16 +79,17 @@ class TestOutputSpec {
   void CheckCondition(S &state, const std::string &reg, T value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
-      std::visit(
-          [=](auto &&arg) {
-            auto actual = arg.get();
-            LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
-                      << static_cast<uint64_t>(actual)
-                      << " Expected: " << std::hex
-                      << static_cast<uint64_t>(value);
-            CHECK_EQ(actual, value);
-          },
-          accessor->second(state));
+      auto wrapper = accessor->second(state);
+      if (auto underlying = std::get_if<std::reference_wrapper<T>>(&wrapper)) {
+        auto actual = underlying->get();
+        LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
+                  << static_cast<uint64_t>(actual)
+                  << " Expected: " << std::hex
+                  << static_cast<uint64_t>(value);
+        CHECK_EQ(actual, value);
+      } else {
+        throw std::runtime_error(std::string("Reg value " + reg + " has incorrect type"));
+      }
     } else {
       throw std::runtime_error(std::string("Unknown reg: ") + reg);
     }
