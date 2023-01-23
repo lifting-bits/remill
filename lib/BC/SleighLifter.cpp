@@ -575,8 +575,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         auto int2float_inval = this->LiftIntegerInParam(bldr, input_var);
         auto new_float_type = this->GetFloatTypeOfByteSize(outvar->size);
         if (int2float_inval.has_value() && new_float_type) {
-          auto converted =
-              bldr.CreateSIToFP(*int2float_inval, *new_float_type);
+          auto converted = bldr.CreateSIToFP(*int2float_inval, *new_float_type);
           return this->LiftStoreIntoOutParam(
               bldr, this->CastFloatResult(bldr, *outvar, converted), outvar);
         }
@@ -686,8 +685,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           auto zext_type =
               llvm::IntegerType::get(this->context, outvar->size * 8);
           auto zext_op = (opc == OpCode::CPUI_INT_ZEXT)
-                              ? bldr.CreateZExt(*zext_inval, zext_type)
-                              : bldr.CreateSExt(*zext_inval, zext_type);
+                             ? bldr.CreateZExt(*zext_inval, zext_type)
+                             : bldr.CreateSExt(*zext_inval, zext_type);
           return this->LiftStoreIntoOutParam(bldr, zext_op, outvar);
         }
         break;
@@ -1086,14 +1085,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
       if (lifted_lhs.has_value()) {
         DLOG(INFO) << "SUBPIECE: " << remill::LLVMThingToString(*lifted_lhs);
-        auto new_size = lhs.size - rhs.offset;
         auto subpiece_lhs = bldr.CreateLShr(*lifted_lhs, rhs.offset * 8);
 
-        if (new_size < outvar->size) {
+        if (lhs.size < outvar->size) {
           subpiece_lhs = bldr.CreateZExt(
               subpiece_lhs,
               llvm::IntegerType::get(this->context, 8 * outvar->size));
-        } else if (new_size > outvar->size) {
+        } else if (lhs.size > outvar->size) {
           subpiece_lhs = bldr.CreateTrunc(
               subpiece_lhs,
               llvm::IntegerType::get(this->context, 8 * outvar->size));
