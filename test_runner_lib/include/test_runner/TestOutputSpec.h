@@ -68,7 +68,8 @@ class TestOutputSpec {
       if (auto underlying = std::get_if<std::reference_wrapper<T>>(&wrapper)) {
         underlying->get() = value;
       } else {
-        throw std::runtime_error(std::string("Reg value " + reg + " has incorrect type"));
+        throw std::runtime_error(
+            std::string("Reg value " + reg + " has incorrect type"));
       }
     } else {
       throw std::runtime_error(std::string("Unknown reg: ") + reg);
@@ -83,12 +84,12 @@ class TestOutputSpec {
       if (auto underlying = std::get_if<std::reference_wrapper<T>>(&wrapper)) {
         auto actual = underlying->get();
         LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
-                  << static_cast<uint64_t>(actual)
-                  << " Expected: " << std::hex
+                  << static_cast<uint64_t>(actual) << " Expected: " << std::hex
                   << static_cast<uint64_t>(value);
         CHECK_EQ(actual, value);
       } else {
-        throw std::runtime_error(std::string("Reg value " + reg + " has incorrect type"));
+        throw std::runtime_error(
+            std::string("Reg value " + reg + " has incorrect type"));
       }
     } else {
       throw std::runtime_error(std::string("Unknown reg: ") + reg);
@@ -99,20 +100,17 @@ class TestOutputSpec {
   template <typename T>
   void AddPrecWrite(uint64_t addr, T value) {
     this->initial_memory_conditions.push_back(
-        [=](MemoryHandler &mem_hand) {
-          mem_hand.WriteMemory(addr, value);
-        });
+        [=](MemoryHandler &mem_hand) { mem_hand.WriteMemory(addr, value); });
   }
 
   template <typename T>
   void AddPostRead(uint64_t addr, T value) {
-    this->expected_memory_conditions.push_back(
-        [=](MemoryHandler &mem_hand) {
-          LOG(INFO) << "Mem: " << std::hex << addr << " Actual: " << std::hex
-                    << mem_hand.ReadMemory<T>(addr) << " Expected: " << std::hex
-                    << value;
-          CHECK_EQ(mem_hand.ReadMemory<T>(addr), value);
-        });
+    this->expected_memory_conditions.push_back([=](MemoryHandler &mem_hand) {
+      LOG(INFO) << "Mem: " << std::hex << addr << " Actual: " << std::hex
+                << mem_hand.ReadMemory<T>(addr) << " Expected: " << std::hex
+                << value;
+      CHECK_EQ(mem_hand.ReadMemory<T>(addr), value);
+    });
   }
 
   const std::vector<MemoryModifier> &GetMemoryPrecs() const {
