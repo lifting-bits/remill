@@ -334,7 +334,7 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
       return std::nullopt;
     }
   } catch (BadDataError e) {
-    LOG(ERROR) << "Bad data error";
+    LOG(ERROR) << "Bad data error: " << e.explain;
     // NOTE (Ian): if sleigh cant find a constructor it throws an exception... yay for unrolling.
     return std::nullopt;
   } catch (UnimplError e) {
