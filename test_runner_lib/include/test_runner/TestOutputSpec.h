@@ -137,7 +137,7 @@ class TestOutputSpec {
 
 
   void SetupTestPreconditions(S &state) const {
-    for (auto prec : this->register_preconditions) {
+    for (auto &prec : this->register_preconditions) {
       std::visit(
           [&](auto &arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -152,7 +152,7 @@ class TestOutputSpec {
   }
 
   void CheckResultingState(S &state) const {
-    for (auto post : this->register_postconditions) {
+    for (auto &post : this->register_postconditions) {
       std::visit(
           [&](auto &arg) {
             using T = std::decay_t<decltype(arg)>;
