@@ -140,8 +140,7 @@ class TestOutputSpec {
     for (auto &prec : this->register_preconditions) {
       std::visit(
           [&](auto &arg) {
-            using T = std::decay_t<decltype(arg)>;
-            this->ApplyCondition<T>(state, prec.register_name, arg);
+            this->ApplyCondition(state, prec.register_name, arg);
           },
           prec.enforced_value);
     }
@@ -155,8 +154,7 @@ class TestOutputSpec {
     for (auto &post : this->register_postconditions) {
       std::visit(
           [&](auto &arg) {
-            using T = std::decay_t<decltype(arg)>;
-            this->CheckCondition<T>(state, post.register_name, arg);
+            this->CheckCondition(state, post.register_name, arg);
           },
           post.enforced_value);
     }
