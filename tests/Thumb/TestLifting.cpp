@@ -188,11 +188,11 @@ class TestSpecRunner {
     auto new_mod = llvm::CloneModule(*lifted_func->getParent());
     remill::OptimizeBareModule(new_mod.get());
 
-    auto justFuncMod =
+    auto just_func_mod =
         std::make_unique<llvm::Module>("", new_mod->getContext());
 
     auto new_func = test_runner::CopyFunctionIntoNewModule(
-        justFuncMod.get(), lifted_func, new_mod);
+        just_func_mod.get(), lifted_func, new_mod);
     AArch32State st = {};
 
 

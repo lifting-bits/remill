@@ -27,7 +27,7 @@ LLVM_VERSION=llvm-15
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
-CXX_COMMON_VERSION="0.2.12"
+CXX_COMMON_VERSION="0.2.21"
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.

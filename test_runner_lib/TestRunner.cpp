@@ -121,22 +121,6 @@ std::string MemoryHandler::DumpState() const {
   return ss.str();
 }
 
-template <class T>
-T MemoryHandler::ReadMemory(uint64_t addr) {
-  auto buff = this->readSize(addr, sizeof(T));
-  return llvm::support::endian::read<T>(buff.data(), this->endian);
-}
-
-
-template <class T>
-void MemoryHandler::WriteMemory(uint64_t addr, T value) {
-  std::vector<uint8_t> buff(sizeof(T));
-  llvm::support::endian::write<T>(buff.data(), value, this->endian);
-  for (size_t i = 0; i < sizeof(T); i++) {
-    this->state[addr + i] = buff[i];
-  }
-}
-
 std::unordered_map<uint64_t, uint8_t> MemoryHandler::GetUninitializedReads() {
   return this->uninitialized_reads;
 }

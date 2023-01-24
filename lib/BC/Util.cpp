@@ -563,6 +563,12 @@ namespace {
 #  define REMILL_BUILD_SEMANTICS_DIR_SPARC64
 #endif  // REMILL_BUILD_SEMANTICS_DIR_SPARC64
 
+#ifndef REMILL_BUILD_SEMANTICS_DIR_PPC64
+#  error \
+      "Macro `REMILL_BUILD_SEMANTICS_DIR_PPC64` must be defined to support the PPC64 architectures."
+#  define REMILL_BUILD_SEMANTICS_DIR_PPC64
+#endif  // REMILL_BUILD_SEMANTICS_DIR_PPC64
+
 #ifndef REMILL_INSTALL_SEMANTICS_DIR
 #  error "Macro `REMILL_INSTALL_SEMANTICS_DIR` must be defined."
 #  define REMILL_INSTALL_SEMANTICS_DIR
@@ -581,6 +587,7 @@ const paths_t &DefaultSemanticsSearchPaths() {
       REMILL_BUILD_SEMANTICS_DIR_AARCH64,
       REMILL_BUILD_SEMANTICS_DIR_SPARC32,
       REMILL_BUILD_SEMANTICS_DIR_SPARC64,
+      REMILL_BUILD_SEMANTICS_DIR_PPC64,
       REMILL_INSTALL_SEMANTICS_DIR,
       "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
       "/usr/share/remill/" MAJOR_MINOR "/semantics",

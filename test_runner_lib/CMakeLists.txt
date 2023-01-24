@@ -19,6 +19,7 @@ add_library(
   STATIC
   TestRunner.cpp
   "${TEST_RUNNER_INCLUDE_DIR}/test_runner/TestRunner.h"
+  "${TEST_RUNNER_INCLUDE_DIR}/test_runner/TestOutputSpec.h"
 )
 
 target_link_libraries(
