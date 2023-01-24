@@ -20,7 +20,7 @@
 
 #if __has_include(<cstdint>)
 #  include <cstdint>
-#  include <cstddef> // TODO(alex): Figure out why we need this.
+#  include <cstddef>
 #elif __has_include(<cinttypes>)
 #  include <cinttypes>
 #else

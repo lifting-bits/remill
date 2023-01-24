@@ -32,8 +32,6 @@ SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
 llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
                                                 llvm::Value *curr_pc,
                                                 size_t curr_insn_size) const {
-  // NOTE(alex): Just pasted this from x86. This seems right? But then again, I don't understand what the Thumb2 impl is doing so who knows.
-
   // PC on thumb points to the next instructions next.
   return bldr.CreateAdd(
       curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size));
@@ -220,8 +218,6 @@ class SleighPPCArch : public ArchBase {
     REG(CR5, cr_flags.cr5, u8);
     REG(CR6, cr_flags.cr6, u8);
     REG(CR7, cr_flags.cr7, u8);
-
-    // TODO(alex): Do the performance monitor registers too
 
     REG(TBLR, tbr.tbl.qword, u64);
     REG(TBUR, tbr.tbu.qword, u64);
