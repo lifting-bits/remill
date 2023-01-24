@@ -70,19 +70,23 @@ void InitFunctionAttributes(llvm::Function *F);
 // Create a call from one lifted function to another.
 llvm::CallInst *AddCall(llvm::IRBuilder<> &builder,
                         llvm::BasicBlock *source_block, llvm::Value *dest_func,
-                        const IntrinsicTable &intrinsics);
+                        const IntrinsicTable &intrinsics,
+                        bool allow_additional_parameters = false);
 
 llvm::CallInst *AddCall(llvm::BasicBlock *source_block, llvm::Value *dest_func,
-                        const IntrinsicTable &intrinsics);
+                        const IntrinsicTable &intrinsics,
+                        bool allow_additional_parameters = false);
 
 // Create a tail-call from one lifted function to another.
-llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
-                                       llvm::Value *dest_func,
-                                       const IntrinsicTable &intrinsics);
+llvm::CallInst *
+AddTerminatingTailCall(llvm::Function *source_func, llvm::Value *dest_func,
+                       const IntrinsicTable &intrinsics,
+                       bool allow_additional_parameters = false);
 
-llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
-                                       llvm::Value *dest_func,
-                                       const IntrinsicTable &intrinsics);
+llvm::CallInst *
+AddTerminatingTailCall(llvm::BasicBlock *source_block, llvm::Value *dest_func,
+                       const IntrinsicTable &intrinsics,
+                       bool allow_additional_parameters = false);
 
 // Find a local variable defined in the entry block of the function. We use
 // this to find register variables.
@@ -98,8 +102,10 @@ FindVarInFunction(llvm::Function *func, std::string_view name,
 
 // Find the machine state pointer. The machine state pointer is, by convention,
 // passed as the first argument to every lifted function.
-llvm::Value *LoadStatePointer(llvm::Function *function);
-llvm::Value *LoadStatePointer(llvm::BasicBlock *block);
+llvm::Value *LoadStatePointer(llvm::Function *function,
+                              bool allow_more_args = false);
+llvm::Value *LoadStatePointer(llvm::BasicBlock *block,
+                              bool allow_more_args = false);
 
 // Return the current program counter.
 llvm::Value *LoadProgramCounter(llvm::IRBuilder<> &builder,
@@ -203,7 +209,8 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index);
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
 std::array<llvm::Value *, kNumBlockArgs>
-LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics);
+LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics,
+                   bool allow_additional_parameters = false);
 
 // Serialize an LLVM object into a string.
 std::string LLVMThingToString(llvm::Value *thing);

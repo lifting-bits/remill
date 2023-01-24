@@ -144,15 +144,19 @@ void InitFunctionAttributes(llvm::Function *function) {
 
 // Create a call from one lifted function to another.
 llvm::CallInst *AddCall(llvm::BasicBlock *source_block, llvm::Value *dest_func,
-                        const IntrinsicTable &intrinsics) {
+                        const IntrinsicTable &intrinsics,
+                        bool allow_additional_parameters) {
   llvm::IRBuilder<> ir(source_block);
-  return AddCall(ir, source_block, dest_func, intrinsics);
+  return AddCall(ir, source_block, dest_func, intrinsics,
+                 allow_additional_parameters);
 }
 
 llvm::CallInst *AddCall(llvm::IRBuilder<> &ir, llvm::BasicBlock *source_block,
                         llvm::Value *dest_func,
-                        const IntrinsicTable &intrinsics) {
-  auto args = LiftedFunctionArgs(source_block, intrinsics);
+                        const IntrinsicTable &intrinsics,
+                        bool allow_additional_parameters) {
+  auto args =
+      LiftedFunctionArgs(source_block, intrinsics, allow_additional_parameters);
   if (auto func = llvm::dyn_cast<llvm::Function>(dest_func); func) {
     return ir.CreateCall(func, args);
 
@@ -171,17 +175,20 @@ llvm::CallInst *AddCall(llvm::IRBuilder<> &ir, llvm::BasicBlock *source_block,
 // Create a tail-call from one lifted function to another.
 llvm::CallInst *AddTerminatingTailCall(llvm::Function *source_func,
                                        llvm::Value *dest_func,
-                                       const IntrinsicTable &intrinsics) {
+                                       const IntrinsicTable &intrinsics,
+                                       bool allow_additional_parameters) {
   if (source_func->isDeclaration()) {
     llvm::IRBuilder<> ir(
         llvm::BasicBlock::Create(source_func->getContext(), "", source_func));
   }
-  return AddTerminatingTailCall(&(source_func->back()), dest_func, intrinsics);
+  return AddTerminatingTailCall(&(source_func->back()), dest_func, intrinsics,
+                                allow_additional_parameters);
 }
 
 llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
                                        llvm::Value *dest_func,
-                                       const IntrinsicTable &intrinsics) {
+                                       const IntrinsicTable &intrinsics,
+                                       bool allow_additional_parameters) {
   CHECK(nullptr != dest_func) << "Target function/block does not exist!";
 
   LOG_IF(ERROR, source_block->getTerminator())
@@ -195,7 +202,8 @@ llvm::CallInst *AddTerminatingTailCall(llvm::BasicBlock *source_block,
   auto pc_ref = LoadProgramCounterRef(source_block);
   (void) new llvm::StoreInst(next_pc, pc_ref, source_block);
 
-  auto call_target_instr = AddCall(source_block, dest_func, intrinsics);
+  auto call_target_instr =
+      AddCall(source_block, dest_func, intrinsics, allow_additional_parameters);
   call_target_instr->setTailCall(true);
 
   ir.CreateRet(call_target_instr);
@@ -240,8 +248,11 @@ FindVarInFunction(llvm::Function *function, std::string_view name_,
 }
 
 // Find the machine state pointer.
-llvm::Value *LoadStatePointer(llvm::Function *function) {
-  CHECK(kNumBlockArgs == function->arg_size())
+llvm::Value *LoadStatePointer(llvm::Function *function,
+                              bool allow_additional_parameters) {
+  CHECK(
+      (allow_additional_parameters && function->arg_size() >= kNumBlockArgs) ||
+      kNumBlockArgs == function->arg_size())
       << "Invalid block-like function. Expected three arguments: state "
       << "pointer, program counter, and memory pointer in function "
       << function->getName().str();
@@ -278,8 +289,9 @@ llvm::Value *LoadProgramCounterArg(llvm::Function *function) {
   return NthArgument(function, kPCArgNum);
 }
 
-llvm::Value *LoadStatePointer(llvm::BasicBlock *block) {
-  return LoadStatePointer(block->getParent());
+llvm::Value *LoadStatePointer(llvm::BasicBlock *block,
+                              bool allow_additional_parameters) {
+  return LoadStatePointer(block->getParent(), allow_additional_parameters);
 }
 
 // Return the current program counter.
@@ -652,7 +664,8 @@ llvm::Argument *NthArgument(llvm::Function *func, size_t index) {
 // Return a vector of arguments to pass to a lifted function, where the
 // arguments are derived from `block`.
 std::array<llvm::Value *, kNumBlockArgs>
-LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics) {
+LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics,
+                   bool allow_additional_parameters) {
   auto func = block->getParent();
 
   // Set up arguments according to our ABI.
@@ -660,7 +673,8 @@ LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics) {
 
   if (FindVarInFunction(func, kPCVariableName, true).first) {
     args[kMemoryPointerArgNum] = LoadMemoryPointer(block, intrinsics);
-    args[kStatePointerArgNum] = LoadStatePointer(block);
+    args[kStatePointerArgNum] =
+        LoadStatePointer(block, allow_additional_parameters);
     args[kPCArgNum] = LoadProgramCounter(block, intrinsics);
   } else {
     args[kMemoryPointerArgNum] = NthArgument(func, kMemoryPointerArgNum);
