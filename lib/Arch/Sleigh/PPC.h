@@ -34,7 +34,8 @@ class SleighPPCDecoder final : public remill::sleigh::SleighDecoder {
                                 size_t) const override;
 
   void InitializeSleighContext(
-      remill::sleigh::SingleInstructionSleighContext &) const override;
+      remill::sleigh::SingleInstructionSleighContext &,
+      const std::map<std::string, uint64_t> &) const override;
 };
 
 }  // namespace remill::sleighppc

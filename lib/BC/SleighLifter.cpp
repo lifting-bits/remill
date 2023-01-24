@@ -1473,9 +1473,7 @@ SleighLifter::SleighLifter(const remill::Arch &arch_,
     : InstructionLifter(&arch_, intrinsics_),
       sleigh_context(new sleigh::SingleInstructionSleighContext(
           dec_.GetSLAName(), dec_.GetPSpec())),
-      decoder(dec_) {
-  this->decoder.InitializeSleighContext(*sleigh_context);
-}
+      decoder(dec_) {}
 
 
 const std::string_view SleighLifter::kInstructionFunctionPrefix =
@@ -1522,10 +1520,11 @@ SleighLifter::DefineInstructionFunction(Instruction &inst,
 std::pair<LiftStatus, std::optional<llvm::Function *>>
 SleighLifter::LiftIntoInternalBlockWithSleighState(
     Instruction &inst, llvm::Module *target_mod, bool is_delayed,
-    const std::optional<sleigh::BranchTakenVar> &btaken) {
+    const std::optional<sleigh::BranchTakenVar> &btaken,
+    const std::map<std::string, uint64_t> &context_values) {
 
   this->sleigh_context->resetContext();
-  this->decoder.InitializeSleighContext(*this->sleigh_context);
+  this->decoder.InitializeSleighContext(*this->sleigh_context, context_values);
 
   sleigh::PcodeDecoder pcode_record(this->GetEngine());
   sleigh_context->oneInstruction(inst.pc, pcode_record, inst.bytes);
@@ -1579,7 +1578,8 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
 LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
     Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
-    bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken) {
+    bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken,
+    const std::map<std::string, uint64_t> &context_values) {
   if (!inst.IsValid()) {
     DLOG(ERROR) << "Invalid function" << inst.Serialize();
     return kLiftedInvalidInstruction;
@@ -1588,7 +1588,7 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
 
   // Call the instruction function
   auto res = this->LiftIntoInternalBlockWithSleighState(
-      inst, block->getModule(), is_delayed, btaken);
+      inst, block->getModule(), is_delayed, btaken, context_values);
 
   if (res.first != LiftStatus::kLiftedInstruction || !res.second.has_value()) {
     return res.first;
@@ -1647,8 +1647,10 @@ Sleigh &SleighLifter::GetEngine(void) const {
 
 SleighLifterWithState::SleighLifterWithState(
     std::optional<sleigh::BranchTakenVar> btaken_,
+    std::map<std::string, uint64_t> context_values_,
     std::shared_ptr<SleighLifter> lifter_)
     : btaken(btaken_),
+      context_values(std::move(context_values_)),
       lifter(std::move(lifter_)) {}
 
 // Lift a single instruction into a basic block. `is_delayed` signifies that
@@ -1656,8 +1658,8 @@ SleighLifterWithState::SleighLifterWithState(
 LiftStatus
 SleighLifterWithState::LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
                                      llvm::Value *state_ptr, bool is_delayed) {
-  return this->lifter->LiftIntoBlockWithSleighState(inst, block, state_ptr,
-                                                    is_delayed, this->btaken);
+  return this->lifter->LiftIntoBlockWithSleighState(
+      inst, block, state_ptr, is_delayed, this->btaken, this->context_values);
 }
 
 

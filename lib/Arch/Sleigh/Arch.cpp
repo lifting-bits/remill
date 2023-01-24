@@ -191,6 +191,7 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
                                       DecodingContext context) const {
 
 
+  auto context_values = context.GetContextValues();
   auto res_cat = const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
       address, instr_bytes, inst, std::move(context));
 
@@ -201,8 +202,8 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
         << "Should always emit branch taken var for conditional instruction";
   }
 
-  inst.SetLifter(std::make_shared<SleighLifterWithState>(res_cat->second,
-                                                         this->GetLifter()));
+  inst.SetLifter(std::make_shared<SleighLifterWithState>(
+      res_cat->second, std::move(context_values), this->GetLifter()));
   CHECK(inst.GetLifter() != nullptr);
   return res_cat.has_value();
 }
@@ -243,7 +244,8 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
 
   // Now decode the instruction.
   this->sleigh_ctx.resetContext();
-  this->InitializeSleighContext(this->sleigh_ctx);
+  this->InitializeSleighContext(this->sleigh_ctx,
+                                curr_context.GetContextValues());
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine());
 
 

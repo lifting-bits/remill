@@ -55,6 +55,8 @@ class DecodingContext {
   uint64_t GetContextValue(const std::string &context_reg) const;
   DecodingContext PutContextReg(std::string creg, uint64_t value) const;
   DecodingContext ContextWithoutRegister(const std::string &creg) const;
+
+  const std::map<std::string, uint64_t> &GetContextValues() const;
 };
 
 }  // namespace remill

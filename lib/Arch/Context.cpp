@@ -50,4 +50,10 @@ DecodingContext::ContextWithoutRegister(const std::string &creg) const {
   return cpy;
 }
 
+const std::map<std::string, uint64_t> &
+DecodingContext::GetContextValues() const {
+  return this->context_value;
+}
+
+
 }  // namespace remill

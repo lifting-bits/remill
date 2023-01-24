@@ -40,8 +40,18 @@ llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
 }
 
 void SleighPPCDecoder::InitializeSleighContext(
-    remill::sleigh::SingleInstructionSleighContext &ctxt) const {
-  ctxt.GetContext().setVariableDefault("vle", 1);
+    remill::sleigh::SingleInstructionSleighContext &ctxt,
+    const std::map<std::string, uint64_t> &context_values) const {
+  // If the context value mappings specify a value for the VLE register, let's pass that into
+  // Sleigh.
+  //
+  // Otherwise, default to VLE off.
+  uint64_t vle_value = 0;
+  const auto vle_iter = context_values.find(kPPCVLERegName);
+  if (vle_iter != context_values.end()) {
+    vle_value = vle_iter->second;
+  }
+  ctxt.GetContext().setVariableDefault("vle", vle_value);
 }
 
 class SleighPPCArch : public ArchBase {
@@ -53,7 +63,7 @@ class SleighPPCArch : public ArchBase {
   virtual ~SleighPPCArch() = default;
 
   DecodingContext CreateInitialContext(void) const override {
-    return DecodingContext().PutContextReg(kPPCVLERegName, 1);
+    return DecodingContext().PutContextReg(kPPCVLERegName, 0);
   }
 
   std::string_view StackPointerRegisterName(void) const override {
