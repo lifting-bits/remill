@@ -55,5 +55,4 @@ DecodingContext::GetContextValues() const {
   return this->context_value;
 }
 
-
 }  // namespace remill
