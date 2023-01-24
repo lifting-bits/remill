@@ -191,12 +191,13 @@ class TestSpecRunner {
                    ? llvm::support::endianness::little
                    : llvm::support::endianness::big) {}
 
-  void RunTestSpec(const TestOutputSpec<S> &test) {
+  void RunTestSpec(const TestOutputSpec<S> &test,
+                   const remill::DecodingContext &dec_ctx) {
     std::stringstream ss;
     ss << "test_disas_func_" << this->tst_ctr++;
 
-    auto maybe_func =
-        lifter.LiftInstructionFunction(ss.str(), test.target_bytes, test.addr);
+    auto maybe_func = lifter.LiftInstructionFunction(
+        ss.str(), test.target_bytes, test.addr, dec_ctx);
 
     CHECK(maybe_func.has_value());
     auto lifted_func = maybe_func->first;
@@ -241,6 +242,10 @@ int main(int argc, char **argv) {
   return RUN_ALL_TESTS();
 }
 
+
+inline const remill::DecodingContext kVLEContext =
+    remill::DecodingContext({{std::string("VLEReg"), 1}});
+
 // Add two registers
 TEST(PPCVLELifts, PPCVLEAdd) {
   llvm::LLVMContext curr_context;
@@ -254,7 +259,7 @@ TEST(PPCVLELifts, PPCVLEAdd) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // Add two registers and record
@@ -277,7 +282,7 @@ TEST(PPCVLELifts, PPCVLEAddRecord) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // Add two registers and set overflow
@@ -301,7 +306,7 @@ TEST(PPCVLELifts, PPCVLEAddOverflow) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE short Branch to Link Register
@@ -318,7 +323,7 @@ TEST(PPCVLELifts, PPCVLEBranchLinkRegister) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE short Branch to Link Register and Link
@@ -335,11 +340,8 @@ TEST(PPCVLELifts, PPCVLEBranchLinkRegisterAndLink) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
-
-inline const remill::DecodingContext kVLEContext =
-    remill::DecodingContext({{std::string("VLEReg"), 1}});
 
 // VLE long relative conditional branch
 TEST(PPCVLELifts, PPCVLECondBranch) {
@@ -371,7 +373,7 @@ TEST(PPCVLELifts, PPCVLECondBranch) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE long relative conditional branch
@@ -404,7 +406,7 @@ TEST(PPCVLELifts, PPCVLECondBranch2) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE long relative branch
@@ -422,7 +424,7 @@ TEST(PPCVLELifts, PPCVLEBranch) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE short compare immediate
@@ -439,7 +441,7 @@ TEST(PPCVLELifts, PPCVLECompareImmediate) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE Store word
@@ -462,7 +464,7 @@ TEST(PPCVLELifts, PPCVLEStoreWord) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // Load word and zero
@@ -485,7 +487,7 @@ TEST(PPCVLELifts, PPCVLELoadWordAndZero) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE Load Multiple Volatile General Purpose Registers
@@ -540,7 +542,7 @@ TEST(PPCVLELifts, PPCVLELoadMultipleGeneralPurposeRegisters) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE Store Multiple Volatile General Purpose Registers
@@ -594,7 +596,7 @@ TEST(PPCVLELifts, PPCVLEStoreMultipleGeneralPurposeRegisters) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE Load Multiple Volatile Special Purpose Registers
@@ -643,7 +645,7 @@ TEST(PPCVLELifts, PPCVLELoadMultipleSpecialPurposeRegisters) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // VLE Store Multiple Volatile Special Purpose Registers
@@ -692,7 +694,7 @@ TEST(PPCVLELifts, DISABLED_PPCVLEStoreMultipleSpecialPurposeRegisters) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // Rotate Left Word Immediate then AND with Mask
@@ -715,7 +717,7 @@ TEST(PPCVLELifts, PPCVLERotateLeftWordImmediateAndMask) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // Convert Floating-Point Double-Precision from Signed Integer
@@ -735,7 +737,7 @@ TEST(PPCVLELifts, PPCVLEConvertDoubleFromSignedInteger) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // Convert Floating-Point Single-Precision from Signed Integer
@@ -755,7 +757,7 @@ TEST(PPCVLELifts, PPCVLEConvertFloatFromSignedInteger) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // Convert Floating-Point Single-Precision to Signed Integer
@@ -777,7 +779,7 @@ TEST(PPCVLELifts, PPCVLEConvertFloatToSignedInteger) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }
 
 // Test syscall
@@ -794,5 +796,5 @@ TEST(PPCVLELifts, DISABLED_PPCVLESyscall) {
   curr_context.enableOpaquePointers();
 #endif
   TestSpecRunner<PPCState> runner(curr_context);
-  runner.RunTestSpec(spec);
+  runner.RunTestSpec(spec, kVLEContext);
 }

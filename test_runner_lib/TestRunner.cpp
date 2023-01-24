@@ -221,12 +221,11 @@ std::unordered_map<TypeId, llvm::Type *> LiftingTester::GetTypeMapping() {
 
 std::optional<std::pair<llvm::Function *, remill::Instruction>>
 LiftingTester::LiftInstructionFunction(std::string_view fname,
-                                       std::string_view bytes,
-                                       uint64_t address) {
+                                       std::string_view bytes, uint64_t address,
+                                       const remill::DecodingContext &ctx) {
   remill::Instruction insn;
   // This works for now since each arch has an initial context that represents the arch correctly.
-  if (!this->arch->DecodeInstruction(address, bytes, insn,
-                                     this->arch->CreateInitialContext())) {
+  if (!this->arch->DecodeInstruction(address, bytes, insn, ctx)) {
     LOG(ERROR) << "Failed decode";
     return std::nullopt;
   }
@@ -260,6 +259,14 @@ LiftingTester::LiftInstructionFunction(std::string_view fname,
   bldr.CreateRet(bldr.CreateLoad(this->lifter->GetMemoryType(), mem_ptr_ref));
 
   return std::make_pair(target_func, insn);
+}
+
+std::optional<std::pair<llvm::Function *, remill::Instruction>>
+LiftingTester::LiftInstructionFunction(std::string_view fname,
+                                       std::string_view bytes,
+                                       uint64_t address) {
+  return LiftInstructionFunction(fname, bytes, address,
+                                 this->arch->CreateInitialContext());
 }
 
 const remill::Arch::ArchPtr &LiftingTester::GetArch() const {

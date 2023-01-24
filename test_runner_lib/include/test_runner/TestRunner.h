@@ -190,10 +190,13 @@ class LiftingTester {
                 remill::ArchName arch_name);
   std::unordered_map<TypeId, llvm::Type *> GetTypeMapping();
 
-
   std::optional<std::pair<llvm::Function *, remill::Instruction>>
   LiftInstructionFunction(std::string_view fname, std::string_view bytes,
                           uint64_t address);
+
+  std::optional<std::pair<llvm::Function *, remill::Instruction>>
+  LiftInstructionFunction(std::string_view fname, std::string_view bytes,
+                          uint64_t address, const remill::DecodingContext &ctx);
 
   const remill::Arch::ArchPtr &GetArch() const;
 };
