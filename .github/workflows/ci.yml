@@ -23,7 +23,7 @@ jobs:
       matrix:
         image:
           - { name: 'ubuntu', tag: '20.04' }
-        llvm: ['14', '15']
+        llvm: ['15']
 
     runs-on: ubuntu-20.04
     container:
@@ -102,8 +102,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['macos-11']
-        llvm: ['14', '15']
+        os: ['macos-12']
+        llvm: ['15']
 
     runs-on: ${{ matrix.os }}
 
