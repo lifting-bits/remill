@@ -239,9 +239,14 @@ FindVarInFunction(llvm::Function *function, std::string_view name_,
   return {nullptr, nullptr};
 }
 
+bool IsCompatibleStateFunction(llvm::Function *function) {
+  return function->arg_size() >= kNumBlockArgs;
+}
+
+
 // Find the machine state pointer.
 llvm::Value *LoadStatePointer(llvm::Function *function) {
-  CHECK(kNumBlockArgs == function->arg_size())
+  CHECK(IsCompatibleStateFunction(function))
       << "Invalid block-like function. Expected three arguments: state "
       << "pointer, program counter, and memory pointer in function "
       << function->getName().str();
@@ -254,7 +259,7 @@ llvm::Value *LoadStatePointer(llvm::Function *function) {
 
 // Return the memory pointer argument.
 llvm::Value *LoadMemoryPointerArg(llvm::Function *function) {
-  CHECK(kNumBlockArgs == function->arg_size())
+  CHECK(IsCompatibleStateFunction(function))
       << "Invalid block-like function. Expected three arguments: state "
       << "pointer, program counter, and memory pointer in function "
       << function->getName().str();
@@ -267,7 +272,7 @@ llvm::Value *LoadMemoryPointerArg(llvm::Function *function) {
 
 // Return the program counter argument.
 llvm::Value *LoadProgramCounterArg(llvm::Function *function) {
-  CHECK(kNumBlockArgs == function->arg_size())
+  CHECK(IsCompatibleStateFunction(function))
       << "Invalid block-like function. Expected three arguments: state "
       << "pointer, program counter, and memory pointer in function "
       << function->getName().str();
