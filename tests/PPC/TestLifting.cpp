@@ -343,6 +343,37 @@ TEST(PPCVLELifts, PPCVLEBranchLinkRegisterAndLink) {
   runner.RunTestSpec(spec, kVLEContext);
 }
 
+// VLE long relative branch that branches to negative relative offset
+TEST(PPCVLELifts, PPCVLENegBranch) {
+  llvm::LLVMContext curr_context;
+  // e_b 0xfffffffa (-0x6)
+  std::string insn_data("\x79\xff\xff\xfa", 4);
+  auto maybe_flow = GetFlows(insn_data, 0xdeadbee0, 1);
+  ASSERT_TRUE(maybe_flow.has_value());
+  auto act_insn = *maybe_flow;
+
+  remill::Instruction::InstructionFlowCategory expected_condjmp =
+          remill::Instruction::DirectJump(
+              remill::Instruction::DirectFlow(0xdeadbee0 - 0x6, kVLEContext));
+
+  auto actual_condjmp =
+      std::get<remill::Instruction::DirectJump>(act_insn.flows);
+
+  EXPECT_EQ(expected_condjmp, act_insn.flows);
+
+  TestOutputSpec<PPCState> spec(
+      0x12, insn_data,
+      remill::Instruction::Category::kCategoryDirectJump,
+      {{"pc", uint64_t(0x10)}},
+      {{"pc", uint64_t(0xa)}}, reg_to_accessor);
+
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+  curr_context.enableOpaquePointers();
+#endif
+  TestSpecRunner<PPCState> runner(curr_context);
+  runner.RunTestSpec(spec, kVLEContext);
+}
+
 // VLE long relative conditional branch
 TEST(PPCVLELifts, PPCVLECondBranch) {
   llvm::LLVMContext curr_context;
