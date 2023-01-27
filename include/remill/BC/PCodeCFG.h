@@ -21,7 +21,7 @@
 #include <cstddef>
 #include <mutex>
 #include <sleigh/libsleigh.hh>
-#include <unordered_map>
+#include <map>
 #include <variant>
 #include <vector>
 
@@ -60,9 +60,9 @@ class PcodeBlock {
 
 class PcodeCFG {
  public:
-  std::unordered_map<size_t, PcodeBlock> blocks;
+  std::map<size_t, PcodeBlock> blocks;
 
-  PcodeCFG(std::unordered_map<size_t, PcodeBlock> blocks);
+  PcodeCFG(std::map<size_t, PcodeBlock> blocks);
 };
 
 class PcodeCFGBuilder {

@@ -5,7 +5,7 @@
 #include <sleigh/op.hh>
 #include <sleigh/opcodes.hh>
 #include <sleigh/pcoderaw.hh>
-#include <unordered_map>
+#include <map>
 #include <variant>
 #include <vector>
 
@@ -129,7 +129,7 @@ PcodeCFG PcodeCFGBuilder::Build() {
   std::set s(starts.begin(), starts.end());
   starts.assign(s.begin(), s.end());
 
-  std::unordered_map<size_t, PcodeBlock> blocks;
+  std::map<size_t, PcodeBlock> blocks;
 
   if (this->linear_ops.empty()) {
     // There is no insturction at 0 to build a block at
@@ -153,7 +153,7 @@ PcodeCFG PcodeCFGBuilder::Build() {
 PcodeCFGBuilder::PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops)
     : linear_ops(linear_ops) {}
 
-PcodeCFG::PcodeCFG(std::unordered_map<size_t, PcodeBlock> blocks)
+PcodeCFG::PcodeCFG(std::map<size_t, PcodeBlock> blocks)
     : blocks(std::move(blocks)) {}
 
 PcodeBlock::PcodeBlock(size_t base_index, std::vector<RemillPcodeOp> ops,
