@@ -62,6 +62,7 @@ std::string DumpPcode(Sleigh &engine, const remill::sleigh::RemillPcodeOp &op) {
     ss << " = ";
   }
   for (size_t i = 0; i < op.vars.size(); ++i) {
+    ss << ' ';
     auto iv = op.vars[i];
     print_vardata(engine, ss, iv);
   }
