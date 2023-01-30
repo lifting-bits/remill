@@ -61,39 +61,32 @@ class TestOutputSpec {
   RegisterAccessorMap reg_to_accessor;
 
   template <typename T>
-  void ApplyCondition(S &state, const std::string &reg, T value) const {
-    auto accessor = reg_to_accessor.find(reg);
-    if (accessor != reg_to_accessor.end()) {
-      auto wrapper = accessor->second(state);
-      if (auto underlying = std::get_if<std::reference_wrapper<T>>(&wrapper)) {
-        underlying->get() = value;
-      } else {
-        throw std::runtime_error(
-            std::string("Reg value " + reg + " has incorrect type"));
-      }
-    } else {
-      throw std::runtime_error(std::string("Unknown reg: ") + reg);
+  T &GetRegister(S &state, const std::string &reg_name) const {
+    auto accessor = reg_to_accessor.find(reg_name);
+    if (accessor == reg_to_accessor.end()) {
+      throw std::runtime_error(std::string("Unknown reg: ") + reg_name);
     }
+    auto wrapper = accessor->second(state);
+    if (auto underlying = std::get_if<std::reference_wrapper<T>>(&wrapper)) {
+      return underlying->get();
+    }
+    throw std::runtime_error(
+        std::string("Reg value " + reg_name + " has incorrect type"));
   }
 
   template <typename T>
-  void CheckCondition(S &state, const std::string &reg, T value) const {
-    auto accessor = reg_to_accessor.find(reg);
-    if (accessor != reg_to_accessor.end()) {
-      auto wrapper = accessor->second(state);
-      if (auto underlying = std::get_if<std::reference_wrapper<T>>(&wrapper)) {
-        auto actual = underlying->get();
-        LOG(INFO) << "Reg: " << reg << " Actual: " << std::hex
-                  << static_cast<uint64_t>(actual) << " Expected: " << std::hex
-                  << static_cast<uint64_t>(value);
-        CHECK_EQ(actual, value);
-      } else {
-        throw std::runtime_error(
-            std::string("Reg value " + reg + " has incorrect type"));
-      }
-    } else {
-      throw std::runtime_error(std::string("Unknown reg: ") + reg);
-    }
+  void ApplyCondition(S &state, const std::string &reg_name, T value) const {
+    auto &reg = this->GetRegister<T>(state, reg_name);
+    reg = value;
+  }
+
+  template <typename T>
+  void CheckCondition(S &state, const std::string &reg_name, T value) const {
+    auto actual = this->GetRegister<T>(state, reg_name);
+    LOG(INFO) << "Reg: " << reg_name << " Actual: " << std::hex
+              << static_cast<uint64_t>(actual) << " Expected: " << std::hex
+              << static_cast<uint64_t>(value);
+    CHECK_EQ(actual, value);
   }
 
  public:
