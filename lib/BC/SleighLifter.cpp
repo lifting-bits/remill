@@ -293,6 +293,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         return *replacement;
       }
 
+      // NOTE(wtan): we don't expect to hit this case if the target architecture has sleigh patches
+      // that fixup PC-relative offsets
+      LOG(ERROR)
+          << "claim_eq value not found" << target.offset
+          << ", possible bug with iteration order or missing sleigh patches";
+
       return llvm::ConstantInt::get(target_type, target.offset);
     }
   };
@@ -812,7 +818,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       // TODO(Ian): handle other address spaces
       auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
           bldr, lhs, this->insn_lifter_parent.GetWordType());
-
 
       auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
       assert(pc_reg_param.has_value());
