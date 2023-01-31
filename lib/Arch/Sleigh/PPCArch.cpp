@@ -240,8 +240,7 @@ class SleighPPCArch : public ArchBase {
   FinishLiftedFunctionInitialization(llvm::Module *module,
                                      llvm::Function *bb_func) const override {
     auto &context = module->getContext();
-    const auto u64 = llvm::Type::getInt64Ty(context);
-    const auto addr = u64;
+    const auto addr = llvm::Type::getInt64Ty(context);
 
     auto &entry_block = bb_func->getEntryBlock();
     llvm::IRBuilder<> ir(&entry_block);
