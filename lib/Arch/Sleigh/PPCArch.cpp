@@ -253,7 +253,8 @@ class SleighPPCArch : public ArchBase {
     ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr,
                                            kIgnoreNextPCVariableName.data()));
 
-    (void) this->RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
+    std::ignore =
+        this->RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
   }
 
  private:
