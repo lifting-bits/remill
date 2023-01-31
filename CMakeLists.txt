@@ -86,6 +86,9 @@ find_package(glog CONFIG REQUIRED)
 # Google gflags
 find_package(gflags CONFIG REQUIRED)
 
+# Python interpreter
+find_package(Python COMPONENTS Interpreter)
+
 set(sleigh_ENABLE_TESTS OFF)
 set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia.patch;${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/arm-thumb.patch" CACHE STRING "" FORCE)
 

@@ -72,15 +72,15 @@ DEF_SEM(STP_D, V64 src1, V64 src2, MV128W dst) {
 // remill/remill/Arch/Runtime/Operators.h:437:1: error: static_assert failed "Invalid value size for MVnW."
 // MAKE_MWRITEV(U, 128, dqwords, 128, uint128_t)
 
-// DEF_SEM(STP_Q, V128 src1, V128 src2, MV128W dst) {
-//   auto src1_vec = UReadV128(src1);
-//   auto src2_vec = UReadV128(src2);
-//   uint128v2_t tmp_vec = {};
-//   tmp_vec = UInsertV128(tmp_vec, 0, UExtractV128(src1_vec, 0));
-//   tmp_vec = UInsertV128(tmp_vec, 1, UExtractV128(src2_vec, 0));
-//   UWriteV128(dst, tmp_vec);
-//   return memory;
-// }
+DEF_SEM(STP_Q, V128 src1, V128 src2, MV256W dst) {
+  auto src1_vec = UReadV128(src1);
+  auto src2_vec = UReadV128(src2);
+  uint128v2_t tmp_vec = {};
+  tmp_vec = UInsertV128(tmp_vec, 0, UExtractV128(src1_vec, 0));
+  tmp_vec = UInsertV128(tmp_vec, 1, UExtractV128(src2_vec, 0));
+  UWriteV128(dst, tmp_vec);
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(STP_32_LDSTPAIR_PRE) = StorePairUpdateIndex32;
@@ -95,7 +95,7 @@ DEF_ISEL(STP_64_LDSTPAIR_OFF) = StorePair64;
 DEF_ISEL(STP_S_LDSTPAIR_OFF) = STP_S;
 DEF_ISEL(STP_D_LDSTPAIR_OFF) = STP_D;
 
-// DEF_ISEL(STP_Q_LDSTPAIR_OFF) = STP_Q;
+DEF_ISEL(STP_Q_LDSTPAIR_OFF) = STP_Q;
 
 namespace {
 
