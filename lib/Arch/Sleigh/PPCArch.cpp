@@ -247,10 +247,12 @@ class SleighPPCArch : public ArchBase {
 
     const auto pc_arg = NthArgument(bb_func, kPCArgNum);
     const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
-    ir.CreateStore(pc_arg,
-                   ir.CreateAlloca(addr, nullptr, kNextPCVariableName.data()));
-    ir.CreateStore(pc_arg, ir.CreateAlloca(addr, nullptr,
-                                           kIgnoreNextPCVariableName.data()));
+
+    auto mk_alloca = [&](auto &from) {
+      return ir.CreateAlloca(addr, nullptr, from.data());
+    };
+    ir.CreateStore(pc_arg, mk_alloca(kNextPCVariableName));
+    ir.CreateStore(pc_arg, mk_alloca(kIgnoreNextPCVariableName));
 
     std::ignore =
         this->RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
