@@ -191,24 +191,36 @@ static_assert(512 == sizeof(FPR), "Invalid structure packing of `FPR`.");
 // take a full byte.
 struct alignas(8) CRFlags final {
 
+  volatile uint8_t _0;
   uint8_t cr0;
+  volatile uint8_t _1;
   uint8_t cr1;
+  volatile uint8_t _2;
   uint8_t cr2;
+  volatile uint8_t _3;
   uint8_t cr3;
+  volatile uint8_t _4;
   uint8_t cr4;
+  volatile uint8_t _5;
   uint8_t cr5;
+  volatile uint8_t _6;
   uint8_t cr6;
+  volatile uint8_t _7;
   uint8_t cr7;
 
 } __attribute__((packed));
 
 struct alignas(8) XERFlags final {
 
+  volatile uint8_t _0;
   uint8_t so;
+  volatile uint8_t _1;
   uint8_t ov;
+  volatile uint8_t _2;
   uint8_t ca;
+  volatile uint8_t _3;
   uint8_t sl;
-  uint8_t _padding[4];
+  // uint8_t _padding[2];
 
 } __attribute__((packed));
 
@@ -317,7 +329,7 @@ struct alignas(8) Signals final {
   uint8_t _padding[8];
 };
 
-struct alignas(16) PPCState : public ArchState {
+struct alignas(8) PPCState : public ArchState {
 
   GPR gpr;  // 528 bytes.
 
