@@ -664,13 +664,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         if (isVarnodeInConstantSpace(input_var)) {
           this->TerminateBlock();
           return LiftStatus::kLiftedInstruction;
-        } else {
-          auto input_val = this->replacement_cont.LiftOffsetOrReplace(
-              bldr, input_var,
-              llvm::IntegerType::get(this->context, input_var.size * 8));
-
-          return this->RedirectControlFlow(bldr, input_val);
         }
+
+        auto input_val = this->replacement_cont.LiftOffsetOrReplace(
+            bldr, input_var,
+            llvm::IntegerType::get(this->context, input_var.size * 8));
+
+        return this->RedirectControlFlow(bldr, input_val);
       }
       case OpCode::CPUI_RETURN:
       case OpCode::CPUI_BRANCHIND:
