@@ -2,10 +2,10 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <map>
 #include <sleigh/op.hh>
 #include <sleigh/opcodes.hh>
 #include <sleigh/pcoderaw.hh>
-#include <map>
 #include <variant>
 #include <vector>
 
@@ -21,9 +21,7 @@ PcodeCFGBuilder::CreateCFG(const std::vector<RemillPcodeOp> &linear_ops) {
 
 
 std::vector<size_t> PcodeCFGBuilder::GetBlockStarts() {
-  std::vector<size_t> res;
-  res.push_back(0);
-
+  std::vector<size_t> res = {0};
 
   for (size_t curr_index = 0; curr_index < this->linear_ops.size();
        curr_index += 1) {
@@ -48,11 +46,11 @@ PcodeBlock PcodeCFGBuilder::BuildBlock(size_t start_ind, size_t next_start) {
 namespace {
 struct IntraProcTransferCollector {
   std::vector<size_t> operator()(const InstrExit &ex) {
-    return std::vector<size_t>();
+    return {};
   }
 
   std::vector<size_t> operator()(const IntrainstructionIndex &ex) {
-    return std::vector<size_t>(1, ex.target_block_ind);
+    return {ex.target_block_ind};
   }
 
 
