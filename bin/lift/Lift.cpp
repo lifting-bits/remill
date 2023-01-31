@@ -244,9 +244,6 @@ int main(int argc, char *argv[]) {
   // Make sure `--address` and `--entry_address` are in-bounds for the target
   // architecture's address size.
   llvm::LLVMContext context;
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-  context.enableOpaquePointers();
-#endif
   auto arch = remill::Arch::Get(context, FLAGS_os, FLAGS_arch);
   const uint64_t addr_mask = ~0ULL >> (64UL - arch->address_size);
   if (FLAGS_address != (FLAGS_address & addr_mask)) {

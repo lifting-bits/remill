@@ -4,9 +4,6 @@
 
 V=""
 case ${LLVM_VERSION} in
-  llvm14*)
-    V=14
-  ;;
   llvm15*)
     V=15
   ;;

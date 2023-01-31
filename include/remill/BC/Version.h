@@ -29,25 +29,16 @@
 
 #define LLVM_VERSION_NUMBER LLVM_VERSION(LLVM_VERSION_MAJOR, LLVM_VERSION_MINOR)
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(14, 0)
-#  error "Minimum supported LLVM version is 14.0"
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
+#  error "Minimum supported LLVM version is 15.0"
 #endif
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-#  define IF_LLVM_LT_1500(...) __VA_ARGS__
-#  define IF_LLVM_LT_1500_(...) __VA_ARGS__,
-#  define _IF_LLVM_LT_1500(...) , __VA_ARGS__
-#  define IF_LLVM_GTE_1500(...)
-#  define IF_LLVM_GTE_1500_(...)
-#  define _IF_LLVM_GTE_1500(...)
-#else
-#  define IF_LLVM_LT_1500(...)
-#  define IF_LLVM_LT_1500_(...)
-#  define _IF_LLVM_LT_1500(...)
-#  define IF_LLVM_GTE_1500(...) __VA_ARGS__
-#  define IF_LLVM_GTE_1500_(...) __VA_ARGS__,
-#  define _IF_LLVM_GTE_1500(...) , __VA_ARGS__
-#endif
+#define IF_LLVM_LT_1500(...)
+#define IF_LLVM_LT_1500_(...)
+#define _IF_LLVM_LT_1500(...)
+#define IF_LLVM_GTE_1500(...) __VA_ARGS__
+#define IF_LLVM_GTE_1500_(...) __VA_ARGS__,
+#define _IF_LLVM_GTE_1500(...) , __VA_ARGS__
 
 #define IF_LLVM_LT(major, minor, ...) IF_LLVM_LT_##major##minor##0(__VA_ARGS__)
 

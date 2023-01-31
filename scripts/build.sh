@@ -280,10 +280,6 @@ function Package
 function GetLLVMVersion
 {
   case ${1} in
-    14)
-      LLVM_VERSION=llvm-14
-      return 0
-    ;;
     15)
       LLVM_VERSION=llvm-15
       return 0
