@@ -32,14 +32,14 @@ auto variant_cast(const std::variant<Args...> &v)
   return {v};
 }
 
-enum CoarseEffect { kAbnormal, kNormal, kIntraInstruction };
+enum class CoarseEffect { kAbnormal, kNormal, kIntraInstruction };
 
 struct CoarseFlow {
   CoarseEffect eff;
   bool is_conditional;
 };
 
-enum CoarseCategory {
+enum class CoarseCategory {
   kCatNormal,
   kCatNormalWithIntraInstructionFlow,
   kCatAbnormal,
@@ -68,7 +68,7 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
   auto is_conditional = op.op == CPUI_CBRANCH;
   if (isVarnodeInConstantSpace(op.vars[0])) {
     // this is an internal branch.. we cant handle that right now
-    return {{kIntraInstruction, is_conditional}};
+    return {{CoarseEffect::kIntraInstruction, is_conditional}};
   }
 
   return {{EffectFromDirectControlFlowOp(op, next_pc), is_conditional}};
@@ -398,14 +398,14 @@ So in a coarse grained way we can just treat indirect/direct/interprocedural flo
 Either a fallthrough or an abnormal flow can be conditional
 
 So the first step is to categorize a coarse grained control flow category which is one of:
-- Normal, in this case there are only fallthroughs, conditional or otherwise  
+- Normal, in this case there are only fallthroughs, conditional or otherwise
 - Conditional Abnormal: either we have a CONDITIONAL_FALLTHROUGH followed by an kAbnormal
   - or we have a CONDITIONAL_ABNORMAL followed by a FALLTHROUGH
-- Abnormal: we have many ABNORMALs conditional or otherwise 
+- Abnormal: we have many ABNORMALs conditional or otherwise
 
 We forbid multiple conditionals in a flow because then we'd need to join conditions
 
-After we find coarse categories and the flows follow these patterns, we determine if there is a constant context for each relevant flow. 
+After we find coarse categories and the flows follow these patterns, we determine if there is a constant context for each relevant flow.
 
 Finally we pass these coarse flows to a final categorizer to attempt to print these into a flow type
 */
