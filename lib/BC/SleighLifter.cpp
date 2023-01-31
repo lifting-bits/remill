@@ -261,7 +261,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                             SleighLifter::PcodeToLLVMEmitIntoBlock &lifter,
                             VarnodeData lhs_constant,
                             VarnodeData rhs_unfolded_value) {
-      assert(isVarnodeInConstantSpace(lhs_constant));
+      CHECK(isVarnodeInConstantSpace(lhs_constant));
       this->current_replacements.insert(
           {lhs_constant.offset, lifter.LiftParamPtr(bldr, rhs_unfolded_value)});
     }
@@ -820,7 +820,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           bldr, lhs, this->insn_lifter_parent.GetWordType());
 
       auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
-      assert(pc_reg_param.has_value());
+      CHECK(pc_reg_param.has_value());
       auto pc_reg_ptr = *pc_reg_param;
       auto orig_pc_value = pc_reg_ptr->LiftAsInParam(
           bldr, this->insn_lifter_parent.GetWordType());
@@ -1063,7 +1063,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     }
 
     if (opc == OpCode::CPUI_PIECE && outvar) {
-      assert(rhs.size + lhs.size == outvar->size);
+      CHECK(rhs.size + lhs.size == outvar->size);
 
       // Treat them as integers
       auto lifted_lhs = this->LiftInParam(
