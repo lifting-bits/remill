@@ -67,7 +67,7 @@ struct IntraProcTransferCollector {
 }  // namespace
 
 std::vector<size_t> PcodeCFGBuilder::GetIntraProcTargets(size_t index) {
-  std::variant<Exit, ConditionalExit> ex = GetBlockExitsForIndex(index);
+  auto ex = GetBlockExitsForIndex(index);
   return std::visit(IntraProcTransferCollector{}, ex);
 }
 

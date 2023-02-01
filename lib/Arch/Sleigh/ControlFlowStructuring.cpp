@@ -276,7 +276,7 @@ ExtractNonConditionalCategory(
     return std::nullopt;
   }
 
-  Instruction::InstructionFlowCategory fst = cats[0];
+  auto fst = cats[0];
   auto all_flows_equal = [&fst](Instruction::InstructionFlowCategory curr_cat) {
     return fst == curr_cat;
   };
