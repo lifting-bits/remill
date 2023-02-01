@@ -42,7 +42,7 @@ SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
 
 void SleighThumb2Decoder::InitializeSleighContext(
     remill::sleigh::SingleInstructionSleighContext &ctxt,
-    const std::map<std::string, uint64_t> &) const {
+    const ContextValues &) const {
   ctxt.GetContext().setVariableDefault("TMode", 1);
 }
 

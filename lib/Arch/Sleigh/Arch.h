@@ -107,9 +107,8 @@ class SleighDecoder {
 
   const std::string &GetPSpec() const;
   // Decoder specific prep
-  virtual void
-  InitializeSleighContext(SingleInstructionSleighContext &,
-                          const std::map<std::string, uint64_t> &) const = 0;
+  virtual void InitializeSleighContext(SingleInstructionSleighContext &,
+                                       const ContextValues &) const = 0;
 
 
   virtual llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,

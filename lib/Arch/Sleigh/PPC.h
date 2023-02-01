@@ -33,9 +33,8 @@ class SleighPPCDecoder final : public remill::sleigh::SleighDecoder {
   llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &, llvm::Value *,
                                 size_t) const override;
 
-  void InitializeSleighContext(
-      remill::sleigh::SingleInstructionSleighContext &,
-      const std::map<std::string, uint64_t> &) const override;
+  void InitializeSleighContext(remill::sleigh::SingleInstructionSleighContext &,
+                               const ContextValues &) const override;
 };
 
 }  // namespace remill::sleighppc

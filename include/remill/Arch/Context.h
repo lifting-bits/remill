@@ -26,6 +26,8 @@
 
 namespace remill {
 
+using ContextValues = std::map<std::string, uint64_t>;
+
 /// A decoding context is contextual information about the state of the program that affects decoding, ie. the thumb mode register on ARM
 /// We allow clients to interpose on a context for resolution
 
@@ -36,14 +38,14 @@ namespace remill {
 class DecodingContext {
 
  private:
-  std::map<std::string, uint64_t> context_value;
+  ContextValues context_value;
 
  public:
   bool operator==(const DecodingContext &rhs) const;
 
   DecodingContext() = default;
 
-  DecodingContext(std::map<std::string, uint64_t> context_value);
+  DecodingContext(ContextValues context_value);
 
 
   void UpdateContextReg(std::string creg, uint64_t value);
@@ -56,7 +58,7 @@ class DecodingContext {
   DecodingContext PutContextReg(std::string creg, uint64_t value) const;
   DecodingContext ContextWithoutRegister(const std::string &creg) const;
 
-  const std::map<std::string, uint64_t> &GetContextValues() const;
+  const ContextValues &GetContextValues() const;
 };
 
 }  // namespace remill

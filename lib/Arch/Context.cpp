@@ -9,7 +9,7 @@ bool DecodingContext::operator==(remill::DecodingContext const &rhs) const {
   return this->context_value == rhs.context_value;
 }
 
-DecodingContext::DecodingContext(std::map<std::string, uint64_t> context_value)
+DecodingContext::DecodingContext(ContextValues context_value)
     : context_value(std::move(context_value)) {}
 
 
@@ -25,7 +25,7 @@ DecodingContext::GetContextValue(const std::string &context_reg) const {
 
 DecodingContext DecodingContext::PutContextReg(std::string creg,
                                                uint64_t value) const {
-  std::map<std::string, uint64_t> new_value(this->context_value);
+  auto new_value = context_value;
   new_value.emplace(creg, value);
   return DecodingContext(std::move(new_value));
 }
@@ -50,8 +50,7 @@ DecodingContext::ContextWithoutRegister(const std::string &creg) const {
   return cpy;
 }
 
-const std::map<std::string, uint64_t> &
-DecodingContext::GetContextValues() const {
+const ContextValues &DecodingContext::GetContextValues() const {
   return this->context_value;
 }
 

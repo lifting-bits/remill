@@ -22,9 +22,9 @@ class SleighThumb2Decoder final : public remill::sleigh::SleighDecoder {
   virtual llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr, llvm::Value *,
                                         size_t curr_insn_size) const final;
 
-  void InitializeSleighContext(
-      remill::sleigh::SingleInstructionSleighContext &ctxt,
-      const std::map<std::string, uint64_t> &context_values) const final;
+  void
+  InitializeSleighContext(remill::sleigh::SingleInstructionSleighContext &ctxt,
+                          const ContextValues &context_values) const final;
 };
 }  // namespace sleighthumb2
 }  // namespace remill

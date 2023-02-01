@@ -63,7 +63,7 @@ class SleighLifter : public InstructionLifter {
   LiftStatus LiftIntoBlockWithSleighState(
       Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
       bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken,
-      const std::map<std::string, uint64_t> &context_values);
+      const ContextValues &context_values);
 
  private:
   static void SetISelAttributes(llvm::Function *);
@@ -76,7 +76,7 @@ class SleighLifter : public InstructionLifter {
   LiftIntoInternalBlockWithSleighState(
       Instruction &inst, llvm::Module *target_mod, bool is_delayed,
       const std::optional<sleigh::BranchTakenVar> &btaken,
-      const std::map<std::string, uint64_t> &context_values);
+      const ContextValues &context_values);
 
   ::Sleigh &GetEngine(void) const;
 };
@@ -86,12 +86,12 @@ class SleighLifter : public InstructionLifter {
 class SleighLifterWithState final : public InstructionLifterIntf {
  private:
   std::optional<sleigh::BranchTakenVar> btaken;
-  std::map<std::string, uint64_t> context_values;
+  ContextValues context_values;
   std::shared_ptr<SleighLifter> lifter;
 
  public:
   SleighLifterWithState(std::optional<sleigh::BranchTakenVar> btaken,
-                        std::map<std::string, uint64_t> context_values,
+                        ContextValues context_values,
                         std::shared_ptr<SleighLifter> lifter_);
 
   // Lift a single instruction into a basic block. `is_delayed` signifies that
@@ -115,7 +115,7 @@ class SleighLifterWithState final : public InstructionLifterIntf {
 
   virtual void ClearCache(void) const override;
 
-  const std::map<std::string, uint64_t> &GetContextValues() const {
+  const ContextValues &GetContextValues() const {
     return context_values;
   }
 };

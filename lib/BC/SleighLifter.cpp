@@ -1539,7 +1539,7 @@ std::pair<LiftStatus, std::optional<llvm::Function *>>
 SleighLifter::LiftIntoInternalBlockWithSleighState(
     Instruction &inst, llvm::Module *target_mod, bool is_delayed,
     const std::optional<sleigh::BranchTakenVar> &btaken,
-    const std::map<std::string, uint64_t> &context_values) {
+    const ContextValues &context_values) {
 
   this->sleigh_context->resetContext();
   this->decoder.InitializeSleighContext(*this->sleigh_context, context_values);
@@ -1601,7 +1601,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
     Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
     bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken,
-    const std::map<std::string, uint64_t> &context_values) {
+    const ContextValues &context_values) {
   if (!inst.IsValid()) {
     DLOG(ERROR) << "Invalid function" << inst.Serialize();
     return kLiftedInvalidInstruction;
@@ -1669,8 +1669,7 @@ Sleigh &SleighLifter::GetEngine(void) const {
 
 SleighLifterWithState::SleighLifterWithState(
     std::optional<sleigh::BranchTakenVar> btaken_,
-    std::map<std::string, uint64_t> context_values_,
-    std::shared_ptr<SleighLifter> lifter_)
+    ContextValues context_values_, std::shared_ptr<SleighLifter> lifter_)
     : btaken(btaken_),
       context_values(std::move(context_values_)),
       lifter(std::move(lifter_)) {}
