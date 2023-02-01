@@ -165,6 +165,11 @@ bool VerifyModule(llvm::Module *module);
 // Returns diagnostic message if verify failed.
 std::optional<std::string> VerifyModuleMsg(llvm::Module *module);
 
+// Try to verify a function.
+bool VerifyFunction(llvm::Function *func);
+// Returns diagnostic message if verify failed.
+std::optional<std::string> VerifyFunctionMsg(llvm::Function *func);
+
 
 std::unique_ptr<llvm::Module>
 LoadModuleFromFile(llvm::LLVMContext *context, std::filesystem::path file_name);

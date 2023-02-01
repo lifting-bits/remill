@@ -443,6 +443,27 @@ bool VerifyModule(llvm::Module *module) {
   return true;
 }
 
+std::optional<std::string> VerifyFunctionMsg(llvm::Function *func) {
+  std::string error;
+  llvm::raw_string_ostream error_stream(error);
+  if (llvm::verifyFunction(*func, &error_stream)) {
+    error_stream.flush();
+    return error;
+  }
+
+  return {};
+}
+
+// Try to verify a function.
+bool VerifyFunction(llvm::Function *func) {
+  if (auto error = VerifyFunctionMsg(func)) {
+    DLOG(ERROR) << "Error verifying function: " << *error;
+    return false;
+  }
+
+  return true;
+}
+
 std::unique_ptr<llvm::Module>
 LoadModuleFromFile(llvm::LLVMContext *context,
                    std::filesystem::path file_name) {

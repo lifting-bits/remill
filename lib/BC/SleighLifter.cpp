@@ -1594,7 +1594,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
   SleighLifter::SetISelAttributes(target_func);
   remill::InitFunctionAttributes(target_func);
 
-  CHECK(!llvm::verifyFunction(*target_func, &llvm::errs()));
+  CHECK(remill::VerifyFunction(target_func));
   return {lifter.GetStatus(), target_func};
 }
 

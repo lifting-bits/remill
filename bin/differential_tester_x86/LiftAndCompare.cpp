@@ -139,7 +139,7 @@ class DifferentialModuleBuilder {
     auto f2 = f2_and_name.first;
 
     for (auto x : {f1, f2}) {
-      llvm::verifyFunction(*x, &llvm::errs());
+      CHECK(remill::VerifyFunction(x));
     }
 
 
