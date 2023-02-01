@@ -32,7 +32,7 @@ namespace remill::sleigh {
 
 
 struct IntrainstructionIndex {
-  size_t target_block_ind;
+  size_t target_block_index;
 };
 
 struct InstrExit {};

@@ -49,7 +49,7 @@ struct IntraProcTransferCollector {
   }
 
   std::vector<size_t> operator()(const IntrainstructionIndex &ex) {
-    return {ex.target_block_ind};
+    return {ex.target_block_index};
   }
 
 
