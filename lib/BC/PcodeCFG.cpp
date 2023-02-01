@@ -93,11 +93,13 @@ BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
 
       auto taken_exit = build_direct_target_exit(curr_op.vars[0], index);
 
-      Exit fallthrough_exit = InstrExit{};
-      // if we are not the last pcodeop then we have an intraproc fallthrough
-      if (index < linear_ops.size() - 1) {
-        fallthrough_exit = IntrainstructionIndex{index + 1};
-      }
+      auto fallthrough_exit = [this, index]() -> Exit {
+        // if we are not the last pcodeop then we have an intraproc fallthrough
+        if (index < linear_ops.size() - 1) {
+          return IntrainstructionIndex{index + 1};
+        }
+        return InstrExit{};
+      }();
 
       return ConditionalExit{taken_exit, fallthrough_exit};
     }
