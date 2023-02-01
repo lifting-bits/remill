@@ -90,9 +90,6 @@ BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
     }
     case CPUI_CBRANCH: {
 
-
-      auto taken_exit = build_direct_target_exit(curr_op.vars[0], index);
-
       auto fallthrough_exit = [this, index]() -> Exit {
         // if we are not the last pcodeop then we have an intraproc fallthrough
         if (index < linear_ops.size() - 1) {
@@ -100,6 +97,8 @@ BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
         }
         return InstrExit{};
       }();
+
+      auto taken_exit = build_direct_target_exit(curr_op.vars[0], index);
 
       return ConditionalExit{taken_exit, fallthrough_exit};
     }
