@@ -262,6 +262,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                             VarnodeData lhs_constant,
                             VarnodeData rhs_unfolded_value) {
       CHECK(isVarnodeInConstantSpace(lhs_constant));
+      DLOG(INFO) << "Adding (" << lhs_constant.offset << ") to map";
       this->current_replacements.insert(
           {lhs_constant.offset, lifter.LiftParamPtr(bldr, rhs_unfolded_value)});
     }
@@ -272,9 +273,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       this->used_values.clear();
     }
 
+    // NOTE(wtan): this may end up replacing constants that shouldn't be replaced
+    // if the claim_eq happens to be used on constant values that are used elsewhere
+    // In practice, we don't expect this to happen since the program will be mapped
+    // to a higher address space so collisions should be rare
     llvm::Value *LiftOffsetOrReplace(llvm::IRBuilder<> &bldr,
                                      VarnodeData target,
                                      llvm::Type *target_type) {
+      DLOG(INFO) << "Fetching (" << target.offset << ") from map";
       if (this->current_replacements.find(target.offset) !=
           this->current_replacements.end()) {
 
@@ -293,13 +299,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         return *replacement;
       }
 
-      // NOTE(wtan): we don't expect to hit this case if the target architecture has sleigh patches
-      // that fixup PC-relative offsets
-      LOG(ERROR)
-          << "claim_eq value not found" << target.offset
-          << ", possible bug with iteration order or missing sleigh patches";
-
       return llvm::ConstantInt::get(target_type, target.offset);
+    }
+
+    // Returns true if the equality claim was used
+    // if the equality claim is not used at all when lifting an instruction,
+    // this can indicate that there is a bug
+    bool IsEqualityUsed() const {
+      return !used_values.empty();
     }
   };
 
@@ -1323,6 +1330,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     this->TerminateBlock();
   }
 
+  bool ClaimEqualityUsed() const {
+    return this->replacement_cont.IsEqualityUsed();
+  }
+
   LiftStatus GetStatus() {
     return this->status;
   }
@@ -1569,6 +1580,11 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
   for (auto blk : cfg.blocks) {
     lifter.VisitBlock(blk.second);
+  }
+
+  // Log error if claim_eq values that were declared saw no uses
+  if (lifter.ClaimEqualityUsed()) {
+    LOG(ERROR) << "claim_eq value not used when lifting " << inst.Serialize();
   }
 
   ir.CreateBr(lifter.GetOrCreateBlock(0));
