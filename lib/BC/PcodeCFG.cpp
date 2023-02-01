@@ -121,6 +121,8 @@ PcodeBlock::PcodeBlock(size_t base_index)
 PcodeCFG PcodeCFGBuilder::Build() const {
 
   auto starts = GetBlockStarts();
+
+  // De-duplicate and sort the block starts. We want to iterate in order.
   std::set s(starts.begin(), starts.end());
   starts.assign(s.begin(), s.end());
 
