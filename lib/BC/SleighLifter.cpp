@@ -322,7 +322,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
   size_t curr_id;
 
-  const std::optional<remill::sleigh::BranchTakenVar> &to_lift_btaken;
+  const sleigh::MaybeBranchTakenVar &to_lift_btaken;
 
   std::unordered_map<size_t, llvm::BasicBlock *>
       block_start_index_to_basic_block;
@@ -351,11 +351,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     return newblk;
   }
 
-  PcodeToLLVMEmitIntoBlock(
-      llvm::BasicBlock *target_block, llvm::Value *state_pointer,
-      const Instruction &insn, SleighLifter &insn_lifter_parent,
-      std::vector<std::string> user_op_names_, llvm::BasicBlock *exit_block_,
-      const std::optional<remill::sleigh::BranchTakenVar> &to_lift_btaken_)
+  PcodeToLLVMEmitIntoBlock(llvm::BasicBlock *target_block,
+                           llvm::Value *state_pointer, const Instruction &insn,
+                           SleighLifter &insn_lifter_parent,
+                           std::vector<std::string> user_op_names_,
+                           llvm::BasicBlock *exit_block_,
+                           const sleigh::MaybeBranchTakenVar &to_lift_btaken_)
       : target_block(target_block),
         state_pointer(state_pointer),
         context(target_block->getContext()),
@@ -1538,7 +1539,7 @@ SleighLifter::DefineInstructionFunction(Instruction &inst,
 std::pair<LiftStatus, std::optional<llvm::Function *>>
 SleighLifter::LiftIntoInternalBlockWithSleighState(
     Instruction &inst, llvm::Module *target_mod, bool is_delayed,
-    const std::optional<sleigh::BranchTakenVar> &btaken,
+    const sleigh::MaybeBranchTakenVar &btaken,
     const ContextValues &context_values) {
 
   this->sleigh_context->resetContext();
@@ -1600,7 +1601,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
 LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
     Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
-    bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken,
+    bool is_delayed, const sleigh::MaybeBranchTakenVar &btaken,
     const ContextValues &context_values) {
   if (!inst.IsValid()) {
     DLOG(ERROR) << "Invalid function" << inst.Serialize();
@@ -1668,8 +1669,8 @@ Sleigh &SleighLifter::GetEngine(void) const {
 }
 
 SleighLifterWithState::SleighLifterWithState(
-    std::optional<sleigh::BranchTakenVar> btaken_,
-    ContextValues context_values_, std::shared_ptr<SleighLifter> lifter_)
+    sleigh::MaybeBranchTakenVar btaken_, ContextValues context_values_,
+    std::shared_ptr<SleighLifter> lifter_)
     : btaken(btaken_),
       context_values(std::move(context_values_)),
       lifter(std::move(lifter_)) {}

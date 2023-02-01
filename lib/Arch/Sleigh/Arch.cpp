@@ -232,8 +232,8 @@ SleighDecoder::GetStateRegRemappings() const {
   return this->state_reg_remappings;
 }
 
-std::optional<std::pair<Instruction::InstructionFlowCategory,
-                        std::optional<BranchTakenVar>>>
+std::optional<
+    std::pair<Instruction::InstructionFlowCategory, MaybeBranchTakenVar>>
 SleighDecoder::DecodeInstructionImpl(uint64_t address,
                                      std::string_view instr_bytes,
                                      Instruction &inst,

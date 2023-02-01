@@ -51,9 +51,8 @@ class ControlFlowStructureAnalysis {
   ContextUpdater BuildContextUpdater(DecodingContext initial_context);
 
  public:
-  using SleighDecodingResult =
-      std::optional<std::pair<Instruction::InstructionFlowCategory,
-                              std::optional<BranchTakenVar>>>;
+  using SleighDecodingResult = std::optional<
+      std::pair<Instruction::InstructionFlowCategory, MaybeBranchTakenVar>>;
   ControlFlowStructureAnalysis(
       const std::unordered_map<std::string, std::string> &context_reg_mapping,
       Sleigh &engine);
