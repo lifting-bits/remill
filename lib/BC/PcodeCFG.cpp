@@ -43,31 +43,28 @@ PcodeBlock PcodeCFGBuilder::BuildBlock(size_t start_ind,
 
 namespace {
 struct IntraProcTransferCollector {
-  std::vector<size_t> operator()(const InstrExit &ex) {
-    return {};
+  std::vector<size_t> targets;
+
+  void operator()(const IntrainstructionIndex &ex) {
+    targets.push_back(ex.target_block_index);
   }
 
-  std::vector<size_t> operator()(const IntrainstructionIndex &ex) {
-    return {ex.target_block_index};
+  void operator()(const Exit &ex) {
+    std::visit(*this, ex);
   }
 
-
-  std::vector<size_t> operator()(const Exit &ex) {
-    return std::visit(*this, ex);
-  }
-
-  std::vector<size_t> operator()(const ConditionalExit &ex) {
-    std::vector<size_t> res = std::visit(*this, ex.true_branch);
-    std::vector<size_t> other = std::visit(*this, ex.false_branch);
-    res.insert(res.end(), other.begin(), other.end());
-    return res;
+  void operator()(const ConditionalExit &ex) {
+    std::visit(*this, ex.true_branch);
+    std::visit(*this, ex.false_branch);
   }
 };
 }  // namespace
 
 std::vector<size_t> PcodeCFGBuilder::GetIntraProcTargets(size_t index) const {
   auto ex = GetBlockExitsForIndex(index);
-  return std::visit(IntraProcTransferCollector{}, ex);
+  IntraProcTransferCollector collector;
+  std::visit(collector, ex);
+  return collector.targets;
 }
 
 BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
