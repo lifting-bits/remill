@@ -67,14 +67,13 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
 
   auto is_conditional = op.op == CPUI_CBRANCH;
   if (isVarnodeInConstantSpace(op.vars[0])) {
-    // this is an internal branch.. we cant handle that right now
     return {{CoarseEffect::kIntraInstruction, is_conditional}};
   }
 
   return {{EffectFromDirectControlFlowOp(op, next_pc), is_conditional}};
 }
 
-// gets a list of indeces and coarse categories in this pcodeop block
+// gets a list of indices and coarse categories in this pcodeop block
 static std::optional<std::map<size_t, CoarseFlow>>
 CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
   std::map<size_t, CoarseFlow> res;
