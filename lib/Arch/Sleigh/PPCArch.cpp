@@ -23,7 +23,7 @@ namespace remill {
 
 namespace sleighppc {
 
-static const char *kPPCVLERegName = "VLEReg";
+static constexpr auto kPPCVLERegName = "VLEReg";
 
 SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
     : SleighDecoder(arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
@@ -254,8 +254,7 @@ class SleighPPCArch : public ArchBase {
     ir.CreateStore(pc_arg, mk_alloca(kNextPCVariableName));
     ir.CreateStore(pc_arg, mk_alloca(kIgnoreNextPCVariableName));
 
-    std::ignore =
-        RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
+    std::ignore = RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
   }
 
  private:
