@@ -19,17 +19,16 @@
 #include <glog/logging.h>
 
 #include <cstddef>
+#include <map>
 #include <mutex>
 #include <sleigh/libsleigh.hh>
-#include <map>
 #include <variant>
 #include <vector>
 
 #include "lib/Arch/Sleigh/ControlFlowStructuring.h"
 
 
-namespace remill {
-namespace sleigh {
+namespace remill::sleigh {
 
 
 struct IntrainstructionIndex {
@@ -87,5 +86,4 @@ class PcodeCFGBuilder {
 };
 
 
-}  // namespace sleigh
-}  // namespace remill
+}  // namespace remill::sleigh
