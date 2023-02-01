@@ -33,9 +33,8 @@ PcodeBlock PcodeCFGBuilder::BuildBlock(size_t start_ind,
                                        size_t next_start) const {
   std::vector<RemillPcodeOp> ops;
 
-  for (size_t i = start_ind; i < next_start; i++) {
-    ops.push_back(linear_ops[i]);
-  }
+  std::copy(linear_ops.begin() + start_ind, linear_ops.begin() + next_start,
+            std::back_inserter(ops));
 
   return PcodeBlock(start_ind, std::move(ops),
                     GetBlockExitsForIndex(next_start - 1));
