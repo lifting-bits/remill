@@ -435,7 +435,7 @@ int main(int argc, char *argv[]) {
     guide.slp_vectorize = true;
     guide.loop_vectorize = true;
 
-    CHECK(!llvm::verifyModule(dest_module, &llvm::errs()));
+    CHECK(!remill::VerifyModule(&dest_module));
     remill::OptimizeBareModule(&dest_module, guide);
   }
 
