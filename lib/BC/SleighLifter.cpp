@@ -356,11 +356,18 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     }
   }
 
- public:
-  llvm::BasicBlock *GetOrCreateBlock(size_t target) {
+  llvm::BasicBlock *GetBlock(size_t target) const {
     auto blk = block_start_index_to_basic_block.find(target);
     if (blk != block_start_index_to_basic_block.end()) {
       return blk->second;
+    }
+    return nullptr;
+  }
+
+ public:
+  llvm::BasicBlock *GetOrCreateBlock(size_t target) {
+    if (auto blk = GetBlock(target)) {
+      return blk;
     }
 
     auto newblk = llvm::BasicBlock::Create(this->exit_block->getContext(), "",
