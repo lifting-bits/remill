@@ -150,4 +150,14 @@ class SleighDecoder {
   std::unordered_map<std::string, std::string> context_reg_mapping;
   std::unordered_map<std::string, std::string> state_reg_remappings;
 };
+
+uint64_t GetContextRegisterValue(const char *remill_reg_name,
+                                 uint64_t default_value,
+                                 const ContextValues &context_values);
+
+void SetContextRegisterValueInSleigh(
+    const char *remill_reg_name, const char *sleigh_reg_name,
+    uint64_t default_value, sleigh::SingleInstructionSleighContext &ctxt,
+    const ContextValues &context_values);
+
 }  // namespace remill::sleigh

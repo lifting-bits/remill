@@ -467,9 +467,29 @@ void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
 
         std::visit(conditional_applyer, cat.taken_branch);
       },
-  };  // namespace remill::sleigh
+  };
 
   std::visit(applyer, inst.flows);
+}
+
+uint64_t GetContextRegisterValue(const char *remill_reg_name,
+                                 uint64_t default_value,
+                                 const ContextValues &context_values) {
+  const auto iter = context_values.find(remill_reg_name);
+  if (iter != context_values.end()) {
+    return iter->second;
+  }
+  return default_value;
+}
+
+
+void SetContextRegisterValueInSleigh(
+    const char *remill_reg_name, const char *sleigh_reg_name,
+    uint64_t default_value, sleigh::SingleInstructionSleighContext &ctxt,
+    const ContextValues &context_values) {
+  auto value =
+      GetContextRegisterValue(remill_reg_name, default_value, context_values);
+  ctxt.GetContext().setVariableDefault(sleigh_reg_name, value);
 }
 
 }  // namespace remill::sleigh

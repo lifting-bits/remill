@@ -44,12 +44,8 @@ void SleighPPCDecoder::InitializeSleighContext(
   // Sleigh.
   //
   // Otherwise, default to VLE off.
-  uint64_t vle_value = 0;
-  const auto vle_iter = context_values.find(kPPCVLERegName);
-  if (vle_iter != context_values.end()) {
-    vle_value = vle_iter->second;
-  }
-  ctxt.GetContext().setVariableDefault("vle", vle_value);
+  sleigh::SetContextRegisterValueInSleigh(kPPCVLERegName, "vle", 0, ctxt,
+                                          context_values);
 }
 
 class SleighPPCArch : public ArchBase {
