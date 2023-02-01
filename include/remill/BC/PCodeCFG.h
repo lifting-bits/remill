@@ -30,7 +30,8 @@
 
 namespace remill::sleigh {
 
-
+// A zero-indexed pointer to a PcodeOp within an instruction, relative
+// to the first PcodeOp of the instruction.
 struct IntrainstructionIndex {
   size_t target_block_index;
 };
