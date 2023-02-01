@@ -321,11 +321,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return llvm::ConstantInt::get(target_type, target.offset);
     }
 
-    // Returns true if the equality claim was used
+    // Returns true if the equality claim was used or if no equality claims were declared
     // if the equality claim is not used at all when lifting an instruction,
     // this can indicate that there is a bug
     bool IsEqualityUsed() const {
-      return !used_values.empty();
+      return !used_values.empty() || current_replacements.empty();
     }
   };
 
