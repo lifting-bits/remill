@@ -126,7 +126,6 @@ static bool isUnconditionalNormal(CoarseFlow flow) {
 static std::optional<CoarseCategory>
 CoarseCategoryFromFlows(const std::map<size_t, CoarseFlow> &ops) {
 
-
   auto all_normal_effects = std::all_of(
       ops.begin(), ops.end(), [](const std::pair<size_t, CoarseFlow> &op) {
         return op.second.eff == CoarseEffect::kNormal;
@@ -135,11 +134,12 @@ CoarseCategoryFromFlows(const std::map<size_t, CoarseFlow> &ops) {
     return CoarseCategory::kCatNormal;
   }
 
-  auto all_normal_or_intra_effects = std::all_of(
-      ops.begin(), ops.end(), [](const std::pair<size_t, CoarseFlow> &op) {
-        return op.second.eff == CoarseEffect::kNormal ||
-               op.second.eff == CoarseEffect::kIntraInstruction;
-      });
+  auto is_normal_or_intra = [](const std::pair<size_t, CoarseFlow> &op) {
+    return op.second.eff == CoarseEffect::kNormal ||
+           op.second.eff == CoarseEffect::kIntraInstruction;
+  };
+  auto all_normal_or_intra_effects =
+      std::all_of(ops.begin(), ops.end(), is_normal_or_intra);
 
   if (all_normal_or_intra_effects) {
     return CoarseCategory::kCatNormalWithIntraInstructionFlow;
