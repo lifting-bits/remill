@@ -66,25 +66,20 @@ class PcodeCFG {
   PcodeCFG(std::map<size_t, PcodeBlock> blocks);
 };
 
+PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops);
+
 class PcodeCFGBuilder {
- private:
-  const std::vector<RemillPcodeOp> &linear_ops;
-
-
-  PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops);
-
-
-  PcodeBlock BuildBlock(size_t start_ind, size_t next_start);
-  BlockExit GetBlockExitsForIndex(size_t index);
-
-  std::vector<size_t> GetIntraProcTargets(size_t index);
-
-  std::vector<size_t> GetBlockStarts();
-
  public:
-  static PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops);
+  explicit PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops);
+  PcodeCFG Build() const;
 
-  PcodeCFG Build();
+ private:
+  PcodeBlock BuildBlock(size_t start_ind, size_t next_start) const;
+  BlockExit GetBlockExitsForIndex(size_t index) const;
+  std::vector<size_t> GetIntraProcTargets(size_t index) const;
+  std::vector<size_t> GetBlockStarts() const;
+
+  const std::vector<RemillPcodeOp> &linear_ops;
 };
 
 

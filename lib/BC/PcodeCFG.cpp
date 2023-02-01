@@ -14,13 +14,12 @@
 namespace remill {
 namespace sleigh {
 
-PcodeCFG
-PcodeCFGBuilder::CreateCFG(const std::vector<RemillPcodeOp> &linear_ops) {
+PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops) {
   return PcodeCFGBuilder(linear_ops).Build();
 }
 
 
-std::vector<size_t> PcodeCFGBuilder::GetBlockStarts() {
+std::vector<size_t> PcodeCFGBuilder::GetBlockStarts() const {
   std::vector<size_t> res = {0};
 
   for (size_t curr_index = 0; curr_index < linear_ops.size(); curr_index += 1) {
@@ -30,7 +29,8 @@ std::vector<size_t> PcodeCFGBuilder::GetBlockStarts() {
   return res;
 }
 
-PcodeBlock PcodeCFGBuilder::BuildBlock(size_t start_ind, size_t next_start) {
+PcodeBlock PcodeCFGBuilder::BuildBlock(size_t start_ind,
+                                       size_t next_start) const {
   std::vector<RemillPcodeOp> ops;
 
   for (size_t i = start_ind; i < next_start; i++) {
@@ -66,12 +66,12 @@ struct IntraProcTransferCollector {
 };
 }  // namespace
 
-std::vector<size_t> PcodeCFGBuilder::GetIntraProcTargets(size_t index) {
+std::vector<size_t> PcodeCFGBuilder::GetIntraProcTargets(size_t index) const {
   auto ex = GetBlockExitsForIndex(index);
   return std::visit(IntraProcTransferCollector{}, ex);
 }
 
-BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) {
+BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
   CHECK(index < linear_ops.size());
   const auto &curr_op = linear_ops[index];
 
@@ -118,7 +118,7 @@ PcodeBlock::PcodeBlock(size_t base_index)
       ops(),
       block_exit(Exit{InstrExit{}}) {}
 
-PcodeCFG PcodeCFGBuilder::Build() {
+PcodeCFG PcodeCFGBuilder::Build() const {
 
   auto starts = GetBlockStarts();
   std::set s(starts.begin(), starts.end());

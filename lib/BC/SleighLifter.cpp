@@ -1573,7 +1573,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
   //TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
 
 
-  auto cfg = sleigh::PcodeCFGBuilder::CreateCFG(pcode_record.ops);
+  auto cfg = sleigh::CreateCFG(pcode_record.ops);
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
       target_block, internal_state_pointer, inst, *this,
