@@ -444,11 +444,10 @@ ControlFlowStructureAnalysis::ComputeCategory(
           (Instruction::FallthroughFlow(entry_context)));
       Instruction::InstructionFlowCategory ifc = norm_insn;
       return std::make_pair(ifc, std::nullopt);
-    } else {
-      DLOG(ERROR)
-          << "Had an instructon with intrainstruction flow, but also decoding context updates";
-      return std::nullopt;
     }
+    DLOG(ERROR)
+        << "Had an instructon with intrainstruction flow, but also decoding context updates";
+    return std::nullopt;
   }
 
   auto flows = GetBoundContextsForFlows(ops, cc, context_updater);
@@ -467,12 +466,11 @@ std::optional<std::string>
 ContextUpdater::GetRemillReg(const VarnodeData &outvar) {
   auto reg_name =
       engine.getRegisterName(outvar.space, outvar.offset, outvar.size);
-  auto maybe_remill_reg_name = context_reg_mapping.find(reg_name);
-  if (maybe_remill_reg_name != context_reg_mapping.end()) {
-    return maybe_remill_reg_name->second;
-  } else {
-    return std::nullopt;
+  auto it = context_reg_mapping.find(reg_name);
+  if (it != context_reg_mapping.end()) {
+    return it->second;
   }
+  return std::nullopt;
 }
 
 

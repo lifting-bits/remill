@@ -81,9 +81,8 @@ PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) {
     if (isVarnodeInConstantSpace(target)) {
       // need to treat as signed?
       return IntrainstructionIndex{curr_ind + target.offset};
-    } else {
-      return InstrExit{};
     }
+    return InstrExit{};
   };
   switch (curr_op.op) {
     case CPUI_BRANCH:
