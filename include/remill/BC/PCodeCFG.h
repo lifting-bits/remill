@@ -44,17 +44,19 @@ struct ConditionalExit {
   Exit false_branch;
 };
 
+using BlockExit = std::variant<Exit, ConditionalExit>;
+
 class PcodeBlock {
  public:
   size_t base_index;
   std::vector<RemillPcodeOp> ops;
-  std::variant<Exit, ConditionalExit> block_exit;
+  BlockExit block_exit;
 
   // Default block with an instruction exit and no ops.
   PcodeBlock(size_t base_index);
 
   PcodeBlock(size_t base_index, std::vector<RemillPcodeOp> ops,
-             std::variant<Exit, ConditionalExit> block_exit);
+             BlockExit block_exit);
 };
 
 class PcodeCFG {
@@ -73,7 +75,7 @@ class PcodeCFGBuilder {
 
 
   PcodeBlock BuildBlock(size_t start_ind, size_t next_start);
-  std::variant<Exit, ConditionalExit> GetBlockExitsForIndex(size_t index);
+  BlockExit GetBlockExitsForIndex(size_t index);
 
   std::vector<size_t> GetIntraProcTargets(size_t index);
 

@@ -71,8 +71,7 @@ std::vector<size_t> PcodeCFGBuilder::GetIntraProcTargets(size_t index) {
   return std::visit(IntraProcTransferCollector{}, ex);
 }
 
-std::variant<Exit, ConditionalExit>
-PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) {
+BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) {
   CHECK(index < linear_ops.size());
   const auto &curr_op = linear_ops[index];
 
@@ -153,7 +152,7 @@ PcodeCFG::PcodeCFG(std::map<size_t, PcodeBlock> blocks)
     : blocks(std::move(blocks)) {}
 
 PcodeBlock::PcodeBlock(size_t base_index, std::vector<RemillPcodeOp> ops,
-                       std::variant<Exit, ConditionalExit> block_exit)
+                       BlockExit block_exit)
     : base_index(base_index),
       ops(std::move(ops)),
       block_exit(std::move(block_exit)) {}
