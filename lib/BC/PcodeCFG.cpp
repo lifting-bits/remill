@@ -136,10 +136,8 @@ PcodeCFG PcodeCFGBuilder::Build() const {
   }
 
   for (size_t i = 0; i < starts.size(); i++) {
-    auto next_start = linear_ops.size();
-    if ((i + 1) < starts.size()) {
-      next_start = starts[i + 1];
-    }
+    auto next_start =
+        (i + 1) < starts.size() ? starts[i + 1] : linear_ops.size();
     blocks.emplace(starts[i], BuildBlock(starts[i], next_start));
   }
 
