@@ -130,7 +130,7 @@ PcodeCFG PcodeCFGBuilder::Build() {
   if (linear_ops.empty()) {
     // There is no insturction at 0 to build a block at
     // build an empty block so we transfer through to exit by terminating the block
-    blocks.insert({0, PcodeBlock(0)});
+    blocks.emplace(0, PcodeBlock(0));
     return blocks;
   }
 
