@@ -60,9 +60,6 @@ std::optional<remill::Instruction> GetFlows(std::string_view bytes,
                                             uint64_t address, uint64_t tm_val) {
 
   llvm::LLVMContext context;
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-  context.enableOpaquePointers();
-#endif
   auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
                                   remill::ArchName::kArchAArch32LittleEndian);
   auto sems = remill::LoadArchSemantics(arch.get());
@@ -240,9 +237,6 @@ TEST(ThumbRandomizedLifts, PopPC) {
   spec.AddPrecWrite<uint32_t>(10, 16);
   llvm::LLVMContext context;
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-  context.enableOpaquePointers();
-#endif
   TestSpecRunner runner(context);
   runner.RunTestSpec(spec);
 }
@@ -259,18 +253,12 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   spec.AddPrecWrite<uint32_t>(32, 0xdeadc0de);
   llvm::LLVMContext context;
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-  context.enableOpaquePointers();
-#endif
   TestSpecRunner runner(context);
   runner.RunTestSpec(spec);
 }
 
 TEST(RegressionTests, AARCH64RegSize) {
   llvm::LLVMContext context;
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-  context.enableOpaquePointers();
-#endif
   auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
                                   remill::ArchName::kArchAArch64LittleEndian);
   auto sems = remill::LoadArchSemantics(arch.get());
@@ -291,9 +279,6 @@ TEST(RegressionTests, AARCH64RegSize) {
 }
 TEST(RegressionTests, Armv8FPSCR) {
   llvm::LLVMContext context;
-  #if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-  context.enableOpaquePointers();
-  #endif
   auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,
                                   remill::ArchName::kArchAArch32LittleEndian);
   CHECK_NOTNULL(arch->RegisterByName("FPSCR"));
