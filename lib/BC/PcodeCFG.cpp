@@ -43,6 +43,13 @@ PcodeBlock PcodeCFGBuilder::BuildBlock(size_t start_ind,
 
 namespace {
 struct IntraProcTransferCollector {
+
+  static std::vector<size_t> CollectIntraProcTransfers(const BlockExit &exit) {
+    IntraProcTransferCollector collector;
+    std::visit(collector, exit);
+    return collector.targets;
+  }
+
   std::vector<size_t> targets;
 
   void operator()(const IntrainstructionIndex &ex) {
@@ -62,9 +69,7 @@ struct IntraProcTransferCollector {
 
 std::vector<size_t> PcodeCFGBuilder::GetIntraProcTargets(size_t index) const {
   auto ex = GetBlockExitsForIndex(index);
-  IntraProcTransferCollector collector;
-  std::visit(collector, ex);
-  return collector.targets;
+  return IntraProcTransferCollector::CollectIntraProcTransfers(ex);
 }
 
 BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
