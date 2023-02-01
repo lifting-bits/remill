@@ -267,9 +267,11 @@ TEST(PPCVLELifts, PPCVLEAddRecord) {
                                 {{"r4", uint64_t(0xcc)},
                                  {"r3", uint64_t(0xdd)},
                                  {"cr0", uint8_t(0)},
+                                 {"xer_so", uint8_t(0x0)},
                                  {"pc", uint64_t(0x12)}},
                                 {{"r5", uint64_t(0x1a9)},
                                  {"cr0", uint8_t(0b100)},
+                                 {"xer_so", uint8_t(0x0)},
                                  {"pc", uint64_t(0x16)}},
                                 reg_to_accessor);
   TestSpecRunner<PPCState> runner(curr_context);
@@ -432,10 +434,16 @@ TEST(PPCVLELifts, PPCVLECompareImmediate) {
   // se_cmpi r7, 0x0
   std::string insn_data("\x2a\x07", 2);
   // cr1[2], set when result is zero
-  TestOutputSpec<PPCState> spec(
-      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
-      {{"pc", uint64_t(0x12)}, {"r7", uint64_t(0x0)}, {"cr0", uint8_t(0)}},
-      {{"pc", uint64_t(0x12 + 2)}, {"cr0", uint8_t(0b10)}}, reg_to_accessor);
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r7", uint64_t(0x0)},
+                                 {"xer_so", uint8_t(0)},
+                                 {"cr0", uint8_t(0)}},
+                                {{"pc", uint64_t(0x12 + 2)},
+                                 {"xer_so", uint8_t(0)},
+                                 {"cr0", uint8_t(0b10)}},
+                                reg_to_accessor);
 
   TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec, kVLEContext);
