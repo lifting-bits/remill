@@ -23,9 +23,8 @@ PcodeCFGBuilder::CreateCFG(const std::vector<RemillPcodeOp> &linear_ops) {
 std::vector<size_t> PcodeCFGBuilder::GetBlockStarts() {
   std::vector<size_t> res = {0};
 
-  for (size_t curr_index = 0; curr_index < this->linear_ops.size();
-       curr_index += 1) {
-    auto interproc = this->GetIntraProcTargets(curr_index);
+  for (size_t curr_index = 0; curr_index < linear_ops.size(); curr_index += 1) {
+    auto interproc = GetIntraProcTargets(curr_index);
     res.insert(res.end(), interproc.begin(), interproc.end());
   }
   return res;
@@ -35,11 +34,11 @@ PcodeBlock PcodeCFGBuilder::BuildBlock(size_t start_ind, size_t next_start) {
   std::vector<RemillPcodeOp> ops;
 
   for (size_t i = start_ind; i < next_start; i++) {
-    ops.push_back(this->linear_ops[i]);
+    ops.push_back(linear_ops[i]);
   }
 
   return PcodeBlock(start_ind, std::move(ops),
-                    this->GetBlockExitsForIndex(next_start - 1));
+                    GetBlockExitsForIndex(next_start - 1));
 }
 
 
@@ -68,14 +67,14 @@ struct IntraProcTransferCollector {
 }  // namespace
 
 std::vector<size_t> PcodeCFGBuilder::GetIntraProcTargets(size_t index) {
-  std::variant<Exit, ConditionalExit> ex = this->GetBlockExitsForIndex(index);
+  std::variant<Exit, ConditionalExit> ex = GetBlockExitsForIndex(index);
   return std::visit(IntraProcTransferCollector{}, ex);
 }
 
 std::variant<Exit, ConditionalExit>
 PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) {
-  CHECK(index < this->linear_ops.size());
-  const auto &curr_op = this->linear_ops[index];
+  CHECK(index < linear_ops.size());
+  const auto &curr_op = linear_ops[index];
 
   auto build_direct_target_exit = [](VarnodeData target,
                                      size_t curr_ind) -> Exit {
@@ -98,7 +97,7 @@ PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) {
 
       Exit fallthrough_exit = InstrExit{};
       // if we are not the last pcodeop then we have an intraproc fallthrough
-      if (index < this->linear_ops.size() - 1) {
+      if (index < linear_ops.size() - 1) {
         fallthrough_exit = IntrainstructionIndex{index + 1};
       }
 
@@ -123,13 +122,13 @@ PcodeBlock::PcodeBlock(size_t base_index)
 
 PcodeCFG PcodeCFGBuilder::Build() {
 
-  auto starts = this->GetBlockStarts();
+  auto starts = GetBlockStarts();
   std::set s(starts.begin(), starts.end());
   starts.assign(s.begin(), s.end());
 
   std::map<size_t, PcodeBlock> blocks;
 
-  if (this->linear_ops.empty()) {
+  if (linear_ops.empty()) {
     // There is no insturction at 0 to build a block at
     // build an empty block so we transfer through to exit by terminating the block
     blocks.insert({0, PcodeBlock(0)});
@@ -137,11 +136,11 @@ PcodeCFG PcodeCFGBuilder::Build() {
   }
 
   for (size_t i = 0; i < starts.size(); i++) {
-    auto next_start = this->linear_ops.size();
+    auto next_start = linear_ops.size();
     if ((i + 1) < starts.size()) {
       next_start = starts[i + 1];
     }
-    blocks.emplace(starts[i], this->BuildBlock(starts[i], next_start));
+    blocks.emplace(starts[i], BuildBlock(starts[i], next_start));
   }
 
   return PcodeCFG(blocks);

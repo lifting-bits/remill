@@ -74,7 +74,7 @@ class SleighPPCArch : public ArchBase {
 
   OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override {
-    return this->decoder.GetOpLifter();
+    return decoder.GetOpLifter();
   }
 
   bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
@@ -255,7 +255,7 @@ class SleighPPCArch : public ArchBase {
     ir.CreateStore(pc_arg, mk_alloca(kIgnoreNextPCVariableName));
 
     std::ignore =
-        this->RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
+        RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
   }
 
  private:

@@ -428,7 +428,7 @@ ControlFlowStructureAnalysis::ComputeCategory(
     DLOG(ERROR) << "No coarse category found";
     return std::nullopt;
   }
-  auto context_updater = this->BuildContextUpdater(entry_context);
+  auto context_updater = BuildContextUpdater(entry_context);
 
   if (*maybe_ccategory == CoarseCategory::kCatNormalWithIntraInstructionFlow) {
     // our control flow analysis for decoding contexts doesnt handle intraprocedural control flow,
@@ -466,9 +466,9 @@ ControlFlowStructureAnalysis::ComputeCategory(
 std::optional<std::string>
 ContextUpdater::GetRemillReg(const VarnodeData &outvar) {
   auto reg_name =
-      this->engine.getRegisterName(outvar.space, outvar.offset, outvar.size);
-  auto maybe_remill_reg_name = this->context_reg_mapping.find(reg_name);
-  if (maybe_remill_reg_name != this->context_reg_mapping.end()) {
+      engine.getRegisterName(outvar.space, outvar.offset, outvar.size);
+  auto maybe_remill_reg_name = context_reg_mapping.find(reg_name);
+  if (maybe_remill_reg_name != context_reg_mapping.end()) {
     return maybe_remill_reg_name->second;
   } else {
     return std::nullopt;
@@ -483,7 +483,7 @@ void ContextUpdater::ApplyPcodeOp(const RemillPcodeOp &op) {
   }
 
   auto out = *op.outvar;
-  auto maybe_remill_reg_name = this->GetRemillReg(out);
+  auto maybe_remill_reg_name = GetRemillReg(out);
   if (!maybe_remill_reg_name) {
     return;
   }
@@ -491,27 +491,27 @@ void ContextUpdater::ApplyPcodeOp(const RemillPcodeOp &op) {
   auto remill_reg_name = *maybe_remill_reg_name;
 
   if (op.op == CPUI_COPY && isVarnodeInConstantSpace(op.vars[0])) {
-    this->curr_context.UpdateContextReg(remill_reg_name, op.vars[0].offset);
+    curr_context.UpdateContextReg(remill_reg_name, op.vars[0].offset);
   } else {
-    this->curr_context.DropReg(remill_reg_name);
+    curr_context.DropReg(remill_reg_name);
   }
 }
 
 // May have a complete context
 std::optional<DecodingContext> ContextUpdater::GetContext() const {
   for (const auto &[_, remill_reg] : this->context_reg_mapping) {
-    if (!this->curr_context.HasValueForReg(remill_reg)) {
+    if (!curr_context.HasValueForReg(remill_reg)) {
       return std::nullopt;
     }
   }
 
-  return this->curr_context;
+  return curr_context;
 }
 
 ContextUpdater ControlFlowStructureAnalysis::BuildContextUpdater(
     DecodingContext initial_context) {
-  return ContextUpdater(this->context_reg_mapping, std::move(initial_context),
-                        this->engine);
+  return ContextUpdater(context_reg_mapping, std::move(initial_context),
+                        engine);
 }
 
 ContextUpdater::ContextUpdater(
