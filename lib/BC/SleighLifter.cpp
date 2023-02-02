@@ -777,6 +777,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
   struct VisitExit {
     PcodeToLLVMEmitIntoBlock &lifter;
+
+    llvm::BasicBlock *operator()(const sleigh::Exit &exit) {
+      return std::visit(*this, exit);
+    }
+
     llvm::BasicBlock *operator()(const sleigh::InstrExit &exit) {
       return lifter.exit_block;
     };
@@ -785,23 +790,19 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return lifter.GetOrCreateBlock(exit.target_block_index);
     };
   };
-  struct VisitBlockExitTrue {
-    PcodeToLLVMEmitIntoBlock &lifter;
-    llvm::BasicBlock *operator()(const sleigh::Exit &exit) {
-      return std::visit(VisitExit{lifter}, exit);
-    }
+  struct VisitBlockExitTrue : public VisitExit {
+    using VisitExit::operator();
+
     llvm::BasicBlock *operator()(const sleigh::ConditionalExit &exit) {
-      return std::visit(VisitExit{lifter}, exit.true_branch);
+      return std::visit(*this, exit.true_branch);
     }
   };
 
-  struct VisitBlockExitFalse {
-    PcodeToLLVMEmitIntoBlock &lifter;
-    llvm::BasicBlock *operator()(const sleigh::Exit &exit) {
-      return std::visit(VisitExit{lifter}, exit);
-    }
+  struct VisitBlockExitFalse : public VisitExit {
+    using VisitExit::operator();
+
     llvm::BasicBlock *operator()(const sleigh::ConditionalExit &exit) {
-      return std::visit(VisitExit{lifter}, exit.false_branch);
+      return std::visit(*this, exit.false_branch);
     }
   };
 
