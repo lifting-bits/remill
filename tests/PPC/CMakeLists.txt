@@ -18,13 +18,13 @@ list(APPEND PROJECT_LIBRARIES GTest::gtest)
 enable_testing()
 
 add_executable(
-  run-thumb-tests
+  run-ppc-tests
   TestLifting.cpp
 )
 
-add_test(NAME "thumb-tests" COMMAND "run-thumb-tests")
+add_test(NAME "ppc-tests" COMMAND "run-ppc-tests")
 target_link_libraries(
-  run-thumb-tests
+  run-ppc-tests
   PRIVATE
   GTest::gtest
   remill
@@ -32,5 +32,5 @@ target_link_libraries(
   glog::glog
 )
 
-set_property(TARGET run-thumb-tests PROPERTY ENABLE_EXPORTS ON)
-set_property(TARGET run-thumb-tests PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET run-ppc-tests PROPERTY ENABLE_EXPORTS ON)
+set_property(TARGET run-ppc-tests PROPERTY POSITION_INDEPENDENT_CODE ON)

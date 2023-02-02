@@ -16,6 +16,8 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/IRBuilder.h>
@@ -23,6 +25,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
 #include <remill/Arch/Arch.h>
@@ -241,9 +244,6 @@ int main(int argc, char *argv[]) {
   // Make sure `--address` and `--entry_address` are in-bounds for the target
   // architecture's address size.
   llvm::LLVMContext context;
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-  context.enableOpaquePointers();
-#endif
   auto arch = remill::Arch::Get(context, FLAGS_os, FLAGS_arch);
   const uint64_t addr_mask = ~0ULL >> (64UL - arch->address_size);
   if (FLAGS_address != (FLAGS_address & addr_mask)) {
@@ -395,7 +395,9 @@ int main(int argc, char *argv[]) {
     llvm::Value *trace_args[remill::kNumBlockArgs] = {};
     trace_args[remill::kStatePointerArgNum] = state_ptr;
     trace_args[remill::kMemoryPointerArgNum] = mem_ptr;
-    trace_args[remill::kPCArgNum] = trace_pc;
+    trace_args[remill::kPCArgNum] = llvm::ConstantInt::get(
+        llvm::IntegerType::get(context, arch->address_size),
+        FLAGS_entry_address, false);
 
     mem_ptr = ir.CreateCall(entry_trace, trace_args);
 
@@ -432,6 +434,8 @@ int main(int argc, char *argv[]) {
 
     guide.slp_vectorize = true;
     guide.loop_vectorize = true;
+
+    CHECK(remill::VerifyModule(&dest_module));
     remill::OptimizeBareModule(&dest_module, guide);
   }
 

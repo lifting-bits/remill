@@ -44,11 +44,11 @@ llvm_map_components_to_libnames(llvm_libs
   support core irreader
   bitreader bitwriter
   passes asmprinter
-  aarch64codegen aarch64asmparser
+  aarch64info aarch64desc aarch64codegen aarch64asmparser
   armcodegen armasmparser
   interpreter mcjit
   nvptxdesc
-  x86codegen x86asmparser
+  x86info x86codegen x86asmparser
   sparccodegen sparcasmparser
   webassemblydesc)
 message(STATUS "LLVM Libraries: ${llvm_libs}")
@@ -72,6 +72,7 @@ set(REMILL_BUILD_SEMANTICS_DIR_AARCH32 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AAr
 set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AArch64/Runtime")
 set(REMILL_BUILD_SEMANTICS_DIR_SPARC32 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC32/Runtime")
 set(REMILL_BUILD_SEMANTICS_DIR_SPARC64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC64/Runtime")
+set(REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/PPC/Runtime")
 set(REMILL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
@@ -87,7 +88,8 @@ find_package(glog CONFIG REQUIRED)
 find_package(gflags CONFIG REQUIRED)
 
 set(sleigh_ENABLE_TESTS OFF)
-set(sleigh_ADDITIONAL_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/x86-ia.patch;${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/arm-thumb.patch" CACHE STRING "" FORCE)
+file(GLOB sleigh_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/*.patch")
+set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
 
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
@@ -202,6 +204,7 @@ target_compile_definitions(remill_settings INTERFACE
   "REMILL_BUILD_SEMANTICS_DIR_AARCH64=\"${REMILL_BUILD_SEMANTICS_DIR_AARCH64}\""
   "REMILL_BUILD_SEMANTICS_DIR_SPARC32=\"${REMILL_BUILD_SEMANTICS_DIR_SPARC32}\""
   "REMILL_BUILD_SEMANTICS_DIR_SPARC64=\"${REMILL_BUILD_SEMANTICS_DIR_SPARC64}\""
+  "REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR=\"${REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR}\""
 )
 
 target_link_libraries(remill_settings INTERFACE
@@ -293,6 +296,11 @@ if(REMILL_ENABLE_TESTING)
   if(REMILL_ENABLE_TESTING_SLEIGH_THUMB)
     message(STATUS "thumb tests enabled")
     add_subdirectory(tests/Thumb)
+  endif()
+
+  if(REMILL_ENABLE_TESTING_SLEIGH_PPC)
+    message(STATUS "ppc tests enabled")
+    add_subdirectory(tests/PPC)
   endif()
 
   if(REMILL_ENABLE_TESTING_X86)

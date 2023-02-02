@@ -35,6 +35,7 @@ struct BranchTakenVar {
   VarnodeData target_vnode;
   size_t index;
 };
+using MaybeBranchTakenVar = std::optional<BranchTakenVar>;
 
 class SleighDecoder;
 class SingleInstructionSleighContext;
@@ -60,9 +61,11 @@ class SleighLifter : public InstructionLifter {
 
   virtual ~SleighLifter(void) = default;
 
-  LiftStatus LiftIntoBlockWithSleighState(
-      Instruction &inst, llvm::BasicBlock *block, llvm::Value *state_ptr,
-      bool is_delayed, const std::optional<sleigh::BranchTakenVar> &btaken);
+  LiftStatus
+  LiftIntoBlockWithSleighState(Instruction &inst, llvm::BasicBlock *block,
+                               llvm::Value *state_ptr, bool is_delayed,
+                               const sleigh::MaybeBranchTakenVar &btaken,
+                               const ContextValues &context_values);
 
  private:
   static void SetISelAttributes(llvm::Function *);
@@ -74,7 +77,8 @@ class SleighLifter : public InstructionLifter {
   std::pair<LiftStatus, std::optional<llvm::Function *>>
   LiftIntoInternalBlockWithSleighState(
       Instruction &inst, llvm::Module *target_mod, bool is_delayed,
-      const std::optional<sleigh::BranchTakenVar> &btaken);
+      const sleigh::MaybeBranchTakenVar &btaken,
+      const ContextValues &context_values);
 
   ::Sleigh &GetEngine(void) const;
 };
@@ -83,11 +87,13 @@ class SleighLifter : public InstructionLifter {
 // lets us attach state to a lifter that we need to carry on from when we decoded the instruction
 class SleighLifterWithState final : public InstructionLifterIntf {
  private:
-  std::optional<sleigh::BranchTakenVar> btaken;
+  sleigh::MaybeBranchTakenVar btaken;
+  ContextValues context_values;
   std::shared_ptr<SleighLifter> lifter;
 
  public:
-  SleighLifterWithState(std::optional<sleigh::BranchTakenVar> btaken,
+  SleighLifterWithState(sleigh::MaybeBranchTakenVar btaken,
+                        ContextValues context_values,
                         std::shared_ptr<SleighLifter> lifter_);
 
   // Lift a single instruction into a basic block. `is_delayed` signifies that
@@ -110,6 +116,10 @@ class SleighLifterWithState final : public InstructionLifterIntf {
   virtual llvm::Type *GetMemoryType() override;
 
   virtual void ClearCache(void) const override;
+
+  const ContextValues &GetContextValues() const {
+    return context_values;
+  }
 };
 
 }  // namespace remill

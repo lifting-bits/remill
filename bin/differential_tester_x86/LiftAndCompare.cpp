@@ -107,9 +107,6 @@ class DifferentialModuleBuilder {
     // it is expected that compatible arches share a semantics module.
     std::unique_ptr<llvm::LLVMContext> context =
         std::make_unique<llvm::LLVMContext>();
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(15, 0)
-    context->enableOpaquePointers();
-#endif
     auto tmp_arch = remill::Arch::Build(context.get(), os_name_1, arch_name_1);
     std::shared_ptr<llvm::Module> semantics_module =
         remill::LoadArchSemantics(tmp_arch.get());
@@ -142,7 +139,7 @@ class DifferentialModuleBuilder {
     auto f2 = f2_and_name.first;
 
     for (auto x : {f1, f2}) {
-      llvm::verifyFunction(*x, &llvm::errs());
+      CHECK(remill::VerifyFunction(x));
     }
 
 

@@ -1,6 +1,9 @@
 #include <glog/logging.h>
 #include <lib/Arch/Sleigh/ControlFlowStructuring.h>
 
+#include <algorithm>
+#include <optional>
+
 namespace remill::sleigh {
 
 bool isVarnodeInConstantSpace(VarnodeData vnode) {
@@ -29,14 +32,19 @@ auto variant_cast(const std::variant<Args...> &v)
   return {v};
 }
 
-enum CoarseEffect { kAbnormal, kNormal };
+enum class CoarseEffect { kAbnormal, kNormal, kIntraInstruction };
 
 struct CoarseFlow {
   CoarseEffect eff;
   bool is_conditional;
 };
 
-enum CoarseCategory { kCatNormal, kCatAbnormal, kCatConditionalAbnormal };
+enum class CoarseCategory {
+  kCatNormal,
+  kCatNormalWithIntraInstructionFlow,
+  kCatAbnormal,
+  kCatConditionalAbnormal
+};
 
 
 static CoarseEffect EffectFromDirectControlFlowOp(const RemillPcodeOp &op,
@@ -59,14 +67,13 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
 
   auto is_conditional = op.op == CPUI_CBRANCH;
   if (isVarnodeInConstantSpace(op.vars[0])) {
-    // this is an internal branch.. we cant handle that right now
-    return std::nullopt;
+    return {{CoarseEffect::kIntraInstruction, is_conditional}};
   }
 
   return {{EffectFromDirectControlFlowOp(op, next_pc), is_conditional}};
 }
 
-// gets a list of indeces and coarse categories in this pcodeop block
+// gets a list of indices and coarse categories in this pcodeop block
 static std::optional<std::map<size_t, CoarseFlow>>
 CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
   std::map<size_t, CoarseFlow> res;
@@ -118,13 +125,23 @@ static bool isUnconditionalNormal(CoarseFlow flow) {
 static std::optional<CoarseCategory>
 CoarseCategoryFromFlows(const std::map<size_t, CoarseFlow> &ops) {
 
-
   auto all_normal_effects = std::all_of(
       ops.begin(), ops.end(), [](const std::pair<size_t, CoarseFlow> &op) {
         return op.second.eff == CoarseEffect::kNormal;
       });
   if (all_normal_effects) {
     return CoarseCategory::kCatNormal;
+  }
+
+  auto is_normal_or_intra = [](const std::pair<size_t, CoarseFlow> &op) {
+    return op.second.eff == CoarseEffect::kNormal ||
+           op.second.eff == CoarseEffect::kIntraInstruction;
+  };
+  auto all_normal_or_intra_effects =
+      std::all_of(ops.begin(), ops.end(), is_normal_or_intra);
+
+  if (all_normal_or_intra_effects) {
+    return CoarseCategory::kCatNormalWithIntraInstructionFlow;
   }
 
   auto all_abnormal_effects = std::all_of(
@@ -258,7 +275,7 @@ ExtractNonConditionalCategory(
     return std::nullopt;
   }
 
-  Instruction::InstructionFlowCategory fst = cats[0];
+  auto fst = cats[0];
   auto all_flows_equal = [&fst](Instruction::InstructionFlowCategory curr_cat) {
     return fst == curr_cat;
   };
@@ -380,14 +397,14 @@ So in a coarse grained way we can just treat indirect/direct/interprocedural flo
 Either a fallthrough or an abnormal flow can be conditional
 
 So the first step is to categorize a coarse grained control flow category which is one of:
-- Normal, in this case there are only fallthroughs, conditional or otherwise  
+- Normal, in this case there are only fallthroughs, conditional or otherwise
 - Conditional Abnormal: either we have a CONDITIONAL_FALLTHROUGH followed by an kAbnormal
   - or we have a CONDITIONAL_ABNORMAL followed by a FALLTHROUGH
-- Abnormal: we have many ABNORMALs conditional or otherwise 
+- Abnormal: we have many ABNORMALs conditional or otherwise
 
 We forbid multiple conditionals in a flow because then we'd need to join conditions
 
-After we find coarse categories and the flows follow these patterns, we determine if there is a constant context for each relevant flow. 
+After we find coarse categories and the flows follow these patterns, we determine if there is a constant context for each relevant flow.
 
 Finally we pass these coarse flows to a final categorizer to attempt to print these into a flow type
 */
@@ -410,16 +427,51 @@ ControlFlowStructureAnalysis::ComputeCategory(
     DLOG(ERROR) << "No coarse category found";
     return std::nullopt;
   }
-  auto context_updater = this->BuildContextUpdater(std::move(entry_context));
+  auto context_updater = BuildContextUpdater(entry_context);
+
+  if (*maybe_ccategory == CoarseCategory::kCatNormalWithIntraInstructionFlow) {
+    // our control flow analysis for decoding contexts doesnt handle intraprocedural control flow,
+    // so if we have a normal instruction with no decoding context updates then we are fine otherwise bail
+    auto no_context_updates = std::all_of(
+        ops.begin(), ops.end(), [&context_updater](const RemillPcodeOp &op) {
+          return !op.outvar.has_value() ||
+                 !context_updater.GetRemillReg(*op.outvar).has_value();
+        });
+
+    if (no_context_updates) {
+      Instruction::NormalInsn norm_insn(
+          (Instruction::FallthroughFlow(entry_context)));
+      Instruction::InstructionFlowCategory ifc = norm_insn;
+      return std::make_pair(ifc, std::nullopt);
+    }
+    DLOG(ERROR)
+        << "Had an instructon with intrainstruction flow, but also decoding context updates";
+    return std::nullopt;
+  }
+
   auto flows = GetBoundContextsForFlows(ops, cc, context_updater);
 
   switch (*maybe_ccategory) {
+    case CoarseCategory::kCatNormalWithIntraInstructionFlow:
+      return std::nullopt;
     case CoarseCategory::kCatAbnormal: return ExtractAbnormal(flows, ops);
     case CoarseCategory::kCatConditionalAbnormal:
       return ExtractConditionalAbnormal(flows, ops);
     case CoarseCategory::kCatNormal: return ExtractNormal(flows, ops);
   }
 }
+
+std::optional<std::string>
+ContextUpdater::GetRemillReg(const VarnodeData &outvar) {
+  auto reg_name =
+      engine.getRegisterName(outvar.space, outvar.offset, outvar.size);
+  auto it = context_reg_mapping.find(reg_name);
+  if (it != context_reg_mapping.end()) {
+    return it->second;
+  }
+  return std::nullopt;
+}
+
 
 // Applies a pcode op to the held context, this may produce a complete context
 void ContextUpdater::ApplyPcodeOp(const RemillPcodeOp &op) {
@@ -428,36 +480,35 @@ void ContextUpdater::ApplyPcodeOp(const RemillPcodeOp &op) {
   }
 
   auto out = *op.outvar;
-  auto reg_name = this->engine.getRegisterName(out.space, out.offset, out.size);
-  auto maybe_remill_reg_name = this->context_reg_mapping.find(reg_name);
-  if (maybe_remill_reg_name == this->context_reg_mapping.end()) {
+  auto maybe_remill_reg_name = GetRemillReg(out);
+  if (!maybe_remill_reg_name) {
     return;
   }
 
-  auto remill_reg_name = maybe_remill_reg_name->second;
+  auto remill_reg_name = *maybe_remill_reg_name;
 
   if (op.op == CPUI_COPY && isVarnodeInConstantSpace(op.vars[0])) {
-    this->curr_context.UpdateContextReg(remill_reg_name, op.vars[0].offset);
+    curr_context.UpdateContextReg(remill_reg_name, op.vars[0].offset);
   } else {
-    this->curr_context.DropReg(remill_reg_name);
+    curr_context.DropReg(remill_reg_name);
   }
 }
 
 // May have a complete context
 std::optional<DecodingContext> ContextUpdater::GetContext() const {
   for (const auto &[_, remill_reg] : this->context_reg_mapping) {
-    if (!this->curr_context.HasValueForReg(remill_reg)) {
+    if (!curr_context.HasValueForReg(remill_reg)) {
       return std::nullopt;
     }
   }
 
-  return this->curr_context;
+  return curr_context;
 }
 
 ContextUpdater ControlFlowStructureAnalysis::BuildContextUpdater(
     DecodingContext initial_context) {
-  return ContextUpdater(this->context_reg_mapping, std::move(initial_context),
-                        this->engine);
+  return ContextUpdater(context_reg_mapping, std::move(initial_context),
+                        engine);
 }
 
 ContextUpdater::ContextUpdater(

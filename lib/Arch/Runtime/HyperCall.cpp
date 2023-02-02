@@ -36,6 +36,9 @@
 #  else
 #    error "Cannot deduce hyper call SPARC variant"
 #  endif
+#elif defined(__PPC__)
+#  include "remill/Arch/PPC/Runtime/State.h"
+#  define REMILL_HYPERCALL_PPC 1
 #else
 #  error "Cannot deduce hyper call architecture"
 #endif
@@ -376,6 +379,12 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       break;
 
 #  endif
+
+#elif defined(REMILL_HYPERCALL_PPC)
+
+    case SyncHyperCall::kPPCEmulateInstruction:
+      mem = __remill_ppc_emulate_instruction(mem);
+      break;
 
 #endif
 

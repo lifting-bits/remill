@@ -103,12 +103,12 @@ class SleighDecoder {
       const remill::Arch &arch, std::string sla_name, std::string pspec_name,
       std::unordered_map<std::string, std::string> context_reg_mapping,
       std::unordered_map<std::string, std::string> state_reg_remappings);
-  std::string GetSLAName() const;
+  const std::string &GetSLAName() const;
 
-  std::string GetPSpec() const;
+  const std::string &GetPSpec() const;
   // Decoder specific prep
-  virtual void
-  InitializeSleighContext(SingleInstructionSleighContext &) const = 0;
+  virtual void InitializeSleighContext(SingleInstructionSleighContext &,
+                                       const ContextValues &) const = 0;
 
 
   virtual llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
@@ -150,4 +150,14 @@ class SleighDecoder {
   std::unordered_map<std::string, std::string> context_reg_mapping;
   std::unordered_map<std::string, std::string> state_reg_remappings;
 };
+
+uint64_t GetContextRegisterValue(const char *remill_reg_name,
+                                 uint64_t default_value,
+                                 const ContextValues &context_values);
+
+void SetContextRegisterValueInSleigh(
+    const char *remill_reg_name, const char *sleigh_reg_name,
+    uint64_t default_value, sleigh::SingleInstructionSleighContext &ctxt,
+    const ContextValues &context_values);
+
 }  // namespace remill::sleigh

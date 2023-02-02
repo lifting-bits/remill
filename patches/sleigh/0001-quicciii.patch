@@ -1,0 +1,40 @@
+From aa64d2d91c4d8cba234533e8ef619d01cbc81ef2 Mon Sep 17 00:00:00 2001
+From: William Tan <1284324+Ninja3047@users.noreply.github.com>
+Date: Mon, 19 Dec 2022 16:29:11 -0500
+Subject: [PATCH] quicciii
+
+---
+ .../Processors/PowerPC/data/languages/quicciii.sinc  | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc b/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
+index 8b7977bce..13b381559 100644
+--- a/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
++++ b/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
+@@ -62,13 +62,21 @@ define pcodeop invalidateTLB;
+ }
+ 
+ :isel^CC_X_OPm D,RA_OR_ZERO,B,CC_X_OP  is OP=31 & D & RA_OR_ZERO & B & CC_X_OP & CC_X_OPm & XOP_1_5=15
+-{
++   { 
+ 	local tmp:$(REGISTER_SIZE) = RA_OR_ZERO;
++
+ 	D = B;
++remill_please_dont_use_this_temp_namef:$(REGISTER_SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_namef, $(INST_NEXT_PTR));
++
+ 	if (!CC_X_OP) goto inst_next;
++
+ 	D = tmp;
++
+ #        D = (zext(CC_X_OP) * RA_OR_ZERO) + (zext(!CC_X_OP) * B);
+-}
++
++  }
++ 
+ 
+ @ifndef IS_ISA
+ #mbar 0         #FIXME
+-- 
+2.37.1 (Apple Git-137.1)
+

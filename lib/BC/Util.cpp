@@ -443,6 +443,27 @@ bool VerifyModule(llvm::Module *module) {
   return true;
 }
 
+std::optional<std::string> VerifyFunctionMsg(llvm::Function *func) {
+  std::string error;
+  llvm::raw_string_ostream error_stream(error);
+  if (llvm::verifyFunction(*func, &error_stream)) {
+    error_stream.flush();
+    return error;
+  }
+
+  return {};
+}
+
+// Try to verify a function.
+bool VerifyFunction(llvm::Function *func) {
+  if (auto error = VerifyFunctionMsg(func)) {
+    DLOG(ERROR) << "Error verifying function: " << *error;
+    return false;
+  }
+
+  return true;
+}
+
 std::unique_ptr<llvm::Module>
 LoadModuleFromFile(llvm::LLVMContext *context,
                    std::filesystem::path file_name) {
@@ -556,6 +577,12 @@ namespace {
 #  define REMILL_BUILD_SEMANTICS_DIR_SPARC64
 #endif  // REMILL_BUILD_SEMANTICS_DIR_SPARC64
 
+#ifndef REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR
+#  error \
+      "Macro `REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR` must be defined to support the PPC64_32ADDR architectures."
+#  define REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR
+#endif  // REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR
+
 #ifndef REMILL_INSTALL_SEMANTICS_DIR
 #  error "Macro `REMILL_INSTALL_SEMANTICS_DIR` must be defined."
 #  define REMILL_INSTALL_SEMANTICS_DIR
@@ -574,6 +601,7 @@ const paths_t &DefaultSemanticsSearchPaths() {
       REMILL_BUILD_SEMANTICS_DIR_AARCH64,
       REMILL_BUILD_SEMANTICS_DIR_SPARC32,
       REMILL_BUILD_SEMANTICS_DIR_SPARC64,
+      REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR,
       REMILL_INSTALL_SEMANTICS_DIR,
       "/usr/local/share/remill/" MAJOR_MINOR "/semantics",
       "/usr/share/remill/" MAJOR_MINOR "/semantics",

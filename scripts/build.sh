@@ -27,7 +27,7 @@ LLVM_VERSION=llvm-15
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
-CXX_COMMON_VERSION="0.2.12"
+CXX_COMMON_VERSION="0.2.22"
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -280,10 +280,6 @@ function Package
 function GetLLVMVersion
 {
   case ${1} in
-    14)
-      LLVM_VERSION=llvm-14
-      return 0
-    ;;
     15)
       LLVM_VERSION=llvm-15
       return 0

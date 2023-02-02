@@ -356,6 +356,7 @@ class Arch {
   bool IsAArch64(void) const;
   bool IsSPARC32(void) const;
   bool IsSPARC64(void) const;
+  bool IsPPC(void) const;
 
   bool IsWindows(void) const;
   bool IsLinux(void) const;
@@ -420,13 +421,17 @@ class Arch {
   static ArchPtr GetAArch64(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
 
-  // Defined in `lib/Arch/SleighX86/Arch.cpp`
+  // Defined in `lib/Arch/Sleigh/X86Arch.cpp`
   static ArchPtr GetSleighX86(llvm::LLVMContext *context, OSName os,
                               ArchName arch_name);
 
-  // Defined in `lib/Arch/SleighThumb2/Arch.cpp`
+  // Defined in `lib/Arch/Sleigh/Thumb2Arch.cpp`
   static ArchPtr GetSleighThumb2(llvm::LLVMContext *context, OSName os,
                                  ArchName arch_name);
+
+  // Defined in `lib/Arch/Sleigh/PPCArch.cpp`
+  static ArchPtr GetSleighPPC(llvm::LLVMContext *context, OSName os,
+                              ArchName arch_name);
 
   // Defined in `lib/Arch/SPARC32/Arch.cpp`.
   static ArchPtr GetSPARC(llvm::LLVMContext *context, OSName os,

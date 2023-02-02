@@ -99,7 +99,7 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   auto pspec_path = ::sleigh::FindSpecFile(pspec_name.c_str());
 
   if (!pspec_path) {
-    LOG(FATAL) << "Couldn't find required spec file: " << sla_name << '\n';
+    LOG(FATAL) << "Couldn't find required pspec file: " << pspec_name << '\n';
   }
   LOG(INFO) << "Using pspec at: " << pspec_path->string();
 
@@ -191,6 +191,7 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
                                       DecodingContext context) const {
 
 
+  auto context_values = context.GetContextValues();
   auto res_cat = const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
       address, instr_bytes, inst, std::move(context));
 
@@ -201,8 +202,8 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
         << "Should always emit branch taken var for conditional instruction";
   }
 
-  inst.SetLifter(std::make_shared<SleighLifterWithState>(res_cat->second,
-                                                         this->GetLifter()));
+  inst.SetLifter(std::make_shared<SleighLifterWithState>(
+      res_cat->second, std::move(context_values), this->GetLifter()));
   CHECK(inst.GetLifter() != nullptr);
   return res_cat.has_value();
 }
@@ -213,8 +214,8 @@ SleighDecoder::SleighDecoder(
     std::unordered_map<std::string, std::string> context_reg_map_,
     std::unordered_map<std::string, std::string> state_reg_map_)
     : sleigh_ctx(sla_name, pspec_name),
-      sla_name(sla_name),
-      pspec_name(pspec_name),
+      sla_name(std::move(sla_name)),
+      pspec_name(std::move(pspec_name)),
       lifter(nullptr),
       arch(arch_),
       context_reg_mapping(std::move(context_reg_map_)),
@@ -231,8 +232,8 @@ SleighDecoder::GetStateRegRemappings() const {
   return this->state_reg_remappings;
 }
 
-std::optional<std::pair<Instruction::InstructionFlowCategory,
-                        std::optional<BranchTakenVar>>>
+std::optional<
+    std::pair<Instruction::InstructionFlowCategory, MaybeBranchTakenVar>>
 SleighDecoder::DecodeInstructionImpl(uint64_t address,
                                      std::string_view instr_bytes,
                                      Instruction &inst,
@@ -243,7 +244,8 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
 
   // Now decode the instruction.
   this->sleigh_ctx.resetContext();
-  this->InitializeSleighContext(this->sleigh_ctx);
+  this->InitializeSleighContext(this->sleigh_ctx,
+                                curr_context.GetContextValues());
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine());
 
 
@@ -296,12 +298,12 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
 }
 
 
-std::string SleighDecoder::GetSLAName() const {
+const std::string &SleighDecoder::GetSLAName() const {
   return this->sla_name;
 }
 
 
-std::string SleighDecoder::GetPSpec() const {
+const std::string &SleighDecoder::GetPSpec() const {
   return this->pspec_name;
 }
 
@@ -334,7 +336,7 @@ std::optional<int32_t> SingleInstructionSleighContext::oneInstruction(
       return std::nullopt;
     }
   } catch (BadDataError e) {
-    LOG(ERROR) << "Bad data error";
+    LOG(ERROR) << "Bad data error: " << e.explain;
     // NOTE (Ian): if sleigh cant find a constructor it throws an exception... yay for unrolling.
     return std::nullopt;
   } catch (UnimplError e) {
@@ -465,9 +467,29 @@ void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
 
         std::visit(conditional_applyer, cat.taken_branch);
       },
-  };  // namespace remill::sleigh
+  };
 
   std::visit(applyer, inst.flows);
+}
+
+uint64_t GetContextRegisterValue(const char *remill_reg_name,
+                                 uint64_t default_value,
+                                 const ContextValues &context_values) {
+  const auto iter = context_values.find(remill_reg_name);
+  if (iter != context_values.end()) {
+    return iter->second;
+  }
+  return default_value;
+}
+
+
+void SetContextRegisterValueInSleigh(
+    const char *remill_reg_name, const char *sleigh_reg_name,
+    uint64_t default_value, sleigh::SingleInstructionSleighContext &ctxt,
+    const ContextValues &context_values) {
+  auto value =
+      GetContextRegisterValue(remill_reg_name, default_value, context_values);
+  ctxt.GetContext().setVariableDefault(sleigh_reg_name, value);
 }
 
 }  // namespace remill::sleigh
