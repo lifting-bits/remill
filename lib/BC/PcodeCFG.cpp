@@ -56,6 +56,11 @@ struct IntraProcTransferCollector {
     targets.push_back(ex.target_block_index);
   }
 
+
+  void operator()(const InstrExit &ex) {
+    return;
+  }
+
   void operator()(const Exit &ex) {
     std::visit(*this, ex);
   }
