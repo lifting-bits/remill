@@ -760,8 +760,7 @@ TEST(PPCVLELifts, PPCVLEConvertFloatToSignedInteger) {
 }
 
 // Test syscall
-// TODO(wtan): Disabled, callother not supported
-TEST(PPCVLELifts, DISABLED_PPCVLESyscall) {
+TEST(PPCVLELifts, PPCVLESyscall) {
   llvm::LLVMContext curr_context;
   // e_sc
   std::string insn_data("\x7c\x00\x00\x48", 4);
