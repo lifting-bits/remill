@@ -42,6 +42,7 @@ class IntrinsicTable {
   llvm::Function *const missing_block;
 
   // OS interaction.
+  llvm::Function *const sync_hyper_call;
   llvm::Function *const async_hyper_call;
 
   // Memory read intrinsics.

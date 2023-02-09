@@ -95,6 +95,7 @@ class SyncHyperCall {
     kSPARCTrapCondVS,
 
     kPPCEmulateInstruction,
+    kPPCSysCall,
   };
 } __attribute__((packed));
 
