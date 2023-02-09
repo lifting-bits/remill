@@ -30,6 +30,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <remill/Arch/Arch.h>
+#include <remill/Arch/Runtime/HyperCall.h>
 #include <remill/BC/InstructionLifter.h>
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/Lifter.h>
@@ -184,6 +185,15 @@ MemoryHandler *__remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
   LOG(INFO) << "Writing " << std::hex << addr << " value: " << value;
   memory->WriteMemory<uint64_t>(addr, value);
   return memory;
+}
+
+struct State;
+
+// PowerPC syscalls leave a `__remill_sync_hyper_call` invocation.
+// Create an empty stub implementation so we can still execute our LLVM code.
+MemoryHandler *__remill_sync_hyper_call(State &state, MemoryHandler *mem,
+                                        SyncHyperCall::Name call) {
+  return mem;
 }
 }
 
