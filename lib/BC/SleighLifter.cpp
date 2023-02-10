@@ -30,6 +30,7 @@
 #include <remill/BC/SleighLifter.h>
 #include <remill/BC/Util.h>
 
+#include <array>
 #include <cassert>
 #include <optional>
 #include <sleigh/pcoderaw.hh>
@@ -1269,17 +1270,22 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       if (other_func_name == kSysCallName &&
           insn.arch_name == ArchName::kArchPPC) {
         DLOG(INFO) << "Invoking syscall";
+
         const auto [mem_ptr_ref, mem_ptr_ref_type] =
             insn_lifter_parent.LoadRegAddress(
                 bldr.GetInsertBlock(), state_pointer, kMemoryVariableName);
 
-        llvm::Value *args[] = {
-            state_pointer, mem_ptr_ref,
-            llvm::ConstantInt::get(
-                llvm::IntegerType::get(this->context, 32),
-                static_cast<uint32_t>(SyncHyperCall::Name::kPPCSysCall))};
+        // Get a LLVM value for the sync hyper call enumeration.
+        auto hyper_call_int =
+            static_cast<uint32_t>(SyncHyperCall::Name::kPPCSysCall);
+        auto hyper_call = llvm::ConstantInt(
+            llvm::IntegerType::get(this->context, 32), hyper_call_int);
+        std::array<llvm::Value *, 3> args = {state_pointer, mem_ptr_ref,
+                                             hyper_call};
+
         bldr.CreateCall(insn_lifter_parent.GetIntrinsicTable()->sync_hyper_call,
                         args);
+
         return kLiftedInstruction;
       }
       DLOG(ERROR) << "Unsupported pcode intrinsic: " << *other_func_name;
