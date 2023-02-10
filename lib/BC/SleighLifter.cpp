@@ -1278,7 +1278,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         // Get a LLVM value for the sync hyper call enumeration.
         auto hyper_call_int =
             static_cast<uint32_t>(SyncHyperCall::Name::kPPCSysCall);
-        auto hyper_call = llvm::ConstantInt(
+        auto hyper_call = llvm::ConstantInt::get(
             llvm::IntegerType::get(this->context, 32), hyper_call_int);
         std::array<llvm::Value *, 3> args = {state_pointer, mem_ptr_ref,
                                              hyper_call};
