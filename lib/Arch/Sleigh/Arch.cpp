@@ -116,7 +116,7 @@ void SingleInstructionSleighContext::restoreEngineFromStorage() {
   if (const Element *spec_xml = storage.getTag("processor_spec")) {
     for (const Element *spec_element : spec_xml->getChildren()) {
       if (spec_element->getName() == "context_data") {
-        LOG(INFO) << "Restoring from pspec context data";
+        DLOG(INFO) << "Restoring from pspec context data";
         ctx.restoreFromSpec(spec_element, &engine);
         break;
       }
@@ -291,8 +291,8 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
 
   this->ApplyFlowToInstruction(inst);
 
-  LOG(INFO) << "Fallthrough: " << fallthrough;
-  LOG(INFO) << "Decoded as " << inst.Serialize();
+  DLOG(INFO) << "Fallthrough: " << fallthrough;
+  DLOG(INFO) << "Decoded as " << inst.Serialize();
 
   return cat;
 }
