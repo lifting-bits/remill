@@ -1271,9 +1271,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           insn.arch_name == ArchName::kArchPPC) {
         DLOG(INFO) << "Invoking syscall";
 
-        const auto [mem_ptr_ref, mem_ptr_ref_type] =
-            insn_lifter_parent.LoadRegAddress(
-                bldr.GetInsertBlock(), state_pointer, kMemoryVariableName);
+        const auto mem_ptr_ref = LoadMemoryPointerRef(bldr.GetInsertBlock());
 
         // Get a LLVM value for the sync hyper call enumeration.
         auto hyper_call_int =
