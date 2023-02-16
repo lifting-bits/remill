@@ -386,6 +386,10 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_ppc_emulate_instruction(mem);
       break;
 
+  case SyncHyperCall::kPPCSysCall:
+      mem = __remill_ppc_syscall(mem);
+      break;
+
 #endif
 
     default: __builtin_unreachable(); break;

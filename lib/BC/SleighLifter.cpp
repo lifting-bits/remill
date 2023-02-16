@@ -22,12 +22,15 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Verifier.h>
+#include <remill/Arch/Name.h>
+#include <remill/Arch/Runtime/HyperCall.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/IntrinsicTable.h>
 #include <remill/BC/PCodeCFG.h>
 #include <remill/BC/SleighLifter.h>
 #include <remill/BC/Util.h>
 
+#include <array>
 #include <cassert>
 #include <optional>
 #include <sleigh/pcoderaw.hh>
@@ -74,6 +77,7 @@ static size_t kNextPcArgNum = 3;
 
 
 static const std::string kEqualityClaimName = "claim_eq";
+static const std::string kSysCallName = "syscall";
 
 static bool isVarnodeInConstantSpace(VarnodeData vnode) {
   auto spc = vnode.getAddr().getSpace();
@@ -1261,6 +1265,25 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         DLOG(INFO) << "Applying eq claim";
         this->replacement_cont.ApplyEqualityClaim(bldr, *this, vars[1],
                                                   vars[2]);
+        return kLiftedInstruction;
+      }
+      if (other_func_name == kSysCallName &&
+          insn.arch_name == ArchName::kArchPPC) {
+        DLOG(INFO) << "Invoking syscall";
+
+        const auto mem_ptr_ref = LoadMemoryPointerRef(bldr.GetInsertBlock());
+
+        // Get a LLVM value for the sync hyper call enumeration.
+        auto hyper_call_int =
+            static_cast<uint32_t>(SyncHyperCall::Name::kPPCSysCall);
+        auto hyper_call = llvm::ConstantInt::get(
+            llvm::IntegerType::get(this->context, 32), hyper_call_int);
+        std::array<llvm::Value *, 3> args = {state_pointer, mem_ptr_ref,
+                                             hyper_call};
+
+        bldr.CreateCall(insn_lifter_parent.GetIntrinsicTable()->sync_hyper_call,
+                        args);
+
         return kLiftedInstruction;
       }
       DLOG(ERROR) << "Unsupported pcode intrinsic: " << *other_func_name;

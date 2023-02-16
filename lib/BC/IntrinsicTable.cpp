@@ -79,6 +79,7 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       missing_block(FindIntrinsic(module, "__remill_missing_block")),
 
       // OS interaction.
+      sync_hyper_call(FindIntrinsic(module, "__remill_sync_hyper_call")),
       async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
 
       // Memory access.

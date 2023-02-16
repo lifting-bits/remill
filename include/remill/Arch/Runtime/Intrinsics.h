@@ -423,4 +423,6 @@ __remill_sparc64_emulate_instruction(Memory *);
 [[gnu::used, gnu::const]] extern Memory *
 __remill_ppc_emulate_instruction(Memory *);
 
+[[gnu::used, gnu::const]] extern Memory *__remill_ppc_syscall(Memory *);
+
 }  // extern C
