@@ -20,6 +20,7 @@
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Verifier.h>
 #include <remill/Arch/Name.h>
@@ -857,19 +858,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
           bldr, lhs, this->insn_lifter_parent.GetWordType());
 
-      auto pc_reg_param = this->LiftNormalRegister(bldr, "PC");
-      CHECK(pc_reg_param.has_value());
-      auto pc_reg_ptr = *pc_reg_param;
-      auto orig_pc_value = pc_reg_ptr->LiftAsInParam(
-          bldr, this->insn_lifter_parent.GetWordType());
+      auto orig_pc_value = this->GetNextPc(bldr);
+      //CHECK(pc_reg_param.has_value());
+      auto next_pc_value =
+          bldr.CreateSelect(trunc_should_branch, jump_addr, orig_pc_value);
 
-      if (orig_pc_value.has_value()) {
-        auto next_pc_value =
-            bldr.CreateSelect(trunc_should_branch, jump_addr, *orig_pc_value);
-
-        bldr.CreateStore(next_pc_value, this->GetNextPcRef());
-      }
+      bldr.CreateStore(next_pc_value, this->GetNextPcRef());
     }
+
 
     return this->TerminateBlockWithCondition(trunc_should_branch);
   }
@@ -1297,6 +1293,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
   llvm::Argument *GetNextPcRef() {
     return this->exit_block->getParent()->getArg(kNextPcArgNum);
+  }
+
+  llvm::Value *GetNextPc(llvm::IRBuilder<> &ir) {
+    return ir.CreateLoad(this->insn_lifter_parent.GetWordType(),
+                         this->GetNextPcRef());
   }
 
   LiftStatus LiftBranchTaken(llvm::IRBuilder<> &bldr,
