@@ -34,22 +34,23 @@ const size_t kThumbInstructionSize = 2;
 }
 
 // TODO(Ian): support different arm versions
-SleighThumb2Decoder::SleighThumb2Decoder(const remill::Arch &arch)
+SleighAArch32ThumbDecoder::SleighAArch32ThumbDecoder(const remill::Arch &arch)
     : SleighDecoder(arch, "ARM8_le.sla", "ARMtTHUMB.pspec",
                     {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
                     {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
 
 
-void SleighThumb2Decoder::InitializeSleighContext(
+void SleighAArch32ThumbDecoder::InitializeSleighContext(
     remill::sleigh::SingleInstructionSleighContext &ctxt,
-    const ContextValues &) const {
-  ctxt.GetContext().setVariableDefault("TMode", 1);
+    const ContextValues &values) const {
+  sleigh::SetContextRegisterValueInSleigh(
+      std::string(kThumbModeRegName).c_str(), "TMode", 1, ctxt, values);
 }
 
 llvm::Value *
-SleighThumb2Decoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
-                                      llvm::Value *curr_pc,
-                                      size_t curr_insn_size) const {
+SleighAArch32ThumbDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
+                                            llvm::Value *curr_pc,
+                                            size_t curr_insn_size) const {
 
   // PC on thumb points to the next instructions next.
   return bldr.CreateAdd(
@@ -81,6 +82,8 @@ class SleighThumbArch : public AArch32ArchBase {
   virtual bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                                  Instruction &inst,
                                  DecodingContext context) const override {
+    //for thumb only support in thumb mode
+    context.UpdateContextReg(std::string(kThumbModeRegName), 1);
     return decoder.DecodeInstruction(address, instr_bytes, inst, context);
   }
 
@@ -101,7 +104,7 @@ class SleighThumbArch : public AArch32ArchBase {
 
 
  private:
-  SleighThumb2Decoder decoder;
+  SleighAArch32ThumbDecoder decoder;
 };
 
 
