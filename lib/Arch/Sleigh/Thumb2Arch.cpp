@@ -54,8 +54,7 @@ SleighAArch32ThumbDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
 
   // PC on thumb points to the next instructions next.
   return bldr.CreateAdd(
-      curr_pc,
-      llvm::ConstantInt::get(curr_pc->getType(), kThumbInstructionSize * 2));
+      curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size * 2));
 }
 
 //TODO(Ian): this has code duplication with SleighX86Arch couldnt come up with a way to share implementation and not run into more
