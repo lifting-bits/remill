@@ -26,27 +26,25 @@
 
 #include "Arch.h"
 #include "Thumb.h"
-#include "lib/Arch/AArch32/Arch.h"
 
 namespace remill {
 namespace sleighthumb2 {
-namespace {}
+namespace {
+const size_t kThumbInstructionSize = 2;
+}
 
 // TODO(Ian): support different arm versions
 SleighAArch32ThumbDecoder::SleighAArch32ThumbDecoder(const remill::Arch &arch)
-    : SleighDecoder(arch, "ARM8_le.sla", "ARMt.pspec",
+    : SleighDecoder(arch, "ARM8_le.sla", "ARMtTHUMB.pspec",
                     {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
-                    {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}},
-                    {"TMode"}) {}
+                    {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
 
 
 void SleighAArch32ThumbDecoder::InitializeSleighContext(
     remill::sleigh::SingleInstructionSleighContext &ctxt,
     const ContextValues &values) const {
-  LOG(INFO) << "Current value of TM "
-            << values.at(std::string(kThumbModeRegName));
   sleigh::SetContextRegisterValueInSleigh(
-      std::string(kThumbModeRegName).c_str(), "TMode", 0, ctxt, values);
+      std::string(kThumbModeRegName).c_str(), "TMode", 1, ctxt, values);
 }
 
 llvm::Value *

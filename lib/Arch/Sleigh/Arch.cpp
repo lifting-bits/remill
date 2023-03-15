@@ -21,8 +21,6 @@
 #include <remill/Arch/Name.h>
 #include <remill/BC/SleighLifter.h>
 
-#include <unordered_set>
-
 namespace remill::sleigh {
 
 namespace {
@@ -86,10 +84,8 @@ std::vector<std::string> SingleInstructionSleighContext::getUserOpNames() {
 }
 
 SingleInstructionSleighContext::SingleInstructionSleighContext(
-    std::string sla_name, std::string pspec_name,
-    std::unordered_set<std::string> set_context_regs_)
-    : engine(&image, &ctx),
-      set_context_regs(set_context_regs_) {
+    std::string sla_name, std::string pspec_name)
+    : engine(&image, &ctx) {
 
   auto guard = Arch::Lock(ArchName::kArchX86_SLEIGH);
 
@@ -120,11 +116,8 @@ void SingleInstructionSleighContext::restoreEngineFromStorage() {
   if (const Element *spec_xml = storage.getTag("processor_spec")) {
     for (const Element *spec_element : spec_xml->getChildren()) {
       if (spec_element->getName() == "context_data") {
-        if (!this->set_context_regs.contains(
-                spec_element->getAttributeValue("name"))) {
-          ctx.restoreFromSpec(spec_element, &engine);
-        }
-
+        DLOG(INFO) << "Restoring from pspec context data";
+        ctx.restoreFromSpec(spec_element, &engine);
         break;
       }
     }
@@ -219,9 +212,8 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
 SleighDecoder::SleighDecoder(
     const remill::Arch &arch_, std::string sla_name, std::string pspec_name,
     std::unordered_map<std::string, std::string> context_reg_map_,
-    std::unordered_map<std::string, std::string> state_reg_map_,
-    std::unordered_set<std::string> set_context_regs_)
-    : sleigh_ctx(sla_name, pspec_name, set_context_regs_),
+    std::unordered_map<std::string, std::string> state_reg_map_)
+    : sleigh_ctx(sla_name, pspec_name),
       sla_name(std::move(sla_name)),
       pspec_name(std::move(pspec_name)),
       lifter(nullptr),
@@ -497,7 +489,6 @@ void SetContextRegisterValueInSleigh(
     const ContextValues &context_values) {
   auto value =
       GetContextRegisterValue(remill_reg_name, default_value, context_values);
-  LOG(INFO) << "setting " << sleigh_reg_name << " to " << value;
   ctxt.GetContext().setVariableDefault(sleigh_reg_name, value);
 }
 
