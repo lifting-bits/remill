@@ -38,13 +38,13 @@ llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
 }
 
 void SleighPPCDecoder::InitializeSleighContext(
-    remill::sleigh::SingleInstructionSleighContext &ctxt,
+    uint64_t addr, remill::sleigh::SingleInstructionSleighContext &ctxt,
     const ContextValues &context_values) const {
   // If the context value mappings specify a value for the VLE register, let's pass that into
   // Sleigh.
   //
   // Otherwise, default to VLE off.
-  sleigh::SetContextRegisterValueInSleigh(kPPCVLERegName, "vle", 0, ctxt,
+  sleigh::SetContextRegisterValueInSleigh(addr, kPPCVLERegName, "vle", 0, ctxt,
                                           context_values);
 }
 

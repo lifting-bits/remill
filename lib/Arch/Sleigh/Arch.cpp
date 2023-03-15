@@ -244,7 +244,7 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
 
   // Now decode the instruction.
   this->sleigh_ctx.resetContext();
-  this->InitializeSleighContext(this->sleigh_ctx,
+  this->InitializeSleighContext(address, this->sleigh_ctx,
                                 curr_context.GetContextValues());
   PcodeDecoder pcode_handler(this->sleigh_ctx.GetEngine());
 
@@ -484,12 +484,13 @@ uint64_t GetContextRegisterValue(const char *remill_reg_name,
 
 
 void SetContextRegisterValueInSleigh(
-    const char *remill_reg_name, const char *sleigh_reg_name,
+    uint64_t addr, const char *remill_reg_name, const char *sleigh_reg_name,
     uint64_t default_value, sleigh::SingleInstructionSleighContext &ctxt,
     const ContextValues &context_values) {
   auto value =
       GetContextRegisterValue(remill_reg_name, default_value, context_values);
-  ctxt.GetContext().setVariableDefault(sleigh_reg_name, value);
+  ctxt.GetContext().setVariable(sleigh_reg_name,
+                                ctxt.GetAddressFromOffset(addr), value);
 }
 
 }  // namespace remill::sleigh

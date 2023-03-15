@@ -29,9 +29,6 @@
 
 namespace remill {
 namespace sleighthumb2 {
-namespace {
-const size_t kThumbInstructionSize = 2;
-}
 
 // TODO(Ian): support different arm versions
 SleighAArch32ThumbDecoder::SleighAArch32ThumbDecoder(const remill::Arch &arch)
@@ -41,10 +38,10 @@ SleighAArch32ThumbDecoder::SleighAArch32ThumbDecoder(const remill::Arch &arch)
 
 
 void SleighAArch32ThumbDecoder::InitializeSleighContext(
-    remill::sleigh::SingleInstructionSleighContext &ctxt,
+    uint64_t addr, remill::sleigh::SingleInstructionSleighContext &ctxt,
     const ContextValues &values) const {
   sleigh::SetContextRegisterValueInSleigh(
-      std::string(kThumbModeRegName).c_str(), "TMode", 1, ctxt, values);
+      addr, std::string(kThumbModeRegName).c_str(), "TMode", 1, ctxt, values);
 }
 
 llvm::Value *

@@ -23,7 +23,8 @@ class SleighAArch32ThumbDecoder final : public remill::sleigh::SleighDecoder {
                                         size_t curr_insn_size) const final;
 
   void
-  InitializeSleighContext(remill::sleigh::SingleInstructionSleighContext &ctxt,
+  InitializeSleighContext(uint64_t addr,
+                          remill::sleigh::SingleInstructionSleighContext &ctxt,
                           const ContextValues &context_values) const final;
 };
 }  // namespace sleighthumb2

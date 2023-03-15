@@ -1583,7 +1583,8 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
     const ContextValues &context_values) {
 
   this->sleigh_context->resetContext();
-  this->decoder.InitializeSleighContext(*this->sleigh_context, context_values);
+  this->decoder.InitializeSleighContext(inst.pc, *this->sleigh_context,
+                                        context_values);
 
   sleigh::PcodeDecoder pcode_record(this->GetEngine());
   sleigh_context->oneInstruction(inst.pc, pcode_record, inst.bytes);
