@@ -41,6 +41,10 @@ add_library(remill_arch_sleigh STATIC
   PPCArch.cpp
   ControlFlowStructuring.cpp
   ControlFlowStructuring.h
+
+  AArch32Arch.cpp
+  AArch32Arch.h
+  ARMBase.cpp
 )
 
 set_property(TARGET remill_arch_sleigh PROPERTY POSITION_INDEPENDENT_CODE ON)

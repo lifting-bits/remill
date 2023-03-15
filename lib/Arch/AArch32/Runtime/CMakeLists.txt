@@ -51,17 +51,6 @@ function(add_runtime_helper target_name little_endian)
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
     ARCH arm
-
-    DEPENDENCIES
-    ""
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BINARY.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/FLAGS.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/COND.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/LOGICAL.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MEM.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BRANCH.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/BITBYTE.cpp"
-    "${REMILL_LIB_DIR}/Arch/AArch32/Semantics/MISC.cpp"
   )
 endfunction()
 

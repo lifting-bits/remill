@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "Arch.h"
+#include "AArch32Arch.h"
 
 #include <glog/logging.h>
 #include <llvm/ADT/Triple.h>
@@ -54,6 +54,42 @@ AArch32Arch::AArch32Arch(llvm::LLVMContext *context_, OSName os_name_,
       thumb_decoder(*this) {}
 
 AArch32Arch::~AArch32Arch(void) {}
+
+OperandLifter::OpLifterPtr AArch32Arch::DefaultLifter(
+    const remill::IntrinsicTable &intrinsics_table) const {
+  return std::make_shared<InstructionLifter>(this, intrinsics_table);
+}
+
+bool AArch32Arch::DecodeInstruction(uint64_t address,
+                                    std::string_view inst_bytes,
+                                    Instruction &inst,
+                                    DecodingContext context) const {
+  inst.pc = address;
+  inst.next_pc = address + inst_bytes.size();  // Default fall-through.
+  inst.branch_taken_pc = 0;
+  inst.branch_not_taken_pc = 0;
+  inst.has_branch_taken_delay_slot = false;
+  inst.has_branch_not_taken_delay_slot = false;
+  inst.arch_name = arch_name;
+  inst.sub_arch_name = arch_name;
+  inst.branch_taken_arch_name = arch_name;
+  inst.arch = this;
+  inst.category = Instruction::kCategoryInvalid;
+  inst.operands.clear();
+  inst.flows = Instruction::InvalidInsn();
+
+  if (!context.HasValueForReg(std::string(kThumbModeRegName))) {
+    return false;
+  }
+
+
+  return this->DecodeSleigh(address, inst_bytes, inst, std::move(context));
+}
+
+DecodingContext AArch32Arch::CreateInitialContext(void) const {
+  return DecodingContext().PutContextReg(std::string(kThumbModeRegName), 0);
+}
+
 
 // TODO(pag): We pretend that these are singletons, but they aren't really!
 Arch::ArchPtr Arch::GetAArch32(llvm::LLVMContext *context_, OSName os_name_,

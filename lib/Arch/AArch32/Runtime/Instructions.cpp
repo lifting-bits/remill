@@ -61,23 +61,4 @@ DEF_SEM(HandleInvalidInstruction) {
 DEF_ISEL(UNSUPPORTED_INSTRUCTION) = HandleUnsupported;
 DEF_ISEL(INVALID_INSTRUCTION) = HandleInvalidInstruction;
 
-// clang-format off
-#include "lib/Arch/AArch32/Semantics/FLAGS.cpp"
-#include "lib/Arch/AArch32/Semantics/BINARY.cpp"
-#include "lib/Arch/AArch32/Semantics/MEM.cpp"
-#include "lib/Arch/AArch32/Semantics/LOGICAL.cpp"
-#include "lib/Arch/AArch32/Semantics/BITBYTE.cpp"
-#include "lib/Arch/AArch32/Semantics/BRANCH.cpp"
-
-// #include "lib/Arch/AArch32/Semantics/CALL_RET.cpp"
-#include "lib/Arch/AArch32/Semantics/COND.cpp"
-
-// #include "lib/Arch/AArch32/Semantics/CONVERT.cpp"
-// #include "lib/Arch/AArch32/Semantics/DATAXFER.cpp"
-#include "lib/Arch/AArch32/Semantics/MISC.cpp"
-
-// #include "lib/Arch/AArch32/Semantics/SHIFT.cpp"
-// #include "lib/Arch/AArch32/Semantics/SIMD.cpp"
-// #include "lib/Arch/AArch32/Semantics/SYSTEM.cpp"
-
 // clang-format on
