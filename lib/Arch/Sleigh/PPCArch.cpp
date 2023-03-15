@@ -27,7 +27,7 @@ static constexpr auto kPPCVLERegName = "VLEReg";
 
 SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
     : SleighDecoder(arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
-                    {{"vle", kPPCVLERegName}}, {}) {}
+                    {{"vle", kPPCVLERegName}}, {}, {"vle"}) {}
 
 llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
                                                 llvm::Value *curr_pc,

@@ -66,6 +66,7 @@ class SingleInstructionSleighContext {
   ContextInternal ctx;
   ::Sleigh engine;
   DocumentStorage storage;
+  std::unordered_set<std::string> set_context_regs;
 
   std::optional<int32_t>
   oneInstruction(uint64_t address,
@@ -88,7 +89,9 @@ class SingleInstructionSleighContext {
 
   void resetContext();
 
-  SingleInstructionSleighContext(std::string sla_name, std::string pspec_name);
+  SingleInstructionSleighContext(
+      std::string sla_name, std::string pspec_name,
+      std::unordered_set<std::string> set_context_regs);
 
 
   // Builds sleigh decompiler arch. Allows access to useropmanager and other internal sleigh info mantained by the arch.
@@ -102,10 +105,14 @@ class SleighDecoder {
   SleighDecoder(
       const remill::Arch &arch, std::string sla_name, std::string pspec_name,
       std::unordered_map<std::string, std::string> context_reg_mapping,
-      std::unordered_map<std::string, std::string> state_reg_remappings);
+      std::unordered_map<std::string, std::string> state_reg_remappings,
+      std::unordered_set<std::string> set_context_regs);
   const std::string &GetSLAName() const;
 
   const std::string &GetPSpec() const;
+
+  const std::unordered_set<std::string> &GetSetContextRegs();
+
   // Decoder specific prep
   virtual void InitializeSleighContext(SingleInstructionSleighContext &,
                                        const ContextValues &) const = 0;
