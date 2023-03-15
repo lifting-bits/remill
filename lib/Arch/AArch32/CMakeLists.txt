@@ -12,41 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(remill_arch_aarch32 STATIC
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Definitions.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/HyperCall.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Intrinsics.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Operators.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Runtime.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/State.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Types.h"
-
-  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/Operators.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/State.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/Types.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/ArchContext.h"
-
-  Arch.cpp
-  Decode.cpp
-  Base.cpp
-
-  # Decode.h
-  # Extract.cpp
-)
-
 add_subdirectory(Runtime)
-
-set_property(TARGET remill_arch_aarch32 PROPERTY POSITION_INDEPENDENT_CODE ON)
-
-target_link_libraries(remill_arch_aarch32 LINK_PUBLIC
-  remill_settings
-)
-
-target_include_directories(remill_arch_aarch32 AFTER PRIVATE "${REMILL_SOURCE_DIR}")
-
-if(REMILL_ENABLE_INSTALL_TARGET)
-  install(
-    TARGETS remill_arch_aarch32
-    EXPORT remillTargets
-  )
-endif()

@@ -14,16 +14,17 @@
 namespace remill {
 
 namespace sleighthumb2 {
-class SleighThumb2Decoder final : public remill::sleigh::SleighDecoder {
+class SleighAArch32ThumbDecoder final : public remill::sleigh::SleighDecoder {
  public:
-  SleighThumb2Decoder(const remill::Arch &arch);
+  SleighAArch32ThumbDecoder(const remill::Arch &arch);
 
 
   virtual llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr, llvm::Value *,
                                         size_t curr_insn_size) const final;
 
   void
-  InitializeSleighContext(remill::sleigh::SingleInstructionSleighContext &ctxt,
+  InitializeSleighContext(uint64_t addr,
+                          remill::sleigh::SingleInstructionSleighContext &ctxt,
                           const ContextValues &context_values) const final;
 };
 }  // namespace sleighthumb2

@@ -107,7 +107,8 @@ class SleighDecoder {
 
   const std::string &GetPSpec() const;
   // Decoder specific prep
-  virtual void InitializeSleighContext(SingleInstructionSleighContext &,
+  virtual void InitializeSleighContext(uint64_t address,
+                                       SingleInstructionSleighContext &,
                                        const ContextValues &) const = 0;
 
 
@@ -156,7 +157,7 @@ uint64_t GetContextRegisterValue(const char *remill_reg_name,
                                  const ContextValues &context_values);
 
 void SetContextRegisterValueInSleigh(
-    const char *remill_reg_name, const char *sleigh_reg_name,
+    uint64_t addr, const char *remill_reg_name, const char *sleigh_reg_name,
     uint64_t default_value, sleigh::SingleInstructionSleighContext &ctxt,
     const ContextValues &context_values);
 

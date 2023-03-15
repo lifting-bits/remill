@@ -162,10 +162,9 @@ class TestSpecRunner {
   llvm::support::endianness endian;
 
  public:
-  TestSpecRunner(llvm::LLVMContext &context)
-      : lifter(test_runner::LiftingTester(
-            context, remill::OSName::kOSLinux,
-            remill::ArchName::kArchThumb2LittleEndian)),
+  TestSpecRunner(llvm::LLVMContext &context, remill::ArchName name)
+      : lifter(test_runner::LiftingTester(context, remill::OSName::kOSLinux,
+                                          name)),
         tst_ctr(0),
         endian(lifter.GetArch()->MemoryAccessIsLittleEndian()
                    ? llvm::support::endianness::little
@@ -237,10 +236,24 @@ TEST(ThumbRandomizedLifts, PopPC) {
   spec.AddPrecWrite<uint32_t>(10, 16);
   llvm::LLVMContext context;
 
-  TestSpecRunner runner(context);
+  TestSpecRunner runner(context, remill::ArchName::kArchThumb2LittleEndian);
   runner.RunTestSpec(spec);
 }
 
+
+TEST(ArmRandomizedLifts, RelPcTest) {
+  llvm::LLVMContext curr_context;
+  std::string insn_data("\x0c\x10\x9f\xe5", 4);
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryNormal,
+                      {{"r15", 0x12}}, {{"r1", 0xdeadc0de}});
+  // So ok instruction is at 18 which means pc is = 26
+  spec.AddPrecWrite<uint32_t>(38, 0xdeadc0de);
+  llvm::LLVMContext context;
+
+  TestSpecRunner runner(context, remill::ArchName::kArchAArch32LittleEndian);
+  runner.RunTestSpec(spec);
+}
 
 TEST(ThumbRandomizedLifts, RelPcTest) {
 
@@ -253,7 +266,7 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   spec.AddPrecWrite<uint32_t>(32, 0xdeadc0de);
   llvm::LLVMContext context;
 
-  TestSpecRunner runner(context);
+  TestSpecRunner runner(context, remill::ArchName::kArchThumb2LittleEndian);
   runner.RunTestSpec(spec);
 }
 
