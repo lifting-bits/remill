@@ -22,10 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: 'ubuntu', tag: '20.04' }
+          - { name: 'ubuntu', tag: '22.04' }
         llvm: ['15']
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container:
       image: ghcr.io/lifting-bits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
       credentials:
@@ -165,7 +165,7 @@ jobs:
   release_packages:
     # Do not run the release procedure if any of the builds has failed
     needs: [ build_linux, build_mac ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
 
     steps:
@@ -200,13 +200,13 @@ jobs:
 
       - name: Group the packages by platform
         run: |
-          zip -r9 remill_ubuntu-20.04_packages.zip \
-                  ubuntu-20.04*
+          zip -r9 remill_ubuntu-22.04_packages.zip \
+                  ubuntu-22.04*
 
           zip -r9 remill_macos-11_packages.zip \
                   macos-11*
 
-      - name: Upload the Ubuntu 20.04 packages
+      - name: Upload the Ubuntu 22.04 packages
         uses: actions/upload-release-asset@v1
 
         env:
@@ -214,8 +214,8 @@ jobs:
 
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: remill_ubuntu-20.04_packages.zip
-          asset_name: remill_ubuntu-20.04_packages.zip
+          asset_path: remill_ubuntu-22.04_packages.zip
+          asset_name: remill_ubuntu-22.04_packages.zip
           asset_content_type: application/gzip
 
       - name: Upload the macOS 11 packages
@@ -236,7 +236,7 @@ jobs:
     strategy:
       matrix:
         llvm: ["15"]
-        ubuntu: ["20.04"]
+        ubuntu: ["22.04"]
     steps:
     - uses: actions/checkout@v2
     - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}

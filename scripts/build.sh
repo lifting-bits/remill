@@ -37,17 +37,22 @@ function GetUbuntuOSVersion
   source /etc/lsb-release
 
   case "${DISTRIB_CODENAME}" in
-    groovy)
-      echo "[!] Ubuntu 20.10 is not supported; using libraries for Ubuntu 20.04 instead"
-      OS_VERSION=ubuntu-20.04
+    lunar)
+      echo "[!] Ubuntu 23.04 is not supported; using libraries for Ubuntu 22.04 instead"
+      OS_VERSION=ubuntu-22.04
       return 0
     ;;
-    focal)
-      OS_VERSION=ubuntu-20.04
+    kinetic)
+      echo "[!] Ubuntu 22.10 is not supported; using libraries for Ubuntu 22.04 instead"
+      OS_VERSION=ubuntu-22.04
+      return 0
+    ;;
+    jammy)
+      OS_VERSION=ubuntu-22.04
       return 0
     ;;
     *)
-      echo "[x] Ubuntu ${DISTRIB_CODENAME} is not supported. Only xenial (16.04) and trusty (14.04) are supported."
+      echo "[x] Ubuntu ${DISTRIB_CODENAME} is not supported. Only jammy (22.04) is supported."
       return 1
     ;;
   esac
@@ -122,17 +127,17 @@ function GetOSVersion
     ;;
 
     *debian*)
-      OS_VERSION=ubuntu-20.04
+      OS_VERSION=ubuntu-22.04
       return 0
     ;;
 
     *arch*)
-      OS_VERSION=ubuntu-20.04
+      OS_VERSION=ubuntu-22.04
       return 0
     ;;
 
     [Kk]ali)
-      OS_VERSION=ubuntu-20.04
+      OS_VERSION=ubuntu-22.04
       return 0;
     ;;
 
