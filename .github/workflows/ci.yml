@@ -10,11 +10,11 @@ on:
       - 'master'
 
     tags:
-      - '*'
+      - "*"
 
   pull_request:
     branches:
-      - '*'
+      - "*"
 
 jobs:
   build_linux:
