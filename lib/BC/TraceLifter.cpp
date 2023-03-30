@@ -240,14 +240,7 @@ bool TraceLifter::Lift(
 
 // Lift one or more traces starting from `addr`.
 bool TraceLifter::Impl::Lift(
-    uint64_t addr_, std::function<void(uint64_t, llvm::Function *)> callback) {
-  auto addr = addr_ & addr_mask;
-  if (addr < addr_) {  // Address is out of range.
-    LOG(ERROR) << "Trace address " << std::hex << addr_ << " is too big"
-               << std::dec;
-    return false;
-  }
-
+    uint64_t addr, std::function<void(uint64_t, llvm::Function *)> callback) {
   // Reset the lifting state.
   trace_work_list.clear();
   inst_work_list.clear();
