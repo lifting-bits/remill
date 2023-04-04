@@ -1625,7 +1625,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
   }
 
   // Log error if claim_eq values that were declared saw no uses
-  if (lifter.ClaimEqualityUsed()) {
+  if (!lifter.ClaimEqualityUsed()) {
     LOG(ERROR) << "claim_eq value not used when lifting " << inst.Serialize();
   }
 
