@@ -270,6 +270,20 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   runner.RunTestSpec(spec);
 }
 
+TEST(ThumbRandomizedLifts, RegressionPreffixSuffixInsn) {
+
+  llvm::LLVMContext curr_context;
+  std::string insn_data("\x3f\xf4\x53\xaf", 4);
+  TestOutputSpec spec(0x12, insn_data,
+                      remill::Instruction::Category::kCategoryConditionalBranch,
+                      {{"ZF", 1}, {"r15", 0x00014188}}, {{"PC", 0x01421c}});
+
+  llvm::LLVMContext context;
+
+  TestSpecRunner runner(context, remill::ArchName::kArchThumb2LittleEndian);
+  runner.RunTestSpec(spec);
+}
+
 TEST(RegressionTests, AARCH64RegSize) {
   llvm::LLVMContext context;
   auto arch = remill::Arch::Build(&context, remill::OSName::kOSLinux,

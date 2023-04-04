@@ -1,0 +1,54 @@
+From e3103b7e5e1b1eca4e175f833fa43dced2298de1 Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Tue, 4 Apr 2023 12:26:56 -0400
+Subject: [PATCH] ARM
+
+---
+ Ghidra/Processors/ARM/data/languages/ARM.sinc | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/Ghidra/Processors/ARM/data/languages/ARM.sinc b/Ghidra/Processors/ARM/data/languages/ARM.sinc
+index 5869bfe29..76e810e1a 100644
+--- a/Ghidra/Processors/ARM/data/languages/ARM.sinc
++++ b/Ghidra/Processors/ARM/data/languages/ARM.sinc
+@@ -2,6 +2,13 @@
+ # The following boolean defines control specific support: T_VARIANT, VERSION_5, VERSION_5E
+ 
+ define endian=$(ENDIAN);
++# so the trick here is to define an INST_NEXT_PTR that works in either context 
++# subtracting tmode from 2 means if it is 1 get 1 *4 which is the correct normalization for thumb, if it is 0
++# we get 8
++
++@define INST_NEXT_PTR "(pc-((2 - zext(ISAModeSwitch))*4)) + remill_insn_size"
++define pcodeop claim_eq;
++
+ define alignment=2;
+ 
+ define space ram type=ram_space size=4 default;
+@@ -238,6 +245,9 @@ macro ALUWritePC(addr) {
+ 
+ @if defined(T_VARIANT)
+ 
++
++remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:4=calculated_size; 
++ export insn_size_hinted; }
+ ItCond:              is TMode=1			{ }
+ CheckInIT_CZNO:      is TMode=1  	    { CY = tmpCY; ZR = tmpZR; NG = tmpNG; OV = tmpOV; }		# in older, arms always affect flags
+ CheckInIT_CZN:       is TMode=1  	    { CY = tmpCY; ZR = tmpZR; NG = tmpNG; }		# in older, arms always affect flags
+@@ -274,7 +284,12 @@ ItCond:  "."thfcc    is TMode=1 & itmode=0 & cond_mask & thfcc [ itmode=1; globa
+ 
+ # last ITBlock then/else case - the condition being tested is modified by the shift below
+ ItCond:  "."thfcc    is TMode=1 & itmode=0 & cond_mask=8 & thfcc
+-   { if (!thfcc) goto inst_next; }
++    ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name29:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name29, $(INST_NEXT_PTR));
++ if (!thfcc) goto inst_next;
++   }
++ 
+ 
+ # certain Thumb instructions don't affect all flags in the IT block
+ CheckInIT_CZNO:     is TMode=1 & itmode=1 & cond_mask  	        { }   # Do nothing to the flag bits
+-- 
+2.39.2 (Apple Git-143)
+
