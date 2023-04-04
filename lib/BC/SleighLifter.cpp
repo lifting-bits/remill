@@ -39,6 +39,7 @@
 #include <unordered_set>
 #include <variant>
 
+#include "remill/Arch/Context.h"
 #include "remill/BC/InstructionLifter.h"
 
 
@@ -1675,10 +1676,10 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
       intoblock_builer.CreateLoad(this->GetWordType(), next_pc_ref);
 
 
-  intoblock_builer.CreateStore(
-      this->decoder.LiftPcFromCurrPc(intoblock_builer, next_pc,
-                                     inst.bytes.size()),
-      pc_ref);
+  intoblock_builer.CreateStore(this->decoder.LiftPcFromCurrPc(
+                                   intoblock_builer, next_pc, inst.bytes.size(),
+                                   DecodingContext(context_values)),
+                               pc_ref);
   intoblock_builer.CreateStore(
       intoblock_builer.CreateAdd(
           next_pc,

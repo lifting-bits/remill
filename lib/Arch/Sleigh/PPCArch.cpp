@@ -31,7 +31,8 @@ SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
 
 llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
                                                 llvm::Value *curr_pc,
-                                                size_t curr_insn_size) const {
+                                                size_t curr_insn_size,
+                                                const DecodingContext &) const {
   // PC on thumb points to the next instructions next.
   return bldr.CreateAdd(
       curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size));

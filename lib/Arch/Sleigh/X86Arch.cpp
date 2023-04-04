@@ -28,6 +28,7 @@
 #include <remill/OS/OS.h>
 
 #include "Arch.h"
+#include "remill/Arch/Context.h"
 
 namespace remill {
 namespace sleigh::x86 {
@@ -48,7 +49,8 @@ class SleighX86Decoder final : public SleighDecoder {
                           const ContextValues &) const override {}
 
   llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr, llvm::Value *curr_pc,
-                                size_t curr_insn_size) const final {
+                                size_t curr_insn_size,
+                                const DecodingContext &) const final {
 
     // PC on thumb points to the next instructions next.
     return bldr.CreateAdd(

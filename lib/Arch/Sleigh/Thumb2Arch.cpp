@@ -26,6 +26,8 @@
 
 #include "Arch.h"
 #include "Thumb.h"
+#include "lib/Arch/Sleigh/AArch32Arch.h"
+#include "remill/Arch/Context.h"
 
 namespace remill {
 namespace sleighthumb2 {
@@ -44,14 +46,14 @@ void SleighAArch32ThumbDecoder::InitializeSleighContext(
       addr, std::string(kThumbModeRegName).c_str(), "TMode", 1, ctxt, values);
 }
 
-llvm::Value *
-SleighAArch32ThumbDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
-                                            llvm::Value *curr_pc,
-                                            size_t curr_insn_size) const {
+llvm::Value *SleighAArch32ThumbDecoder::LiftPcFromCurrPc(
+    llvm::IRBuilder<> &bldr, llvm::Value *curr_pc, size_t curr_insn_size,
+    const DecodingContext &context) const {
 
   // PC on thumb points to the next instructions next.
   return bldr.CreateAdd(
-      curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size * 2));
+      curr_pc, llvm::ConstantInt::get(curr_pc->getType(),
+                                      (AArch32Arch::IsThumb(context) ? 4 : 8)));
 }
 
 //TODO(Ian): this has code duplication with SleighX86Arch couldnt come up with a way to share implementation and not run into more

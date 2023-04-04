@@ -23,6 +23,7 @@
 #include <remill/OS/OS.h>
 
 #include "Arch.h"
+#include "remill/Arch/Context.h"
 
 namespace remill::sleighppc {
 
@@ -30,8 +31,8 @@ class SleighPPCDecoder final : public remill::sleigh::SleighDecoder {
  public:
   SleighPPCDecoder(const remill::Arch &);
 
-  llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &, llvm::Value *,
-                                size_t) const override;
+  llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &, llvm::Value *, size_t,
+                                const DecodingContext &) const override;
 
   void InitializeSleighContext(uint64_t addr,
                                remill::sleigh::SingleInstructionSleighContext &,
