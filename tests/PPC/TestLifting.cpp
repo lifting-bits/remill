@@ -256,6 +256,20 @@ TEST(PPCVLELifts, PPCVLEAdd) {
   runner.RunTestSpec(spec, kVLEContext);
 }
 
+// Divide two registers
+TEST(PPCVLELifts, PPCVLEDiv) {
+  llvm::LLVMContext curr_context;
+  // div r5, r4, r3
+  std::string insn_data("\x7c\xa4\x1b\x96", 4);
+  TestOutputSpec<PPCState> spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
+      {{"r4", uint64_t(0xcc)}, {"r3", uint64_t(0x7)}, {"pc", uint64_t(0x12)}},
+      {{"r5", uint64_t(0x1d)}, {"r4", uint64_t(0xcc)}, {"r3", uint64_t(0x7)}, {"pc", uint64_t(0x16)}},
+    reg_to_accessor);
+  TestSpecRunner<PPCState> runner(curr_context);
+  runner.RunTestSpec(spec, kVLEContext);
+}
+
 // Add two registers and record
 TEST(PPCVLELifts, PPCVLEAddRecord) {
   llvm::LLVMContext curr_context;
@@ -465,6 +479,22 @@ TEST(PPCVLELifts, PPCVLEStoreWord) {
                                 reg_to_accessor);
   spec.AddPrecWrite<uint32_t>(0xdeadbee0 + 0x10, 0x0);
   spec.AddPostRead<uint32_t>(0xdeadbee0 + 0x10, 0x13371337);
+
+  TestSpecRunner<PPCState> runner(curr_context);
+  runner.RunTestSpec(spec, kVLEContext);
+}
+
+// Load immediate
+TEST(PPCVLELifts, PPCVLELoadImmediate) {
+  llvm::LLVMContext curr_context;
+  // se_li r7, 0x7
+  std::string insn_data("\x48\x77", 2);
+  TestOutputSpec<PPCState> spec(0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"r7", uint64_t(0x0)}},
+                                {{"pc", uint64_t(0x14)},
+                                 {"r7", uint64_t(0x7)}},
+                              reg_to_accessor);
 
   TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec, kVLEContext);
