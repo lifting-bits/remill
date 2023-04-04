@@ -19,8 +19,10 @@
 #include <lib/Arch/Sleigh/ControlFlowStructuring.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Verifier.h>
 #include <remill/Arch/Name.h>
@@ -35,6 +37,7 @@
 #include <cassert>
 #include <optional>
 #include <sleigh/pcoderaw.hh>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
@@ -134,6 +137,41 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
   using ParamPtr = std::shared_ptr<Parameter>;
 
+
+  class DecodingContextConstants {
+   private:
+    std::unordered_map<std::string, std::string> sleigh_to_remill_reg;
+    llvm::LLVMContext &context;
+    const ContextValues &context_values;
+
+   public:
+    DecodingContextConstants(
+        std::unordered_map<std::string, std::string> sleigh_to_remill_reg,
+        llvm::LLVMContext &context, const ContextValues &context_values)
+        : sleigh_to_remill_reg(sleigh_to_remill_reg),
+          context(context),
+          context_values(context_values) {}
+
+
+    std::optional<ParamPtr>
+    LiftRegisterFromDecodingContext(std::string target_reg,
+                                    VarnodeData target_vnode) {
+      auto maybe_reg = this->sleigh_to_remill_reg.find(target_reg);
+      if (maybe_reg == sleigh_to_remill_reg.end()) {
+        return std::nullopt;
+      }
+
+      auto maybe_val = context_values.find(maybe_reg->second);
+      if (maybe_val == context_values.end()) {
+        return std::nullopt;
+      }
+
+      auto val = maybe_val->second;
+
+      return ConstantValue::CreatConstant(llvm::ConstantInt::get(
+          llvm::IntegerType::get(context, target_vnode.size * 8), val));
+    }
+  };
 
   class RegisterValue : public Parameter {
    private:
@@ -351,6 +389,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
   std::unordered_map<size_t, llvm::BasicBlock *> start_index_to_block;
 
+  DecodingContextConstants context_reg_lifter;
+
 
   void UpdateStatus(LiftStatus new_status, OpCode opc) {
     if (new_status != LiftStatus::kLiftedInstruction) {
@@ -387,7 +427,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                            SleighLifter &insn_lifter_parent,
                            std::vector<std::string> user_op_names_,
                            llvm::BasicBlock *exit_block_,
-                           const sleigh::MaybeBranchTakenVar &to_lift_btaken_)
+                           const sleigh::MaybeBranchTakenVar &to_lift_btaken_,
+                           const ContextValues &context_values)
       : target_block(target_block),
         state_pointer(state_pointer),
         context(target_block->getContext()),
@@ -400,7 +441,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         entry_block(target_block),
         exit_block(exit_block_),
         curr_id(0),
-        to_lift_btaken(to_lift_btaken_) {}
+        to_lift_btaken(to_lift_btaken_),
+        context_reg_lifter(
+            insn_lifter_parent.decoder.GetContextRegisterMapping(),
+            target_block->getContext(), context_values) {}
 
 
   ParamPtr CreateMemoryAddress(llvm::Value *offset) {
@@ -441,6 +485,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                                             std::string reg_name,
                                             VarnodeData target_vnode) {
     if (auto res = this->LiftNormalRegister(bldr, reg_name)) {
+      return *res;
+    }
+
+    if (auto res = this->context_reg_lifter.LiftRegisterFromDecodingContext(
+            reg_name, target_vnode)) {
       return *res;
     }
 
@@ -1619,7 +1668,8 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
       target_block, internal_state_pointer, inst, *this,
-      this->sleigh_context->getUserOpNames(), exit_block, btaken);
+      this->sleigh_context->getUserOpNames(), exit_block, btaken,
+      context_values);
 
   for (auto blk : cfg.blocks) {
     lifter.VisitBlock(blk.second);
