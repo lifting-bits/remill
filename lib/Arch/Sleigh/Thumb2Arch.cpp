@@ -35,7 +35,9 @@ namespace sleighthumb2 {
 // TODO(Ian): support different arm versions
 SleighAArch32ThumbDecoder::SleighAArch32ThumbDecoder(const remill::Arch &arch)
     : SleighDecoder(arch, "ARM8_le.sla", "ARMtTHUMB.pspec",
-                    {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
+                    sleigh::ContextRegMappings(
+                        {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
+                        {{"ISAModeSwitch", 1}}),
                     {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
 
 
@@ -49,7 +51,6 @@ void SleighAArch32ThumbDecoder::InitializeSleighContext(
 llvm::Value *SleighAArch32ThumbDecoder::LiftPcFromCurrPc(
     llvm::IRBuilder<> &bldr, llvm::Value *curr_pc, size_t curr_insn_size,
     const DecodingContext &context) const {
-
   // PC on thumb points to the next instructions next.
   return bldr.CreateAdd(
       curr_pc, llvm::ConstantInt::get(curr_pc->getType(),

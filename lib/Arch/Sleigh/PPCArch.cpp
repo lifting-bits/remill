@@ -15,6 +15,7 @@
  */
 
 #include "PPC.h"
+#include "lib/Arch/Sleigh/Arch.h"
 
 #define INCLUDED_FROM_REMILL
 #include <remill/Arch/PPC/Runtime/State.h>
@@ -26,8 +27,10 @@ namespace sleighppc {
 static constexpr auto kPPCVLERegName = "VLEReg";
 
 SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
-    : SleighDecoder(arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
-                    {{"vle", kPPCVLERegName}}, {}) {}
+    : SleighDecoder(
+          arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
+          sleigh::ContextRegMappings({{"vle", kPPCVLERegName}}, {{"vle", 1}}),
+          {}) {}
 
 llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
                                                 llvm::Value *curr_pc,

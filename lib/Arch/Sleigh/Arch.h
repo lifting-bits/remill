@@ -19,6 +19,7 @@
 #include <remill/Arch/ArchBase.h>
 #include <remill/BC/SleighLifter.h>
 
+#include <cstddef>
 #include <sleigh/libsleigh.hh>
 #include <unordered_set>
 
@@ -95,13 +96,31 @@ class SingleInstructionSleighContext {
   std::vector<std::string> getUserOpNames();
 };
 
+struct ContextRegMappings {
+
+ private:
+  std::unordered_map<std::string, std::string> context_reg_mapping;
+  std::unordered_map<std::string, size_t> vnode_size_mapping;
+
+ public:
+  ContextRegMappings(
+      std::unordered_map<std::string, std::string> context_reg_mapping,
+      std::unordered_map<std::string, size_t> vnode_size_mapping)
+      : context_reg_mapping(std::move(context_reg_mapping)),
+        vnode_size_mapping(std::move(vnode_size_mapping)) {}
+
+  const std::unordered_map<std::string, size_t> &GetSizeMapping() const;
+
+  const std::unordered_map<std::string, std::string> &
+  GetInternalRegMapping() const;
+};
 
 class SleighDecoder {
  public:
   SleighDecoder() = delete;
   SleighDecoder(
       const remill::Arch &arch, std::string sla_name, std::string pspec_name,
-      std::unordered_map<std::string, std::string> context_reg_mapping,
+      ContextRegMappings context_reg_mapping,
       std::unordered_map<std::string, std::string> state_reg_remappings);
   const std::string &GetSLAName() const;
 
@@ -121,8 +140,7 @@ class SleighDecoder {
                          Instruction &inst, DecodingContext context) const;
 
   // Gets the context registers that are required to be set in order to decode, maps pcode context reg names to remill context reg names.
-  const std::unordered_map<std::string, std::string> &
-  GetContextRegisterMapping() const;
+  const ContextRegMappings &GetContextRegisterMapping() const;
 
   // Maps pcode registers to their names in the remill state structure for the given arch (if a renaming is required.)
   const std::unordered_map<std::string, std::string> &
@@ -148,7 +166,7 @@ class SleighDecoder {
 
   mutable std::shared_ptr<remill::SleighLifter> lifter;
   const remill::Arch &arch;
-  std::unordered_map<std::string, std::string> context_reg_mapping;
+  ContextRegMappings context_reg_mapping;
   std::unordered_map<std::string, std::string> state_reg_remappings;
 };
 

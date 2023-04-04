@@ -37,6 +37,7 @@
 #include <cassert>
 #include <optional>
 #include <sleigh/pcoderaw.hh>
+#include <sleigh/sleigh.hh>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -137,42 +138,68 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
   using ParamPtr = std::shared_ptr<Parameter>;
 
-
+ public:
   class DecodingContextConstants {
    private:
-    std::unordered_map<std::string, std::string> sleigh_to_remill_reg;
+    const sleigh::ContextRegMappings &sleigh_to_remill_reg;
     llvm::LLVMContext &context;
     const ContextValues &context_values;
+    std::unordered_map<std::string, llvm::Value *> regptrs;
+
+
+    void PrepareEntryBlock(llvm::BasicBlock *entry) {
+      llvm::IRBuilder<> builder(entry);
+
+      for (const auto &[k, v] : this->sleigh_to_remill_reg.GetSizeMapping()) {
+        auto ity = llvm::IntegerType::get(this->context, v * 8);
+        auto reg_ptr = builder.CreateAlloca(ity, nullptr, k);
+        regptrs.emplace(k, reg_ptr);
+
+
+        auto maybe_reg =
+            this->sleigh_to_remill_reg.GetInternalRegMapping().find(k);
+
+        if (maybe_reg ==
+            this->sleigh_to_remill_reg.GetInternalRegMapping().end()) {
+          continue;
+        }
+
+        auto maybe_value = context_values.find(maybe_reg->second);
+        if (maybe_value == context_values.end()) {
+          continue;
+        }
+
+        builder.CreateStore(llvm::ConstantInt::get(ity, maybe_value->second),
+                            reg_ptr);
+      }
+    }
 
    public:
     DecodingContextConstants(
-        std::unordered_map<std::string, std::string> sleigh_to_remill_reg,
-        llvm::LLVMContext &context, const ContextValues &context_values)
+        const sleigh::ContextRegMappings &sleigh_to_remill_reg,
+        llvm::LLVMContext &context, const ContextValues &context_values,
+        llvm::BasicBlock *target_block)
         : sleigh_to_remill_reg(sleigh_to_remill_reg),
           context(context),
-          context_values(context_values) {}
+          context_values(context_values) {
+      this->PrepareEntryBlock(target_block);
+    }
 
 
     std::optional<ParamPtr>
     LiftRegisterFromDecodingContext(std::string target_reg,
                                     VarnodeData target_vnode) {
-      auto maybe_reg = this->sleigh_to_remill_reg.find(target_reg);
-      if (maybe_reg == sleigh_to_remill_reg.end()) {
+      auto maybe_reg = this->regptrs.find(target_reg);
+      if (maybe_reg == this->regptrs.end()) {
         return std::nullopt;
       }
 
-      auto maybe_val = context_values.find(maybe_reg->second);
-      if (maybe_val == context_values.end()) {
-        return std::nullopt;
-      }
 
-      auto val = maybe_val->second;
-
-      return ConstantValue::CreatConstant(llvm::ConstantInt::get(
-          llvm::IntegerType::get(context, target_vnode.size * 8), val));
+      return RegisterValue::CreateRegister(maybe_reg->second);
     }
   };
 
+ private:
   class RegisterValue : public Parameter {
    private:
     llvm::Value *register_pointer;
@@ -422,13 +449,12 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     return newblk;
   }
 
-  PcodeToLLVMEmitIntoBlock(llvm::BasicBlock *target_block,
-                           llvm::Value *state_pointer, const Instruction &insn,
-                           SleighLifter &insn_lifter_parent,
-                           std::vector<std::string> user_op_names_,
-                           llvm::BasicBlock *exit_block_,
-                           const sleigh::MaybeBranchTakenVar &to_lift_btaken_,
-                           const ContextValues &context_values)
+  PcodeToLLVMEmitIntoBlock(
+      llvm::BasicBlock *target_block, llvm::Value *state_pointer,
+      const Instruction &insn, SleighLifter &insn_lifter_parent,
+      std::vector<std::string> user_op_names_, llvm::BasicBlock *exit_block_,
+      const sleigh::MaybeBranchTakenVar &to_lift_btaken_,
+      PcodeToLLVMEmitIntoBlock::DecodingContextConstants context_reg_lifter)
       : target_block(target_block),
         state_pointer(state_pointer),
         context(target_block->getContext()),
@@ -442,9 +468,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         exit_block(exit_block_),
         curr_id(0),
         to_lift_btaken(to_lift_btaken_),
-        context_reg_lifter(
-            insn_lifter_parent.decoder.GetContextRegisterMapping(),
-            target_block->getContext(), context_values) {}
+        context_reg_lifter(std::move(context_reg_lifter)) {}
 
 
   ParamPtr CreateMemoryAddress(llvm::Value *offset) {
@@ -1666,10 +1690,17 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
 
   auto cfg = sleigh::CreateCFG(pcode_record.ops);
 
+
+  SleighLifter::PcodeToLLVMEmitIntoBlock::DecodingContextConstants
+      decoding_context_lifter(this->decoder.GetContextRegisterMapping(),
+                              target_mod->getContext(), context_values,
+                              target_block);
+
   SleighLifter::PcodeToLLVMEmitIntoBlock lifter(
       target_block, internal_state_pointer, inst, *this,
       this->sleigh_context->getUserOpNames(), exit_block, btaken,
-      context_values);
+      std::move(decoding_context_lifter));
+
 
   for (auto blk : cfg.blocks) {
     lifter.VisitBlock(blk.second);

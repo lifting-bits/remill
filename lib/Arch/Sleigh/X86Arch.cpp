@@ -40,7 +40,7 @@ class SleighX86Decoder final : public SleighDecoder {
       : SleighDecoder(
             arch, kArchX86_SLEIGH == arch.arch_name ? "x86.sla" : "x86-64.sla",
             kArchX86_SLEIGH == arch.arch_name ? "x86.pspec" : "x86-64.pspec",
-            {}, {}) {}
+            ContextRegMappings({}, {}), {}) {}
 
   // The x86 default context is sufficient. No context register assignments are required.
   void

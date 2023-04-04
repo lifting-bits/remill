@@ -211,7 +211,7 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
 
 SleighDecoder::SleighDecoder(
     const remill::Arch &arch_, std::string sla_name, std::string pspec_name,
-    std::unordered_map<std::string, std::string> context_reg_map_,
+    ContextRegMappings context_reg_map_,
     std::unordered_map<std::string, std::string> state_reg_map_)
     : sleigh_ctx(sla_name, pspec_name),
       sla_name(std::move(sla_name)),
@@ -222,8 +222,7 @@ SleighDecoder::SleighDecoder(
       state_reg_remappings(std::move(state_reg_map_)) {}
 
 
-const std::unordered_map<std::string, std::string> &
-SleighDecoder::GetContextRegisterMapping() const {
+const ContextRegMappings &SleighDecoder::GetContextRegisterMapping() const {
   return this->context_reg_mapping;
 }
 
@@ -273,8 +272,9 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
   uint64_t fallthrough = address + *instr_len;
   inst.next_pc = fallthrough;
 
-  ControlFlowStructureAnalysis analysis(this->context_reg_mapping,
-                                        this->sleigh_ctx.GetEngine());
+  ControlFlowStructureAnalysis analysis(
+      this->context_reg_mapping.GetInternalRegMapping(),
+      this->sleigh_ctx.GetEngine());
 
 
   auto cat =
@@ -385,6 +385,17 @@ Overload(Ts...) -> Overload<Ts...>;
 
 }  // namespace
 
+
+const std::unordered_map<std::string, size_t> &
+ContextRegMappings::GetSizeMapping() const {
+  return this->vnode_size_mapping;
+}
+
+const std::unordered_map<std::string, std::string> &
+ContextRegMappings::GetInternalRegMapping() const {
+  return this->context_reg_mapping;
+}
+
 void SleighDecoder::ApplyFlowToInstruction(remill::Instruction &inst) const {
 
 
@@ -492,5 +503,6 @@ void SetContextRegisterValueInSleigh(
   ctxt.GetContext().setVariable(sleigh_reg_name,
                                 ctxt.GetAddressFromOffset(addr), value);
 }
+
 
 }  // namespace remill::sleigh
