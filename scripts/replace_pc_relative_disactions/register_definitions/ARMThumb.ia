@@ -1,1 +1,5 @@
-@define INST_NEXT_PTR "(pc-2)"
+# so the trick here is to define an INST_NEXT_PTR that works in either context 
+# subtracting tmode from 2 means if it is 1 get 1 *4 which is the correct normalization for thumb, if it is 0
+# we get 8
+
+@define INST_NEXT_PTR "(pc-((2 - zext(ISAModeSwitch))*4)) + remill_insn_size"

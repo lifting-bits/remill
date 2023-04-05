@@ -95,13 +95,34 @@ class SingleInstructionSleighContext {
   std::vector<std::string> getUserOpNames();
 };
 
+struct ContextRegMappings {
+
+ private:
+  std::unordered_map<std::string, std::string> context_reg_mapping;
+  // Stores the size of the context register in bytes.
+  // We need to allocate space for an instruction to manipulate a
+  // Context reg as needed. This space is also populated with the incoming value.
+  std::unordered_map<std::string, size_t> vnode_size_mapping;
+
+ public:
+  ContextRegMappings(
+      std::unordered_map<std::string, std::string> context_reg_mapping,
+      std::unordered_map<std::string, size_t> vnode_size_mapping)
+      : context_reg_mapping(std::move(context_reg_mapping)),
+        vnode_size_mapping(std::move(vnode_size_mapping)) {}
+
+  const std::unordered_map<std::string, size_t> &GetSizeMapping() const;
+
+  const std::unordered_map<std::string, std::string> &
+  GetInternalRegMapping() const;
+};
 
 class SleighDecoder {
  public:
   SleighDecoder() = delete;
   SleighDecoder(
       const remill::Arch &arch, std::string sla_name, std::string pspec_name,
-      std::unordered_map<std::string, std::string> context_reg_mapping,
+      ContextRegMappings context_reg_mapping,
       std::unordered_map<std::string, std::string> state_reg_remappings);
   const std::string &GetSLAName() const;
 
@@ -112,17 +133,16 @@ class SleighDecoder {
                                        const ContextValues &) const = 0;
 
 
-  virtual llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
-                                        llvm::Value *curr_pc,
-                                        size_t curr_insn_size) const = 0;
+  virtual llvm::Value *
+  LiftPcFromCurrPc(llvm::IRBuilder<> &bldr, llvm::Value *curr_pc,
+                   size_t curr_insn_size, const DecodingContext &) const = 0;
 
 
   bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                          Instruction &inst, DecodingContext context) const;
 
   // Gets the context registers that are required to be set in order to decode, maps pcode context reg names to remill context reg names.
-  const std::unordered_map<std::string, std::string> &
-  GetContextRegisterMapping() const;
+  const ContextRegMappings &GetContextRegisterMapping() const;
 
   // Maps pcode registers to their names in the remill state structure for the given arch (if a renaming is required.)
   const std::unordered_map<std::string, std::string> &
@@ -148,7 +168,7 @@ class SleighDecoder {
 
   mutable std::shared_ptr<remill::SleighLifter> lifter;
   const remill::Arch &arch;
-  std::unordered_map<std::string, std::string> context_reg_mapping;
+  ContextRegMappings context_reg_mapping;
   std::unordered_map<std::string, std::string> state_reg_remappings;
 };
 

@@ -93,7 +93,7 @@ class InstNextReplacer(ExpressionReplacer):
 
     @property
     def required_invisible_operands(self) -> List[str]:
-        return []
+        return [REMILL_INSN_SIZE_NAME]
 
 
 class Environment:

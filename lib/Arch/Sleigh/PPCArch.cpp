@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "Arch.h"
 #include "PPC.h"
 
 #define INCLUDED_FROM_REMILL
@@ -26,12 +27,15 @@ namespace sleighppc {
 static constexpr auto kPPCVLERegName = "VLEReg";
 
 SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
-    : SleighDecoder(arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
-                    {{"vle", kPPCVLERegName}}, {}) {}
+    : SleighDecoder(
+          arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
+          sleigh::ContextRegMappings({{"vle", kPPCVLERegName}}, {{"vle", 1}}),
+          {}) {}
 
 llvm::Value *SleighPPCDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
                                                 llvm::Value *curr_pc,
-                                                size_t curr_insn_size) const {
+                                                size_t curr_insn_size,
+                                                const DecodingContext &) const {
   // PC on thumb points to the next instructions next.
   return bldr.CreateAdd(
       curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size));

@@ -18,12 +18,14 @@
 #include <remill/Arch/AArch32/AArch32Base.h>
 #include <remill/Arch/AArch32/ArchContext.h>
 #include <remill/Arch/AArch32/Runtime/State.h>
+#include <remill/Arch/Context.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/Util.h>
 #include <remill/BC/Version.h>
 #include <remill/OS/OS.h>
 
+#include "AArch32Arch.h"
 #include "Arch.h"
 #include "Thumb.h"
 
@@ -33,7 +35,9 @@ namespace sleighthumb2 {
 // TODO(Ian): support different arm versions
 SleighAArch32ThumbDecoder::SleighAArch32ThumbDecoder(const remill::Arch &arch)
     : SleighDecoder(arch, "ARM8_le.sla", "ARMtTHUMB.pspec",
-                    {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
+                    sleigh::ContextRegMappings(
+                        {{"ISAModeSwitch", std::string(kThumbModeRegName)}},
+                        {{"ISAModeSwitch", 1}}),
                     {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
 
 
@@ -44,14 +48,13 @@ void SleighAArch32ThumbDecoder::InitializeSleighContext(
       addr, std::string(kThumbModeRegName).c_str(), "TMode", 1, ctxt, values);
 }
 
-llvm::Value *
-SleighAArch32ThumbDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
-                                            llvm::Value *curr_pc,
-                                            size_t curr_insn_size) const {
-
+llvm::Value *SleighAArch32ThumbDecoder::LiftPcFromCurrPc(
+    llvm::IRBuilder<> &bldr, llvm::Value *curr_pc, size_t curr_insn_size,
+    const DecodingContext &context) const {
   // PC on thumb points to the next instructions next.
   return bldr.CreateAdd(
-      curr_pc, llvm::ConstantInt::get(curr_pc->getType(), curr_insn_size * 2));
+      curr_pc, llvm::ConstantInt::get(curr_pc->getType(),
+                                      (AArch32Arch::IsThumb(context) ? 4 : 8)));
 }
 
 //TODO(Ian): this has code duplication with SleighX86Arch couldnt come up with a way to share implementation and not run into more

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <remill/Arch/Context.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/Util.h>
@@ -30,8 +31,8 @@ class SleighPPCDecoder final : public remill::sleigh::SleighDecoder {
  public:
   SleighPPCDecoder(const remill::Arch &);
 
-  llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &, llvm::Value *,
-                                size_t) const override;
+  llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &, llvm::Value *, size_t,
+                                const DecodingContext &) const override;
 
   void InitializeSleighContext(uint64_t addr,
                                remill::sleigh::SingleInstructionSleighContext &,

@@ -21,6 +21,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <remill/Arch/Context.h>
 #include <remill/Arch/Name.h>
 #include <remill/Arch/X86/X86Base.h>
 #include <remill/BC/ABI.h>
@@ -39,7 +40,7 @@ class SleighX86Decoder final : public SleighDecoder {
       : SleighDecoder(
             arch, kArchX86_SLEIGH == arch.arch_name ? "x86.sla" : "x86-64.sla",
             kArchX86_SLEIGH == arch.arch_name ? "x86.pspec" : "x86-64.pspec",
-            {}, {}) {}
+            ContextRegMappings({}, {}), {}) {}
 
   // The x86 default context is sufficient. No context register assignments are required.
   void
@@ -48,7 +49,8 @@ class SleighX86Decoder final : public SleighDecoder {
                           const ContextValues &) const override {}
 
   llvm::Value *LiftPcFromCurrPc(llvm::IRBuilder<> &bldr, llvm::Value *curr_pc,
-                                size_t curr_insn_size) const final {
+                                size_t curr_insn_size,
+                                const DecodingContext &) const final {
 
     // PC on thumb points to the next instructions next.
     return bldr.CreateAdd(

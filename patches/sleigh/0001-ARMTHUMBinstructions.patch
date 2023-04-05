@@ -1,34 +1,17 @@
-From 32ae2981ed8033a08b7be56387275f84edfee2b3 Mon Sep 17 00:00:00 2001
+From 302ca3885c87bad3eb00f956db937ec50564d50d Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
-Date: Sat, 8 Oct 2022 09:22:46 -0400
-Subject: [PATCH] ARMThumbPcRel
+Date: Tue, 4 Apr 2023 12:26:56 -0400
+Subject: [PATCH] ARMTHUMBinstructions
 
 ---
- .../data/languages/ARMTHUMBinstructions.sinc  | 503 +++++++++++++-----
- 1 file changed, 373 insertions(+), 130 deletions(-)
+ .../data/languages/ARMTHUMBinstructions.sinc  | 497 +++++++++++++-----
+ 1 file changed, 367 insertions(+), 130 deletions(-)
 
 diff --git a/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc b/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
-index daf705731..a97c86b60 100644
+index daf705731..48efb70e0 100644
 --- a/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
 +++ b/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
-@@ -1,3 +1,6 @@
-+
-+@define INST_NEXT_PTR "(pc-2)"
-+define pcodeop claim_eq;
- # Specification for the THUMB Version 2
- # This closely follows
- #    "Architecture Reference Manual" Second Edition Edited by David Seal
-@@ -266,6 +269,9 @@ macro th_affectflags() {
- 
- # conditionals for the branch instruction
- 
-+
-+remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:4=calculated_size; 
-+ export insn_size_hinted; }
- thcc: "eq"	is thcond=0	{ tmp:1 = (ZR!=0); export tmp; }
- thcc: "ne"	is thcond=1	{ tmp:1 = (ZR==0); export tmp; }
- thcc: "cs"	is thcond=2	{ tmp:1 = (CY!=0); export tmp; }
-@@ -350,15 +356,33 @@ thSBIT_ZN: "s" is thc0404=1	    { ZR = tmpZR; NG = tmpNG; }
+@@ -350,15 +350,33 @@ thSBIT_ZN: "s" is thc0404=1	    { ZR = tmpZR; NG = tmpNG; }
  
  Hrd0002: Rd0002		is Rd0002 & h1=0	{ export Rd0002; }
  Hrd0002: hrd0002	is hrd0002 & h1=1	{ export hrd0002; }
@@ -65,7 +48,7 @@ index daf705731..a97c86b60 100644
  
  @if defined(VERSION_6T2) || defined(VERSION_7)
  Immed8_4: "#"^immval		is immed8 [ immval = immed8 * 4; ]		{ export *[const]:4 immval; }
-@@ -369,19 +393,25 @@ Immed8: "#"^immed8		is immed8		{ export *[const]:4 immed8; }
+@@ -369,19 +387,25 @@ Immed8: "#"^immed8		is immed8		{ export *[const]:4 immed8; }
  Immed3: "#"^immed3		is immed3		{ export *[const]:4 immed3; }
  
  Pcrel8: [reloc]		is immed8
@@ -99,7 +82,7 @@ index daf705731..a97c86b60 100644
  @endif # defined(VERSION_6T2) || defined(VERSION_7)
  
  
-@@ -405,29 +435,41 @@ Immed16: "#"^immed16   is immed12_i & sop0003; immed12_imm3 & immed12_imm8
+@@ -405,29 +429,41 @@ Immed16: "#"^immed16   is immed12_i & sop0003; immed12_imm3 & immed12_imm8
  }
  
  PcrelImmed12Addr: reloc		is immed12_i; immed12_imm3 & immed12_imm8
@@ -157,7 +140,7 @@ index daf705731..a97c86b60 100644
  
  @endif # defined(VERSION_6T2) || defined(VERSION_7)
  
-@@ -532,64 +574,91 @@ thshift2: Rm0003, "ror #"^shftval	is imm3_shft & imm2_shft & thc0405=3 & Rm0003
+@@ -532,64 +568,91 @@ thshift2: Rm0003, "ror #"^shftval	is imm3_shft & imm2_shft & thc0405=3 & Rm0003
  @endif # VERSION_6T2 || VERSION_7
  
  Addr5:  reloc   is imm5 & thc0909
@@ -285,7 +268,7 @@ index daf705731..a97c86b60 100644
  
  @endif # VERSION_5
  
-@@ -844,7 +913,13 @@ thldrlist_dec: { thrldec1 }  	is thc0000=0 & thrldec1				{ }
+@@ -844,7 +907,13 @@ thldrlist_dec: { thrldec1 }  	is thc0000=0 & thrldec1				{ }
  @endif # defined(VERSION_6T2) || defined(VERSION_7)
  
  # thstrlist_dec is the list of registers to be pushed
@@ -300,7 +283,7 @@ index daf705731..a97c86b60 100644
  thsdec15: 			is thc1515=0					{ }
  thsdec14: lr thsdec15		is thc1414=1 & thsdec15 & lr & thc1515=0	{ * mult_addr=lr; mult_addr = mult_addr - 4; }
  thsdec14: lr^"," thsdec15	is thc1414=1 & thsdec15 & lr			{ * mult_addr=lr; mult_addr = mult_addr - 4; }
-@@ -931,10 +1006,13 @@ RnIndirect1: [Rn0305,"#"^immed5]	is Rn0305 & immed5	{ local tmp = Rn0305 + immed
+@@ -931,10 +1000,13 @@ RnIndirect1: [Rn0305,"#"^immed5]	is Rn0305 & immed5	{ local tmp = Rn0305 + immed
  RnRmIndirect: [Rn0305,Rm0608]	is Rn0305 & Rm0608	{ local tmp = Rn0305 + Rm0608; export tmp; }
  
  Pcrel8Indirect: [reloc]	is immed8
@@ -318,13 +301,13 @@ index daf705731..a97c86b60 100644
  
  Sprel8Indirect: [sp,"#"^immval]	is sp & immed8   [ immval = immed8 * 4; ]  { local tmp = sp + immval; export tmp; }
  
-@@ -1435,12 +1513,19 @@ macro th_set_carry_for_asr(op1,shift_count) {
+@@ -1435,12 +1507,19 @@ macro th_set_carry_for_asr(op1,shift_count) {
  @endif # VERSION_5
  
  :bl^ItCond 	ThAddr24 			is TMode=1 & ItCond & (op11=0x1e; part2c1415=3 & part2c1212=1) & ThAddr24
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +remill_please_dont_use_this_temp_name31b:4=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name31b, $(INST_NEXT_PTR));
@@ -341,13 +324,13 @@ index daf705731..a97c86b60 100644
  
  @ifndef VERSION_6T2
  
-@@ -1470,12 +1555,19 @@ macro th_set_carry_for_asr(op1,shift_count) {
+@@ -1470,12 +1549,19 @@ macro th_set_carry_for_asr(op1,shift_count) {
  @endif
  
  :bl^ItCond 	ThAddr24 			is TMode=1 & CALLoverride=1 & ItCond & (op11=0x1e; part2c1415=3 & part2c1212=1) & ThAddr24
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +remill_please_dont_use_this_temp_name31d:4=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name31d, $(INST_NEXT_PTR));
@@ -364,13 +347,13 @@ index daf705731..a97c86b60 100644
  
  bxns: "" is thc0003 { }
  bxns: "ns" is thc0002=0b100 { }
-@@ -1508,13 +1600,21 @@ bxns: "ns" is thc0002=0b100 { }
+@@ -1508,13 +1594,21 @@ bxns: "ns" is thc0002=0b100 { }
  }
  
  :blx^bxns^ItCond	Hrm0305			is TMode=1 & ItCond & op7=0x08f & Hrm0305 & bxns
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    BXWritePC(Hrm0305);
@@ -389,13 +372,13 @@ index daf705731..a97c86b60 100644
  
  @endif # VERSION_5
  
-@@ -1592,13 +1692,22 @@ bxns: "ns" is thc0002=0b100 { }
+@@ -1592,13 +1686,22 @@ bxns: "ns" is thc0002=0b100 { }
  define pcodeop IndexCheck;
  
  :chka^ItCond  Hrn0002,Rm0306    is TMode=1 & ItCond & TEEMode=1 & op8=0xca & Rm0306 & Hrn0002
 -{
 -    build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
      local tmp = Hrn0002 <= Rm0306;
@@ -415,13 +398,13 @@ index daf705731..a97c86b60 100644
  
  :clrex^ItCond                     is TMode=1 & ItCond & op0=0xf3bf; op0=0x8f2f
  {
-@@ -2691,24 +2800,40 @@ primask: "primask"			is epsilon {}
+@@ -2691,24 +2794,40 @@ primask: "primask"			is epsilon {}
  basepri: "basepri"			is epsilon {}
  
  :mrs^ItCond Rd0811,basepri 		is TMode=1 & ItCond & op0=0xf3ef; op12=0x8 & Rd0811 & sysm=17 & basepri
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    Rd0811 = 0;
@@ -443,7 +426,7 @@ index daf705731..a97c86b60 100644
  :mrs^ItCond Rd0811,basepri_max 		is TMode=1 & ItCond & op0=0xf3ef; op12=0x8 & Rd0811 & sysm=18 & basepri_max
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    Rd0811 = 0;
@@ -462,13 +445,13 @@ index daf705731..a97c86b60 100644
  
  faultmask: "faultmask"		is epsilon {}
  
-@@ -2781,20 +2906,34 @@ define pcodeop setProcessStackPointer;
+@@ -2781,20 +2900,34 @@ define pcodeop setProcessStackPointer;
  define pcodeop setBasePriority;
  
  :msr^ItCond msp,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=8 & msp
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    b:1 = isCurrentModePrivileged();
@@ -486,7 +469,7 @@ index daf705731..a97c86b60 100644
  :msr^ItCond psp,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=9 & psp
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    b:1 = isCurrentModePrivileged();
@@ -503,13 +486,13 @@ index daf705731..a97c86b60 100644
  
  :msr^ItCond primask,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=16 & primask
  {
-@@ -2805,12 +2944,19 @@ define pcodeop setBasePriority;
+@@ -2805,12 +2938,19 @@ define pcodeop setBasePriority;
  }
  
  :msr^ItCond basepri,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=17 & basepri
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    b:1 = isCurrentModePrivileged();
@@ -526,13 +509,13 @@ index daf705731..a97c86b60 100644
  
  :msr^ItCond basepri_max,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=18 & basepri_max
  {
-@@ -2825,12 +2971,19 @@ define pcodeop setBasePriority;
+@@ -2825,12 +2965,19 @@ define pcodeop setBasePriority;
  }
  
  :msr^ItCond faultmask,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=19 & faultmask
 -{
 -  build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    b:1 = isCurrentModePrivileged();
@@ -549,13 +532,13 @@ index daf705731..a97c86b60 100644
  
  define pcodeop setStackMode;
  
-@@ -4446,56 +4599,100 @@ thumbEndianNess: "BE" is op0=0xb658 { export 1:1; }
+@@ -4446,56 +4593,100 @@ thumbEndianNess: "BE" is op0=0xb658 { export 1:1; }
  }
  
  :strex^ItCond    Rd0811,Rt1215,[Rn0003,Immed8_4]   is TMode=1 & ItCond & op4=0xe84 & Rn0003; Rt1215 & Rd0811 & Immed8_4
 -{
 -   build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    local tmp = Rn0003 + Immed8_4;
@@ -583,7 +566,7 @@ index daf705731..a97c86b60 100644
  :strexb^ItCond    Rd0003,Rt1215,[Rn0003]   is TMode=1 & ItCond & op4=0xe8c & Rn0003; Rt1215 & thc0811=15 & thc0407=4 & Rd0003
 -{
 -   build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    local tmp = Rn0003;
@@ -609,7 +592,7 @@ index daf705731..a97c86b60 100644
  :strexh^ItCond    Rd0003,Rt1215,[Rn0003]   is TMode=1 & ItCond & op4=0xe8c & Rn0003; Rt1215 & thc0811=15 & thc0407=5 & Rd0003
 -{
 -   build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    local tmp = Rn0003;
@@ -635,7 +618,7 @@ index daf705731..a97c86b60 100644
  :strexd^ItCond    Rd0003,Rt1215,Rt0811,[Rn0003]   is TMode=1 & ItCond & op4=0xe8c & Rn0003; Rt1215 & Rt0811 & thc0407=7 & Rd0003
 -{
 -   build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
    local tmp = Rn0003;
@@ -662,13 +645,13 @@ index daf705731..a97c86b60 100644
  
  @endif # VERSION_7
  
-@@ -4746,49 +4943,95 @@ thumbEndianNess: "BE" is op0=0xb658 { export 1:1; }
+@@ -4746,49 +4937,95 @@ thumbEndianNess: "BE" is op0=0xb658 { export 1:1; }
  @if defined(VERSION_6T2) || defined(VERSION_7)
  
  :tbb^ItCond  [Rn0003,Rm0003]    is TMode=1 & ItCond & op4=0xe8d & Rn0003; op8=0xf0 & thc0507=0 & thc0404=0 & Rm0003
 -{
 -   build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
     local tmp = Rn0003 + Rm0003;
@@ -690,7 +673,7 @@ index daf705731..a97c86b60 100644
  :tbh^ItCond  [Rn0003,Rm0003]    is TMode=1 & ItCond & op4=0xe8d & Rn0003; op8=0xf0 & thc0507=0 & thc0404=1 & Rm0003
 -{
 -   build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
     local tmp = Rn0003 + (Rm0003 * 2);
@@ -717,7 +700,7 @@ index daf705731..a97c86b60 100644
 +  }
 + 
 +
-+Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=0   [ cloc = inst_next; ] { 
++Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=0  ; remill_insn_size [ cloc = inst_next; ] { 
 + local tmp = Rm0003;
 +remill_please_dont_use_this_temp_name5cb:4=cloc;
 +claim_eq(remill_please_dont_use_this_temp_name5cb,  $(INST_NEXT_PTR));
@@ -728,7 +711,7 @@ index daf705731..a97c86b60 100644
 +
 +  }
 + 
-+Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=1   [ cloc = inst_next; ] { 
++Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=1  ; remill_insn_size [ cloc = inst_next; ] { 
 + local tmp = Rm0003;
 +remill_please_dont_use_this_temp_name5ce:4=cloc;
 +claim_eq(remill_please_dont_use_this_temp_name5ce,  $(INST_NEXT_PTR));
@@ -743,7 +726,7 @@ index daf705731..a97c86b60 100644
  :tbb^ItCond  Pcrel    is TMode=1 & ItCond & op4=0xe8d & thc0003=15; op8=0xf0 & thc0507=0 & thc0404=0 & Pcrel
 -{
 -   build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
     SetThumbMode(1);
@@ -761,7 +744,7 @@ index daf705731..a97c86b60 100644
  :tbh^ItCond  Pcrel    is TMode=1 & ItCond & op4=0xe8d & thc0003=15; op8=0xf0 & thc0507=0 & thc0404=1 & Pcrel
 -{
 -   build ItCond;
-+   { 
++ ; remill_insn_size  { 
 + build ItCond;
 +
     SetThumbMode(1);
@@ -779,5 +762,5 @@ index daf705731..a97c86b60 100644
  @endif # VERSION_6T2 || VERSION_7
  
 -- 
-2.37.0 (Apple Git-136)
+2.39.2 (Apple Git-143)
 
