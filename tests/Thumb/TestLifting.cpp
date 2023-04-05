@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#include <_types/_uint32_t.h>
-#include <_types/_uint64_t.h>
-#include <_types/_uint8_t.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>

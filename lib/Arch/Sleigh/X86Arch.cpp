@@ -21,6 +21,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <remill/Arch/Context.h>
 #include <remill/Arch/Name.h>
 #include <remill/Arch/X86/X86Base.h>
 #include <remill/BC/ABI.h>
@@ -28,7 +29,6 @@
 #include <remill/OS/OS.h>
 
 #include "Arch.h"
-#include "remill/Arch/Context.h"
 
 namespace remill {
 namespace sleigh::x86 {

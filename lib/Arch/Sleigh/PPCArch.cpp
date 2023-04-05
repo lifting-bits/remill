@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+#include "Arch.h"
 #include "PPC.h"
-#include "lib/Arch/Sleigh/Arch.h"
 
 #define INCLUDED_FROM_REMILL
 #include <remill/Arch/PPC/Runtime/State.h>

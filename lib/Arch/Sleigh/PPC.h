@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <remill/Arch/Context.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/Util.h>
@@ -23,7 +24,6 @@
 #include <remill/OS/OS.h>
 
 #include "Arch.h"
-#include "remill/Arch/Context.h"
 
 namespace remill::sleighppc {
 

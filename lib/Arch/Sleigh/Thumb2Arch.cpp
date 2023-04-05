@@ -18,16 +18,16 @@
 #include <remill/Arch/AArch32/AArch32Base.h>
 #include <remill/Arch/AArch32/ArchContext.h>
 #include <remill/Arch/AArch32/Runtime/State.h>
+#include <remill/Arch/Context.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/ABI.h>
 #include <remill/BC/Util.h>
 #include <remill/BC/Version.h>
 #include <remill/OS/OS.h>
 
+#include "AArch32Arch.h"
 #include "Arch.h"
 #include "Thumb.h"
-#include "lib/Arch/Sleigh/AArch32Arch.h"
-#include "remill/Arch/Context.h"
 
 namespace remill {
 namespace sleighthumb2 {

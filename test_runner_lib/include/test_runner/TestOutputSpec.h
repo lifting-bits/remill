@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <_types/_uint32_t.h>
 #include <glog/logging.h>
 #include <remill/Arch/Arch.h>
 #include <test_runner/TestRunner.h>

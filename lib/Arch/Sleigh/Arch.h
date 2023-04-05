@@ -19,7 +19,6 @@
 #include <remill/Arch/ArchBase.h>
 #include <remill/BC/SleighLifter.h>
 
-#include <cstddef>
 #include <sleigh/libsleigh.hh>
 #include <unordered_set>
 
