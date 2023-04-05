@@ -99,6 +99,9 @@ struct ContextRegMappings {
 
  private:
   std::unordered_map<std::string, std::string> context_reg_mapping;
+  // Stores the size of the context register in bytes.
+  // We need to allocate space for an instruction to manipulate a
+  // Context reg as needed. This space is also populated with the incoming value.
   std::unordered_map<std::string, size_t> vnode_size_mapping;
 
  public:
