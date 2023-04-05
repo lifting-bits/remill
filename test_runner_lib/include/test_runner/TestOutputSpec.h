@@ -16,11 +16,13 @@
 
 #pragma once
 
+#include <_types/_uint32_t.h>
 #include <glog/logging.h>
 #include <remill/Arch/Arch.h>
 #include <test_runner/TestRunner.h>
 
 #include <any>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -29,8 +31,9 @@
 namespace test_runner {
 
 using MemoryModifier = std::function<void(MemoryHandler &)>;
-using RegisterValue = std::variant<uint64_t, uint8_t>;
+using RegisterValue = std::variant<uint64_t, uint32_t, uint8_t>;
 using RegisterValueRef = std::variant<std::reference_wrapper<uint64_t>,
+                                      std::reference_wrapper<uint32_t>,
                                       std::reference_wrapper<uint8_t>>;
 
 struct RegisterCondition {

@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <_types/_uint32_t.h>
+#include <_types/_uint64_t.h>
+#include <_types/_uint8_t.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -43,17 +46,29 @@
 #include <variant>
 
 #include "gtest/gtest.h"
+#include "test_runner/TestOutputSpec.h"
 
 
 namespace {
 
-const static std::unordered_map<std::string,
-                                std::function<uint32_t &(AArch32State &)>>
+const static std::unordered_map<
+    std::string, std::function<test_runner::RegisterValueRef(AArch32State &)>>
     reg_to_accessor = {
         {"r15",
-         [](AArch32State &st) -> uint32_t & { return st.gpr.r15.dword; }},
-        {"sp", [](AArch32State &st) -> uint32_t & { return st.gpr.r13.dword; }},
-        {"r1", [](AArch32State &st) -> uint32_t & { return st.gpr.r1.dword; }}};
+         [](AArch32State &st) -> test_runner::RegisterValueRef {
+           return st.gpr.r15.dword;
+         }},
+        {"sp",
+         [](AArch32State &st) -> test_runner::RegisterValueRef {
+           return st.gpr.r13.dword;
+         }},
+        {"r1",
+         [](AArch32State &st) -> test_runner::RegisterValueRef {
+           return st.gpr.r1.dword;
+         }},
+        {"z", [](AArch32State &st) -> test_runner::RegisterValueRef {
+           return st.sr.z;
+         }}};
 
 
 std::optional<remill::Instruction> GetFlows(std::string_view bytes,
@@ -83,7 +98,7 @@ using MemoryModifier = std::function<void(test_runner::MemoryHandler &)>;
 
 struct RegisterPrecondition {
   std::string register_name;
-  uint32_t enforced_value;
+  test_runner::RegisterValue enforced_value;
 };
 
 class TestOutputSpec {
@@ -97,20 +112,47 @@ class TestOutputSpec {
   std::vector<RegisterPrecondition> register_postconditions;
   std::vector<MemoryModifier> initial_memory_conditions;
 
+  template <typename T>
+  void ApplyCondWithAcc(
+      T value,
+      std::function<test_runner::RegisterValueRef(AArch32State &)> accessor,
+      AArch32State &state) const {
+    std::get<std::reference_wrapper<T>>(accessor(state)).get() = value;
+  }
+
   void ApplyCondition(AArch32State &state, std::string reg,
-                      uint32_t value) const {
+                      test_runner::RegisterValue value) const {
     auto accessor = reg_to_accessor.find(reg);
-    if (accessor != reg_to_accessor.end()) {
-      accessor->second(state) = value;
+
+    if (accessor == reg_to_accessor.end()) {
+      return;
     }
+    LOG(INFO) << "applying for " << reg;
+
+    std::visit(
+        [&](auto arg) { ApplyCondWithAcc(arg, accessor->second, state); },
+        value);
+  }
+
+
+  template <typename T>
+  void CheckRegEq(
+      T value,
+      std::function<test_runner::RegisterValueRef(AArch32State &)> accessor,
+      AArch32State &state) const {
+    auto sval = std::get<std::reference_wrapper<T>>(accessor(state)).get();
+    LOG(INFO) << "state value: " << sval;
+    CHECK_EQ(sval, value);
   }
 
   void CheckCondition(AArch32State &state, std::string reg,
-                      uint32_t value) const {
+                      test_runner::RegisterValue value) const {
     auto accessor = reg_to_accessor.find(reg);
-    if (accessor != reg_to_accessor.end()) {
-      CHECK_EQ(accessor->second(state), value);
+    if (accessor == reg_to_accessor.end()) {
+      return;
     }
+    std::visit([&](auto arg) { CheckRegEq(arg, accessor->second, state); },
+               value);
   }
 
  public:
@@ -230,9 +272,9 @@ TEST(ThumbRandomizedLifts, PopPC) {
 
   llvm::LLVMContext curr_context;
   std::string insn_data("\x00\xbd", 2);
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryFunctionReturn,
-                      {{"r15", 12}, {"sp", 10}}, {{"r15", 16}});
+  TestOutputSpec spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryFunctionReturn,
+      {{"r15", uint32_t(12)}, {"sp", uint32_t(10)}}, {{"r15", uint32_t(16)}});
   spec.AddPrecWrite<uint32_t>(10, 16);
   llvm::LLVMContext context;
 
@@ -246,7 +288,7 @@ TEST(ArmRandomizedLifts, RelPcTest) {
   std::string insn_data("\x0c\x10\x9f\xe5", 4);
   TestOutputSpec spec(0x12, insn_data,
                       remill::Instruction::Category::kCategoryNormal,
-                      {{"r15", 0x12}}, {{"r1", 0xdeadc0de}});
+                      {{"r15", uint32_t(0x12)}}, {{"r1", 0xdeadc0de}});
   // So ok instruction is at 18 which means pc is = 26
   spec.AddPrecWrite<uint32_t>(38, 0xdeadc0de);
   llvm::LLVMContext context;
@@ -261,7 +303,7 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   std::string insn_data("\x03\x49", 2);
   TestOutputSpec spec(0x12, insn_data,
                       remill::Instruction::Category::kCategoryNormal,
-                      {{"r15", 0x12}}, {{"r1", 0xdeadc0de}});
+                      {{"r15", uint32_t(0x12)}}, {{"r1", 0xdeadc0de}});
   // So ok instruction is at 18 which means pc is = 22
   spec.AddPrecWrite<uint32_t>(32, 0xdeadc0de);
   llvm::LLVMContext context;
@@ -270,13 +312,16 @@ TEST(ThumbRandomizedLifts, RelPcTest) {
   runner.RunTestSpec(spec);
 }
 
-TEST(ThumbRandomizedLifts, RegressionPreffixSuffixInsn) {
+TEST(RegressionTests, RegressionPreffixSuffixInsn) {
 
   llvm::LLVMContext curr_context;
   std::string insn_data("\x3f\xf4\x53\xaf", 4);
-  TestOutputSpec spec(0x12, insn_data,
-                      remill::Instruction::Category::kCategoryConditionalBranch,
-                      {{"ZF", 1}, {"r15", 0x00014188}}, {{"PC", 0x01421c}});
+  TestOutputSpec spec(
+      0x00014182, insn_data,
+      remill::Instruction::Category::kCategoryConditionalBranch,
+      {{"z", uint8_t(1)}, {"r15", uint32_t(0x14186)}},
+      // since we jump to 0001402c we are going to be 4 bytes ahead at 0x14030
+      {{"r15", uint32_t(0x14030)}});
 
   llvm::LLVMContext context;
 
