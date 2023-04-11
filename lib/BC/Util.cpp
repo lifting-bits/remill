@@ -1322,6 +1322,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
           return ret;
 
         } else if (auto uop = llvm::dyn_cast<llvm::UnaryOperator>(ce)) {
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
           if (uop->isCast()) {
             auto ret = llvm::ConstantExpr::getCast(
                 ce->getOpcode(),
@@ -1339,6 +1340,17 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
             moved_c = ret;
             return ret;
           }
+#else
+          // In LLVM 16, cast is the only unary constexpr.
+          CHECK(uop->isCast());
+          auto ret = llvm::ConstantExpr::getCast(
+              ce->getOpcode(),
+              MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
+                                     type_map),
+              RecontextualizeType(ce->getType(), dest_context, type_map));
+          moved_c = ret;
+          return ret;
+#endif
 
         } else if (in_same_context) {
           LOG(ERROR) << "Unsupported CE when moving across module boundaries: "
@@ -1653,7 +1665,6 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
     value_map[&old_block] = new_block;
     block_map[&old_block] = new_block;
 
-    auto &new_insts = new_block->getInstList();
     for (auto &old_inst : old_block) {
       if (llvm::isa<llvm::DbgInfoIntrinsic>(old_inst)) {
         continue;
@@ -1675,6 +1686,9 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
         old_inst.setMetadata(md_id, val);
       }
 
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
+      auto &new_insts = new_block->getInstList();
+
       // NOTE(pag): This is pretty evil, there's no reliable way to move the
       //            type to the destination context, and there are assertions,
       //            e.g. in `llvm::CallBase::setCalledFunction`, that
@@ -1684,6 +1698,12 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 
 
       new_insts.push_back(new_inst);
+#else
+      // TODO(alex): Figure out how we can reproduce the above hack in LLVM 16...
+      // In LLVM 16, we can't access the instruction list directly.
+
+      new_inst->insertInto(new_block, new_block->end());
+#endif
       value_map[&old_inst] = new_inst;
     }
   }
@@ -1978,10 +1998,10 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
         auto call_arg_addr = ir.CreateAdd(
             addr, llvm::ConstantInt::get(addr->getType(), i, false));
         llvm::Value *call_args[2] = {mem_ptr, call_arg_addr};
-        auto byte = ir.CreateCall(intrinsics.read_memory_8,
-                                  llvm::makeArrayRef(call_args));
+        auto byte =
+            ir.CreateCall(intrinsics.read_memory_8, llvm::ArrayRef(call_args));
         auto byte_ptr = ir.CreateInBoundsGEP(i8_array, byte_array,
-                                             llvm::makeArrayRef(gep_indices));
+                                             llvm::ArrayRef(gep_indices));
         ir.CreateStore(byte, byte_ptr);
       }
 
