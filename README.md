@@ -40,7 +40,7 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 | [Google Flags](https://github.com/google/glog) | Latest |
 | [Google Log](https://github.com/google/glog) | Latest |
 | [Google Test](https://github.com/google/googletest) | Latest |
-| [LLVM](http://llvm.org/) | 15 |
+| [LLVM](http://llvm.org/) | 15+ |
 | [Clang](http://clang.llvm.org/) | 15 |
 | [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | Latest |
 | [Python](https://www.python.org/) | 2.7 |
@@ -55,7 +55,7 @@ Remill now comes with a Dockerfile for easier testing. This Dockerfile reference
 
 The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
 
-Quickstart (builds Remill against LLVM 15 on Ubuntu 22.04 for AMD64):
+Quickstart (builds Remill against LLVM 16 on Ubuntu 22.04 for AMD64):
 
 Clone Remill:
 ```shell
@@ -71,7 +71,7 @@ docker build . -t remill \
      -f Dockerfile \
      --build-arg UBUNTU_VERSION=22.04 \
      --build-arg ARCH=amd64 \
-     --build-arg LLVM_VERSION=15
+     --build-arg LLVM_VERSION=16
 ```
 
 Ensure remill works:
