@@ -1323,16 +1323,8 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
 
         } else if (auto uop = llvm::dyn_cast<llvm::UnaryOperator>(ce)) {
 #if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
-          if (uop->isCast()) {
-            auto ret = llvm::ConstantExpr::getCast(
-                ce->getOpcode(),
-                MoveConstantIntoModule(ce->getOperand(0), dest_module,
-                                       value_map, type_map),
-                RecontextualizeType(ce->getType(), dest_context, type_map));
-            moved_c = ret;
-            return ret;
-
-          } else {
+          // In LLVM 16, cast is the only unary constexpr.
+          if (!uop->isCast()) {
             auto ret = llvm::ConstantExpr::get(
                 ce->getOpcode(),
                 MoveConstantIntoModule(ce->getOperand(0), dest_module,
@@ -1340,8 +1332,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
             moved_c = ret;
             return ret;
           }
-#else
-          // In LLVM 16, cast is the only unary constexpr.
+#endif
           CHECK(uop->isCast());
           auto ret = llvm::ConstantExpr::getCast(
               ce->getOpcode(),
@@ -1350,7 +1341,6 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
               RecontextualizeType(ce->getType(), dest_context, type_map));
           moved_c = ret;
           return ret;
-#endif
 
         } else if (in_same_context) {
           LOG(ERROR) << "Unsupported CE when moving across module boundaries: "
