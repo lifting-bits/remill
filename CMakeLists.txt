@@ -88,14 +88,18 @@ find_package(glog CONFIG REQUIRED)
 find_package(gflags CONFIG REQUIRED)
 
 set(sleigh_ENABLE_TESTS OFF)
-file(GLOB sleigh_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/*.patch")
-set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
+set(sleigh_RELEASE_TYPE "HEAD")
+
+# file(GLOB sleigh_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/*.patch")
+# set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
 
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
   GIT_REPOSITORY https://github.com/lifting-bits/sleigh.git
-  GIT_TAG 9966017ca00fd910f7a27e62c1024c768fad5d51
+  GIT_TAG e1562dd
 )
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 
 set(sleigh_BUILD_SUPPORT ON CACHE BOOL "" FORCE)
 set(sleigh_BUILD_SLEIGHSPECS ON CACHE BOOL "" FORCE)
@@ -206,6 +210,30 @@ target_compile_definitions(remill_settings INTERFACE
   "REMILL_BUILD_SEMANTICS_DIR_SPARC64=\"${REMILL_BUILD_SEMANTICS_DIR_SPARC64}\""
   "REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR=\"${REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR}\""
 )
+
+FetchContent_Declare(ghidra-fork
+  GIT_REPOSITORY https://github.com/trail-of-forks/ghidra.git
+  GIT_TAG a5214a7
+)
+
+FetchContent_MakeAvailable(ghidra-fork)
+
+if(SLEIGH_EXECUTABLE)
+  set(sleigh_compiler "${SLEIGH_EXECUTABLE}")
+else()
+  set(sleigh_compiler "$<TARGET_FILE:sleigh::sleigh>")
+endif()
+
+sleigh_compile(
+  TARGET ppc_e200_spec
+  COMPILER "${sleigh_compiler}"
+  SLASPEC "${ghidra-fork_SOURCE_DIR}/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.slaspec"
+  LOG_FILE "${CMAKE_BINARY_DIR}/specfiles/ppc_32_e200_be.sla.log"
+  OUT_FILE "${CMAKE_BINARY_DIR}/specfiles/ppc_32_e200_be.sla"
+)
+
+add_custom_target(sleigh_custom_specs)
+add_dependencies(sleigh_custom_specs ppc_e200_spec)
 
 target_link_libraries(remill_settings INTERFACE
   ${llvm_libs}
