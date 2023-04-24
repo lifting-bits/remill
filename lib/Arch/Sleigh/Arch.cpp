@@ -96,6 +96,10 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   }
   LOG(INFO) << "Using spec at: " << sla_path->string();
 
+  AttributeId::initialize();
+  ElementId::initialize();
+
+
   auto pspec_path = ::sleigh::FindSpecFile(pspec_name.c_str());
 
   if (!pspec_path) {
