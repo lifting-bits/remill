@@ -88,7 +88,7 @@ find_package(glog CONFIG REQUIRED)
 find_package(gflags CONFIG REQUIRED)
 
 set(sleigh_ENABLE_TESTS OFF)
-set(sleigh_RELEASE_TYPE "HEAD")
+set(sleigh_RELEASE_TYPE "HEAD" CACHE STRING "" FORCE)
 
 file(GLOB sleigh_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/*.patch")
 
