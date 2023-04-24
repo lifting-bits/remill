@@ -1,6 +1,6 @@
-From bd6c19817cc83c4d3f82b1c733b01a128d0e7a99 Mon Sep 17 00:00:00 2001
+From 4087b149a7e68a8cff8613e58fefd25a8e2f7bc7 Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
-Date: Mon, 24 Apr 2023 14:04:30 -0400
+Date: Mon, 24 Apr 2023 16:38:00 -0400
 Subject: [PATCH] ia
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] ia
  1 file changed, 578 insertions(+), 95 deletions(-)
 
 diff --git a/Ghidra/Processors/x86/data/languages/ia.sinc b/Ghidra/Processors/x86/data/languages/ia.sinc
-index e49582d9a..e3378fe39 100644
+index e49582d9a..7faae5d88 100644
 --- a/Ghidra/Processors/x86/data/languages/ia.sinc
 +++ b/Ghidra/Processors/x86/data/languages/ia.sinc
 @@ -9,6 +9,13 @@
@@ -25,16 +25,16 @@ index e49582d9a..e3378fe39 100644
  
  define space ram type=ram_space size=$(SIZE) default;
  define space register type=register_space size=4;
-@@ -571,6 +578,9 @@ define pcodeop vmxon;    # Enter VMX operation; opcode f3 0f C7 /6
- @endif
- 
- @ifdef IA64
-+
+@@ -303,6 +310,9 @@ define context contextreg
+   suffix3D=(21,28)      # 3DNow suffix byte (overlaps un-modified vex context region)
+   instrPhase=(31,31)    # 0: initial/prefix phase, 1: primary instruction phase
+ ;
 +remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:$(SIZE)=calculated_size; 
 + export insn_size_hinted; }
- Reg8:   reg8        is rexprefix=0 & reg8                               { export reg8; }
- Reg8:   reg8_x0     is rexprefix=1 & rexRprefix=0 & reg8_x0             { export reg8_x0; }
- Reg8:   reg8_x1     is rexprefix=1 & rexRprefix=1 & reg8_x1             { export reg8_x1; }
++
+ 
+ 
+ # These are only to be used with pre-REX (original 8086, 80386) and REX encoding.  Do not use with VEX encoding.
 @@ -668,7 +678,12 @@ usimm8_64: val is imm8 & imm8_7=1 [ val = 0xffffffffffffff00 | imm8; ] { export
  #usimm16_32: val is imm16 & imm16_15=1 [ val = 0xffff0000 | imm16; ] { export *[const]:4 val; }
  

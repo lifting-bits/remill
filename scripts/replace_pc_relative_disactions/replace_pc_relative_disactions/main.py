@@ -38,6 +38,9 @@ CONSTRUCTOR_BASE_REGEX = r"(?P<table_name>[\w]*):" + DISPLAY_SECTION + \
     GENERIC_CHARACTER_GROUP_WITH_EQUALS + r"*" + \
     DISASSEMBLY_ACTION_SECTION + r"?" + SEMANTICS_SECTION
 
+CONTEXTREG_STATEMENT = r"(?P<context_reg_definition>define\s+context\s+contextreg(?:[^;])*;)"
+
+
 
 class Context:
     def __init__(self) -> None:
@@ -201,7 +204,9 @@ ENDIAN_DEF_REGEX = "define\s*endian\s*=[\w()$]+;"
 
 def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out_dir):
     print(CONSTRUCTOR_BASE_REGEX)
+    print(CONTEXTREG_STATEMENT)
     construct_pat = re.compile(CONSTRUCTOR_BASE_REGEX)
+    context_reg_def_pat = re.compile(CONTEXTREG_STATEMENT)
 
     commit_message = f"{Path(target_file).stem}"
 
@@ -223,10 +228,11 @@ def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out
                 total_output += "\n" + pc_def
                 total_output += "\ndefine pcodeop claim_eq;\n"
 
-            first_constructor_offset = next(
-                construct_pat.finditer(target)).start()
-            print("first constructor at: " + str(first_constructor_offset))
-            target_insert_loc = first_constructor_offset
+            *_, last_match = context_reg_def_pat.finditer(target)
+            last_context_reg_def = last_match.end()
+            print("Last context reg def at: " + str(last_context_reg_def))
+            target_insert_loc = last_context_reg_def
+
 
             total_output += target[endian_def.end()
                                    if endian_def is not None else 0: target_insert_loc]
