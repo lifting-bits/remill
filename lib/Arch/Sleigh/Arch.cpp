@@ -117,12 +117,6 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
 void SingleInstructionSleighContext::restoreEngineFromStorage() {
   this->ctx = ContextInternal();
   engine.initialize(storage);
-  //const Element *el = storage.getTag("processor_spec");
-  //XmlDecode decoder(this->engine.getDefaultCodeSpace().address, el);
-  //uint4 elemId = decoder.openElement(ELEM_PROCESSOR_SPEC);
-  //ctx.decodeFromSpec(decoder);
-
-
   engine.allowContextSet(false);
 }
 

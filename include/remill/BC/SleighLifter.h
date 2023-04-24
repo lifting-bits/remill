@@ -28,7 +28,6 @@
 
 using namespace ghidra;
 
-//class ::ghidra::Sleigh;
 namespace remill {
 namespace sleigh {
 // If you lift a varnode before the given pcode index, then you have a branch taken metavar

@@ -28,7 +28,7 @@ static constexpr auto kPPCVLERegName = "VLEReg";
 
 SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
     : SleighDecoder(
-          arch, "ppc_32_e200_be.sla", "ppc_64.pspec",
+          arch, "ppc_32_e200_be.sla", "ppc_32.pspec",
           sleigh::ContextRegMappings({{"vle", kPPCVLERegName}}, {{"vle", 1}}),
           {}) {}
 
