@@ -1,6 +1,6 @@
-From f84f07be17cd7594d32f49f2c3095e65d6f3c393 Mon Sep 17 00:00:00 2001
-From: William Tan <1284324+Ninja3047@users.noreply.github.com>
-Date: Mon, 19 Dec 2022 16:29:10 -0500
+From 1b4ba461713e9e04f3cab3b09f675bf6bf4e7a3f Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Mon, 24 Apr 2023 13:29:42 -0400
 Subject: [PATCH] ppc_vle
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] ppc_vle
  1 file changed, 55 insertions(+), 13 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
-index 3b6283470..b6d763bd0 100644
+index 3b6283470..6b174c491 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
 @@ -20,9 +20,24 @@ CC32: "ns"		is BI_CC_VLE=3 & BO_VLE=0 & BI_CR_VLE & BI_CC_VLE { tmp:1 = 0; getCr
@@ -44,7 +44,7 @@ index 3b6283470..b6d763bd0 100644
  }
  
 -:e_bl addrBD24					is $(ISVLE) & OP=30 & BIT_25=0 & LK=1 & addrBD24 {
-+:e_bl addrBD24					is $(ISVLE) & OP=30 & BIT_25=0 & LK=1 & addrBD24    { 
++:e_bl addrBD24					is $(ISVLE) & OP=30 & BIT_25=0 & LK=1 & addrBD24  ; remill_insn_size  { 
 +remill_please_dont_use_this_temp_name3a:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name3a, $(INST_NEXT_PTR));
  	LR = inst_next;
@@ -60,7 +60,7 @@ index 3b6283470..b6d763bd0 100644
  }
  
 -:se_bl addrBD8					is $(ISVLE) & OP6_VLE=58 & BIT9_VLE=0 & LK8_VLE=1 & addrBD8 {
-+:se_bl addrBD8					is $(ISVLE) & OP6_VLE=58 & BIT9_VLE=0 & LK8_VLE=1 & addrBD8    { 
++:se_bl addrBD8					is $(ISVLE) & OP6_VLE=58 & BIT9_VLE=0 & LK8_VLE=1 & addrBD8  ; remill_insn_size  { 
 +remill_please_dont_use_this_temp_name3e:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name3e, $(INST_NEXT_PTR));
  	LR = inst_next;
@@ -75,7 +75,7 @@ index 3b6283470..b6d763bd0 100644
  # We use extended mnemonics so the display is understandable without having to cross-
  # reference multiple tables.
 -:e_b^CC32 addrBD15				is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=0 & addrBD15 & CC32 {
-+:e_b^CC32 addrBD15				is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=0 & addrBD15 & CC32    { 
++:e_b^CC32 addrBD15				is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=0 & addrBD15 & CC32  ; remill_insn_size  { 
 +remill_please_dont_use_this_temp_name40:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name40, $(INST_NEXT_PTR));
  	if (CC32 == 0) goto inst_next;
@@ -87,7 +87,7 @@ index 3b6283470..b6d763bd0 100644
 +  }
 + 
 +
-+:e_b^CC32^"l" addrBD15			is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=1 & addrBD15 & CC32    { 
++:e_b^CC32^"l" addrBD15			is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=1 & addrBD15 & CC32  ; remill_insn_size  { 
 +remill_please_dont_use_this_temp_name42:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name42, $(INST_NEXT_PTR));
  	if (CC32 == 0) goto inst_next;
@@ -102,7 +102,7 @@ index 3b6283470..b6d763bd0 100644
 +  }
 + 
 +
-+:se_b^CC16 addrBD8				is $(ISVLE) & OP5_VLE=28 & addrBD8 & CC16    { 
++:se_b^CC16 addrBD8				is $(ISVLE) & OP5_VLE=28 & addrBD8 & CC16  ; remill_insn_size  { 
 +remill_please_dont_use_this_temp_name44:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name44, $(INST_NEXT_PTR));
  	if (CC16 == 0) goto inst_next;
@@ -116,5 +116,5 @@ index 3b6283470..b6d763bd0 100644
  
  :se_bctr						is $(ISVLE) & OP15_VLE=3 & LK0_VLE=0 {
 -- 
-2.37.1 (Apple Git-137.1)
+2.39.2 (Apple Git-143)
 

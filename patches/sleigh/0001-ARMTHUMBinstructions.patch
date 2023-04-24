@@ -1,14 +1,14 @@
-From 302ca3885c87bad3eb00f956db937ec50564d50d Mon Sep 17 00:00:00 2001
+From 182d869276da62a971f46570013abff91729162f Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
-Date: Tue, 4 Apr 2023 12:26:56 -0400
+Date: Mon, 24 Apr 2023 09:59:22 -0400
 Subject: [PATCH] ARMTHUMBinstructions
 
 ---
- .../data/languages/ARMTHUMBinstructions.sinc  | 497 +++++++++++++-----
- 1 file changed, 367 insertions(+), 130 deletions(-)
+ .../data/languages/ARMTHUMBinstructions.sinc  | 509 +++++++++++++-----
+ 1 file changed, 378 insertions(+), 131 deletions(-)
 
 diff --git a/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc b/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
-index daf705731..48efb70e0 100644
+index f210fab0e..64d29e35c 100644
 --- a/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
 +++ b/Ghidra/Processors/ARM/data/languages/ARMTHUMBinstructions.sinc
 @@ -350,15 +350,33 @@ thSBIT_ZN: "s" is thc0404=1	    { ZR = tmpZR; NG = tmpNG; }
@@ -268,22 +268,22 @@ index daf705731..48efb70e0 100644
  
  @endif # VERSION_5
  
-@@ -844,7 +907,13 @@ thldrlist_dec: { thrldec1 }  	is thc0000=0 & thrldec1				{ }
+@@ -845,7 +908,13 @@ thldrlist_dec: {thrldec1}			is thc0000=0 & thrldec1				{ }
  @endif # defined(VERSION_6T2) || defined(VERSION_7)
  
  # thstrlist_dec is the list of registers to be pushed
--thsdec15: pc			is thc1515=1 & pc				{ *:4 mult_addr = inst_start+4; mult_addr = mult_addr - 4; }
-+thsdec15: pc			is thc1515=1 & pc				 ; remill_insn_size  { 
-+remill_please_dont_use_this_temp_name265:4=inst_start;
-+claim_eq(remill_please_dont_use_this_temp_name265, ($(INST_NEXT_PTR)-remill_insn_size));
+-thsdec15: pc						is thc1515=1 & pc							{ *:4 mult_addr = inst_start+4; mult_addr = mult_addr - 4; }
++thsdec15: pc						is thc1515=1 & pc							 ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name267:4=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name267, ($(INST_NEXT_PTR)-remill_insn_size));
 + *:4 mult_addr = inst_start+4;
 + mult_addr = mult_addr - 4;
 +   }
 + 
- thsdec15: 			is thc1515=0					{ }
- thsdec14: lr thsdec15		is thc1414=1 & thsdec15 & lr & thc1515=0	{ * mult_addr=lr; mult_addr = mult_addr - 4; }
- thsdec14: lr^"," thsdec15	is thc1414=1 & thsdec15 & lr			{ * mult_addr=lr; mult_addr = mult_addr - 4; }
-@@ -931,10 +1000,13 @@ RnIndirect1: [Rn0305,"#"^immed5]	is Rn0305 & immed5	{ local tmp = Rn0305 + immed
+ thsdec15: 							is thc1515=0						{ }
+ thsdec14: lr						is thc1414=1 & thsdec15 & lr & thc1515=0	{ * mult_addr=lr; mult_addr = mult_addr - 4; }
+ thsdec14: lr,thsdec15				is thc1414=1 & thsdec15 & lr				{ * mult_addr=lr; mult_addr = mult_addr - 4; }
+@@ -932,10 +1001,13 @@ RnIndirect1: [Rn0305,"#"^immed5]	is Rn0305 & immed5	{ local tmp = Rn0305 + immed
  RnRmIndirect: [Rn0305,Rm0608]	is Rn0305 & Rm0608	{ local tmp = Rn0305 + Rm0608; export tmp; }
  
  Pcrel8Indirect: [reloc]	is immed8
@@ -292,8 +292,8 @@ index daf705731..48efb70e0 100644
 -  export *:4 reloc;
 -}
 +   ; remill_insn_size [ reloc = ((inst_start+4) $and 0xfffffffc) + 4*immed8; ] { 
-+remill_please_dont_use_this_temp_name2c0:4=reloc;
-+claim_eq(remill_please_dont_use_this_temp_name2c0,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + 4*immed8);
++remill_please_dont_use_this_temp_name2c2:4=reloc;
++claim_eq(remill_please_dont_use_this_temp_name2c2,  ((($(INST_NEXT_PTR)-remill_insn_size)+4) & 0xfffffffc) + 4*immed8);
 + export *:4 reloc;
 +
 +  }
@@ -301,7 +301,7 @@ index daf705731..48efb70e0 100644
  
  Sprel8Indirect: [sp,"#"^immval]	is sp & immed8   [ immval = immed8 * 4; ]  { local tmp = sp + immval; export tmp; }
  
-@@ -1435,12 +1507,19 @@ macro th_set_carry_for_asr(op1,shift_count) {
+@@ -1434,12 +1506,19 @@ macro th_set_carry_for_asr(op1,shift_count) {
  @endif # VERSION_5
  
  :bl^ItCond 	ThAddr24 			is TMode=1 & ItCond & (op11=0x1e; part2c1415=3 & part2c1212=1) & ThAddr24
@@ -309,8 +309,8 @@ index daf705731..48efb70e0 100644
 -  build ItCond;
 + ; remill_insn_size  { 
 + build ItCond;
-+remill_please_dont_use_this_temp_name31b:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name31b, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name31d:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name31d, $(INST_NEXT_PTR));
 +
    lr = inst_next|1;
 +
@@ -324,7 +324,32 @@ index daf705731..48efb70e0 100644
  
  @ifndef VERSION_6T2
  
-@@ -1470,12 +1549,19 @@ macro th_set_carry_for_asr(op1,shift_count) {
+@@ -1459,13 +1538,21 @@ macro th_set_carry_for_asr(op1,shift_count) {
+ }
+ 
+ :bl^ItCond lr			is TMode=1 & ItCond & op11=0x1f & offset11=0 & lr
+-{
+-  build ItCond;
++ ; remill_insn_size  { 
++ build ItCond;
++
+   local dest = lr;
++remill_please_dont_use_this_temp_name31f:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name31f, $(INST_NEXT_PTR));
++
+   lr = inst_next|1;
++
+   SetThumbMode(1);
++
+   call [dest];
+-}
++
++  }
++ 
+ 
+ :blx^ItCond "#"^off 	is TMode=1 & ItCond & op11=0x1d & offset11 & thc0000=0 [ off = offset11 << 1; ]
+ {
+@@ -1488,12 +1575,19 @@ macro th_set_carry_for_asr(op1,shift_count) {
  @endif
  
  :bl^ItCond 	ThAddr24 			is TMode=1 & CALLoverride=1 & ItCond & (op11=0x1e; part2c1415=3 & part2c1212=1) & ThAddr24
@@ -332,8 +357,8 @@ index daf705731..48efb70e0 100644
 -  build ItCond;
 + ; remill_insn_size  { 
 + build ItCond;
-+remill_please_dont_use_this_temp_name31d:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name31d, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name321:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name321, $(INST_NEXT_PTR));
 +
    lr = inst_next|1;
 +
@@ -347,7 +372,7 @@ index daf705731..48efb70e0 100644
  
  bxns: "" is thc0003 { }
  bxns: "ns" is thc0002=0b100 { }
-@@ -1508,13 +1594,21 @@ bxns: "ns" is thc0002=0b100 { }
+@@ -1526,13 +1620,21 @@ bxns: "ns" is thc0002=0b100 { }
  }
  
  :blx^bxns^ItCond	Hrm0305			is TMode=1 & ItCond & op7=0x08f & Hrm0305 & bxns
@@ -357,8 +382,8 @@ index daf705731..48efb70e0 100644
 + build ItCond;
 +
    BXWritePC(Hrm0305);
-+remill_please_dont_use_this_temp_name323:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name323, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name327:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name327, $(INST_NEXT_PTR));
 +
    lr = inst_next|1;
 +
@@ -372,7 +397,7 @@ index daf705731..48efb70e0 100644
  
  @endif # VERSION_5
  
-@@ -1592,13 +1686,22 @@ bxns: "ns" is thc0002=0b100 { }
+@@ -1610,13 +1712,22 @@ bxns: "ns" is thc0002=0b100 { }
  define pcodeop IndexCheck;
  
  :chka^ItCond  Hrn0002,Rm0306    is TMode=1 & ItCond & TEEMode=1 & op8=0xca & Rm0306 & Hrn0002
@@ -382,11 +407,11 @@ index daf705731..48efb70e0 100644
 + build ItCond;
 +
      local tmp = Hrn0002 <= Rm0306;
-+remill_please_dont_use_this_temp_name331:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name331, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name335:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name335, $(INST_NEXT_PTR));
 +
      if (!tmp) goto inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name331, $(INST_NEXT_PTR));
++claim_eq(remill_please_dont_use_this_temp_name335, $(INST_NEXT_PTR));
 +
      lr = inst_next|1;
 +
@@ -398,7 +423,7 @@ index daf705731..48efb70e0 100644
  
  :clrex^ItCond                     is TMode=1 & ItCond & op0=0xf3bf; op0=0x8f2f
  {
-@@ -2691,24 +2794,40 @@ primask: "primask"			is epsilon {}
+@@ -2771,24 +2882,40 @@ primask: "primask"			is epsilon {}
  basepri: "basepri"			is epsilon {}
  
  :mrs^ItCond Rd0811,basepri 		is TMode=1 & ItCond & op0=0xf3ef; op12=0x8 & Rd0811 & sysm=17 & basepri
@@ -410,8 +435,8 @@ index daf705731..48efb70e0 100644
    Rd0811 = 0;
 +
    b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name42f:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name42f, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name435:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name435, $(INST_NEXT_PTR));
 +
    if (!b) goto inst_next;
 +
@@ -432,8 +457,8 @@ index daf705731..48efb70e0 100644
    Rd0811 = 0;
 +
    b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name431:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name431, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name437:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name437, $(INST_NEXT_PTR));
 +
    if (!b) goto inst_next;
 +
@@ -445,7 +470,7 @@ index daf705731..48efb70e0 100644
  
  faultmask: "faultmask"		is epsilon {}
  
-@@ -2781,20 +2900,34 @@ define pcodeop setProcessStackPointer;
+@@ -2861,20 +2988,34 @@ define pcodeop setProcessStackPointer;
  define pcodeop setBasePriority;
  
  :msr^ItCond msp,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=8 & msp
@@ -455,8 +480,8 @@ index daf705731..48efb70e0 100644
 + build ItCond;
 +
    b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name44b:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name44b, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name451:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name451, $(INST_NEXT_PTR));
 +
    if (!b) goto inst_next;
 +
@@ -473,8 +498,8 @@ index daf705731..48efb70e0 100644
 + build ItCond;
 +
    b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name44d:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name44d, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name453:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name453, $(INST_NEXT_PTR));
 +
    if (!b) goto inst_next;
 +
@@ -486,7 +511,7 @@ index daf705731..48efb70e0 100644
  
  :msr^ItCond primask,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=16 & primask
  {
-@@ -2805,12 +2938,19 @@ define pcodeop setBasePriority;
+@@ -2885,12 +3026,19 @@ define pcodeop setBasePriority;
  }
  
  :msr^ItCond basepri,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=17 & basepri
@@ -496,8 +521,8 @@ index daf705731..48efb70e0 100644
 + build ItCond;
 +
    b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name44f:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name44f, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name455:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name455, $(INST_NEXT_PTR));
 +
    if (!b) goto inst_next;
 +
@@ -509,7 +534,7 @@ index daf705731..48efb70e0 100644
  
  :msr^ItCond basepri_max,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=18 & basepri_max
  {
-@@ -2825,12 +2965,19 @@ define pcodeop setBasePriority;
+@@ -2905,12 +3053,19 @@ define pcodeop setBasePriority;
  }
  
  :msr^ItCond faultmask,Rn0003 		is TMode=1 & ItCond & op4=0xf38 & Rn0003; op12=0x8 & th_psrmask=8 & sysm=19 & faultmask
@@ -519,8 +544,8 @@ index daf705731..48efb70e0 100644
 + build ItCond;
 +
    b:1 = isCurrentModePrivileged();
-+remill_please_dont_use_this_temp_name451:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name451, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name457:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name457, $(INST_NEXT_PTR));
 +
    if (!b) goto inst_next;
 +
@@ -532,7 +557,7 @@ index daf705731..48efb70e0 100644
  
  define pcodeop setStackMode;
  
-@@ -4446,56 +4593,100 @@ thumbEndianNess: "BE" is op0=0xb658 { export 1:1; }
+@@ -4482,56 +4637,100 @@ thumbEndianNess: "BE" is op0=0xb658 { export 1:1; }
  }
  
  :strex^ItCond    Rd0811,Rt1215,[Rn0003,Immed8_4]   is TMode=1 & ItCond & op4=0xe84 & Rn0003; Rt1215 & Rd0811 & Immed8_4
@@ -546,8 +571,8 @@ index daf705731..48efb70e0 100644
    access:1 = hasExclusiveAccess(tmp);
 +
    Rd0811 = 1;
-+remill_please_dont_use_this_temp_name589:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name589, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name58d:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name58d, $(INST_NEXT_PTR));
 +
    if (!access) goto inst_next;
 +
@@ -574,8 +599,8 @@ index daf705731..48efb70e0 100644
    access:1 = hasExclusiveAccess(tmp);
 +
    Rd0003 = 1;
-+remill_please_dont_use_this_temp_name58b:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name58b, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name58f:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name58f, $(INST_NEXT_PTR));
 +
    if (!access) goto inst_next;
 +
@@ -600,8 +625,8 @@ index daf705731..48efb70e0 100644
    access:1 = hasExclusiveAccess(tmp);
 +
    Rd0003 = 1;
-+remill_please_dont_use_this_temp_name58d:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name58d, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name591:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name591, $(INST_NEXT_PTR));
 +
    if (!access) goto inst_next;
 +
@@ -626,8 +651,8 @@ index daf705731..48efb70e0 100644
    access:1 = hasExclusiveAccess(tmp);
 +
    Rd0003 = 1;
-+remill_please_dont_use_this_temp_name58f:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name58f, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name593:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name593, $(INST_NEXT_PTR));
 +
    if (!access) goto inst_next;
 +
@@ -645,7 +670,7 @@ index daf705731..48efb70e0 100644
  
  @endif # VERSION_7
  
-@@ -4746,49 +4937,95 @@ thumbEndianNess: "BE" is op0=0xb658 { export 1:1; }
+@@ -4782,49 +4981,97 @@ thumbEndianNess: "BE" is op0=0xb658 { export 1:1; }
  @if defined(VERSION_6T2) || defined(VERSION_7)
  
  :tbb^ItCond  [Rn0003,Rm0003]    is TMode=1 & ItCond & op4=0xe8d & Rn0003; op8=0xf0 & thc0507=0 & thc0404=0 & Rm0003
@@ -659,8 +684,8 @@ index daf705731..48efb70e0 100644
     offs:1 = *tmp;
 +
     SetThumbMode(1);
-+remill_please_dont_use_this_temp_name5c5:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name5c5, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name5c9:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name5c9, $(INST_NEXT_PTR));
 +
     pc = inst_next + (zext(offs) * 2);
 +
@@ -681,41 +706,41 @@ index daf705731..48efb70e0 100644
     offs:2 = *tmp;
 +
     SetThumbMode(1);
-+remill_please_dont_use_this_temp_name5c7:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name5c7, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name5cb:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name5cb, $(INST_NEXT_PTR));
 +
     pc = inst_next + (zext(offs) * 2);
 +
     goto [pc];
 -}
- 
--Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=0 [ cloc = inst_next; ] 
--{
--   local tmp = Rm0003; tmp = cloc + tmp; val:1 = *tmp; tmp = zext(val); export tmp;
--}
--Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=1 [ cloc = inst_next; ] 
--{
--   local tmp = Rm0003; tmp = cloc + (tmp * 2); val:2 = *tmp; tmp = zext(val); export tmp;
--}
++
 +  }
 + 
-+
-+Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=0  ; remill_insn_size [ cloc = inst_next; ] { 
+ 
+ Pcrel: [pc,Rm0003]  is Rm0003 & thc0404=0 & pc
+-{
+-   local tmp = Rm0003; tmp = inst_next + tmp; val:1 = *tmp; tmp = zext(val); export tmp;
+-}
++ ; remill_insn_size  { 
 + local tmp = Rm0003;
-+remill_please_dont_use_this_temp_name5cb:4=cloc;
-+claim_eq(remill_please_dont_use_this_temp_name5cb,  $(INST_NEXT_PTR));
-+ tmp = cloc + tmp;
++remill_please_dont_use_this_temp_name5cd:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name5cd, $(INST_NEXT_PTR));
++ tmp = inst_next + tmp;
 + val:1 = *tmp;
 + tmp = zext(val);
 + export tmp;
 +
 +  }
 + 
-+Pcrel: [cloc,Rm0003]  is Rm0003 & thc0404=1  ; remill_insn_size [ cloc = inst_next; ] { 
+ Pcrel: [pc,Rm0003]  is Rm0003 & thc0404=1 & pc
+-{
+-   local tmp = Rm0003; tmp = inst_next + (tmp * 2); val:2 = *tmp; tmp = zext(val); export tmp;
+-}
++ ; remill_insn_size  { 
 + local tmp = Rm0003;
-+remill_please_dont_use_this_temp_name5ce:4=cloc;
-+claim_eq(remill_please_dont_use_this_temp_name5ce,  $(INST_NEXT_PTR));
-+ tmp = cloc + (tmp * 2);
++remill_please_dont_use_this_temp_name5cf:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name5cf, $(INST_NEXT_PTR));
++ tmp = inst_next + (tmp * 2);
 + val:2 = *tmp;
 + tmp = zext(val);
 + export tmp;
@@ -730,8 +755,8 @@ index daf705731..48efb70e0 100644
 + build ItCond;
 +
     SetThumbMode(1);
-+remill_please_dont_use_this_temp_name5cf:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name5cf, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name5d1:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name5d1, $(INST_NEXT_PTR));
 +
     pc = inst_next + (Pcrel * 2);
 +
@@ -748,8 +773,8 @@ index daf705731..48efb70e0 100644
 + build ItCond;
 +
     SetThumbMode(1);
-+remill_please_dont_use_this_temp_name5d1:4=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name5d1, $(INST_NEXT_PTR));
++remill_please_dont_use_this_temp_name5d3:4=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name5d3, $(INST_NEXT_PTR));
 +
     pc = inst_next + (Pcrel * 2);
 +

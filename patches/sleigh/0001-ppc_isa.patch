@@ -1,6 +1,6 @@
-From 9bf1ba10175be998e5406fbcde7faec0fddf11f9 Mon Sep 17 00:00:00 2001
-From: William Tan <1284324+Ninja3047@users.noreply.github.com>
-Date: Mon, 19 Dec 2022 16:29:10 -0500
+From 5dc24c4d257bb1359e72c012ccd145cab44c3599 Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Mon, 24 Apr 2023 13:29:42 -0400
 Subject: [PATCH] ppc_isa
 
 ---
@@ -8,18 +8,18 @@ Subject: [PATCH] ppc_isa
  1 file changed, 38 insertions(+), 14 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
-index 10f0cc691..ffc603048 100644
+index 3148135f1..e30412e89 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
-@@ -2377,15 +2377,25 @@ define pcodeop InstructionCacheBlockLockSetX;
+@@ -2390,15 +2390,25 @@ define pcodeop InstructionCacheBlockLockSetX;
  }
  
  :b^CC^"ctar" 	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH=0 & LK=0 & BITS_13_15=0 & XOP_1_10=560
 -{
 -	if (!CC) goto inst_next; 
-+   { 
-+remill_please_dont_use_this_temp_name191:$(REGISTER_SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name191, $(INST_NEXT_PTR));
++ ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name18d:$(REGISTER_SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name18d, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
 + 
  	goto [TAR];
@@ -30,9 +30,9 @@ index 10f0cc691..ffc603048 100644
  :b^CC^"ctar" BH  	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH & BH_BITS!=0 & LK=0 & BITS_13_15=0 & XOP_1_10=560
 -{
 -	if (!CC) goto inst_next; 
-+   { 
-+remill_please_dont_use_this_temp_name193:$(REGISTER_SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name193, $(INST_NEXT_PTR));
++ ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name18f:$(REGISTER_SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name18f, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
 + 
  	goto [TAR];
@@ -43,15 +43,15 @@ index 10f0cc691..ffc603048 100644
  
  :b^CC^"ctarl"  	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH=0 & LK=1 & BITS_13_15=0 & XOP_1_10=560
  										[ linkreg=0; globalset(inst_start,linkreg); ]
-@@ -2403,16 +2413,26 @@ define pcodeop InstructionCacheBlockLockSetX;
+@@ -2416,16 +2426,26 @@ define pcodeop InstructionCacheBlockLockSetX;
  }
  
  :b^CC^"ctar" BI_CR  		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH=0 & LK=0 & BITS_13_15=0 & XOP_1_10=560
 -{
 -	if (!CC) goto inst_next; 
-+   { 
-+remill_please_dont_use_this_temp_name195:$(REGISTER_SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name195, $(INST_NEXT_PTR));
++ ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name191:$(REGISTER_SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name191, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
 + 
  	goto [TAR];
@@ -63,9 +63,9 @@ index 10f0cc691..ffc603048 100644
  :b^CC^"ctar" BI_CR,BH  		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH & LK=0 & BITS_13_15=0 & XOP_1_10=560
 -{
 -	if (!CC) goto inst_next; 
-+   { 
-+remill_please_dont_use_this_temp_name197:$(REGISTER_SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name197, $(INST_NEXT_PTR));
++ ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name193:$(REGISTER_SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name193, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
 + 
  	goto [TAR];
@@ -76,14 +76,14 @@ index 10f0cc691..ffc603048 100644
  
  :b^CC^"ctarl" BI_CR 		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH=0 & LK=1 & BITS_13_15=0 & XOP_1_10=560
  										[ linkreg=0; globalset(inst_start,linkreg); ]
-@@ -2530,9 +2550,13 @@ define pcodeop InstructionCacheBlockLockSetX;
+@@ -2543,9 +2563,13 @@ define pcodeop InstructionCacheBlockLockSetX;
  #######################
  # v3.0
  
 -:addpcis D,OFF16SH		is $(NOTVLE) & OP=19 & XOP_1_5=2 & D & OFF16SH {
-+:addpcis D,OFF16SH		is $(NOTVLE) & OP=19 & XOP_1_5=2 & D & OFF16SH    { 
-+remill_please_dont_use_this_temp_name1bd:$(REGISTER_SIZE)=inst_next;
-+claim_eq(remill_please_dont_use_this_temp_name1bd, $(INST_NEXT_PTR));
++:addpcis D,OFF16SH		is $(NOTVLE) & OP=19 & XOP_1_5=2 & D & OFF16SH  ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name1b9:$(REGISTER_SIZE)=inst_next;
++claim_eq(remill_please_dont_use_this_temp_name1b9, $(INST_NEXT_PTR));
  	D = inst_next + sext(OFF16SH);
 -}
 +
@@ -93,5 +93,5 @@ index 10f0cc691..ffc603048 100644
  :cmpeqb CRFD,A,B			is $(NOTVLE) & OP=31 & BITS_21_22=0 & BIT_0=0 & XOP_1_10=224 & A & B & CRFD {
  	tmpa:1 = A:1;
 -- 
-2.37.1 (Apple Git-137.1)
+2.39.2 (Apple Git-143)
 

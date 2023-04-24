@@ -90,8 +90,9 @@ find_package(gflags CONFIG REQUIRED)
 set(sleigh_ENABLE_TESTS OFF)
 set(sleigh_RELEASE_TYPE "HEAD")
 
-# file(GLOB sleigh_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/*.patch")
-# set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
+file(GLOB sleigh_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/*.patch")
+
+set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
 
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
@@ -211,9 +212,20 @@ target_compile_definitions(remill_settings INTERFACE
   "REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR=\"${REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR}\""
 )
 
+set(ghidra_patch_user "github-actions[bot]")
+set(ghidra_patch_email "41898282+github-actions[bot]@users.noreply.github.com")
+
+# pinned stable patches list
+set(ghidra_patches
+  PATCH_COMMAND "${GIT_EXECUTABLE}" config user.name "${ghidra_patch_user}" &&
+  "${GIT_EXECUTABLE}" config user.email "${ghidra_patch_email}" &&
+  "${GIT_EXECUTABLE}" am --ignore-space-change --ignore-whitespace --no-gpg-sign)
+list(APPEND ghidra_patches ${sleigh_ADDITIONAL_PATCHES})
+
 FetchContent_Declare(ghidra-fork
   GIT_REPOSITORY https://github.com/trail-of-forks/ghidra.git
   GIT_TAG a5214a7
+  ${ghidra_patches}
 )
 
 FetchContent_MakeAvailable(ghidra-fork)

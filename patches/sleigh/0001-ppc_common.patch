@@ -1,6 +1,6 @@
-From bd02af97c29961dc6544cccdee57526c3812dc15 Mon Sep 17 00:00:00 2001
-From: William Tan <1284324+Ninja3047@users.noreply.github.com>
-Date: Mon, 19 Dec 2022 16:29:09 -0500
+From 85949f749c4cd31a03edfc181dc4cbed57ebf7c3 Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Mon, 24 Apr 2023 13:29:41 -0400
 Subject: [PATCH] ppc_common
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] ppc_common
  1 file changed, 19 insertions(+), 2 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
-index 8498e4bdc..761a2e9a0 100644
+index aaa76cc4a..4625bbe5e 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
 @@ -3,6 +3,10 @@
@@ -32,7 +32,7 @@ index 8498e4bdc..761a2e9a0 100644
  vrD: vrDD	is vrDD & vrDR { export vrDR; }      
  vrA: vrAD	is vrAD & vrAR { export vrAR; }      
  vrB: vrBD	is vrBD & vrBR { export vrBR; }      
-@@ -1825,9 +1832,19 @@ macro unpackFPSCR(tmp) {
+@@ -1824,9 +1831,19 @@ macro unpackFPSCR(tmp) {
  REL_ABS: "a"	is AA = 1 {}
  REL_ABS:			is AA = 0 {}
  
@@ -55,5 +55,5 @@ index 8498e4bdc..761a2e9a0 100644
  
  OFF16SH: val		is D0 & D1 & D2 [ val = ((D0 << 6) | (D1 << 1) | D2) << 16; ] { export *[const]:4 val;}
 -- 
-2.37.1 (Apple Git-137.1)
+2.39.2 (Apple Git-143)
 
