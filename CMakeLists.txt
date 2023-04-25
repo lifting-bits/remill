@@ -240,8 +240,8 @@ sleigh_compile(
   TARGET ppc_e200_spec
   COMPILER "${sleigh_compiler}"
   SLASPEC "${ghidra-fork_SOURCE_DIR}/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.slaspec"
-  LOG_FILE "${CMAKE_BINARY_DIR}/specfiles/ppc_32_e200_be.sla.log"
-  OUT_FILE "${CMAKE_BINARY_DIR}/specfiles/ppc_32_e200_be.sla"
+  LOG_FILE "${sleigh_BINARY_DIR}/sleighspecs/spec_build_logs/ppc_32_e200_be.sla.log"
+  OUT_FILE "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.sla"
 )
 
 add_custom_target(sleigh_custom_specs)
