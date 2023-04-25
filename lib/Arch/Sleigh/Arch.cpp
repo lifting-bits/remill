@@ -117,6 +117,24 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
 void SingleInstructionSleighContext::restoreEngineFromStorage() {
   this->ctx = ContextInternal();
   engine.initialize(storage);
+  const Element *el = storage.getTag("processor_spec");
+  if (el) {
+    XmlDecode decoder(&engine, el);
+    uint4 elemId = decoder.openElement(ELEM_PROCESSOR_SPEC);
+    for (;;) {
+      uint4 subId = decoder.peekElement();
+      if (subId == 0)
+        break;
+      else if (subId == ELEM_CONTEXT_DATA) {
+        ctx.decodeFromSpec(decoder);
+        break;
+      } else {
+        decoder.openElement();
+        decoder.closeElementSkipping(subId);
+      }
+    }
+    decoder.closeElement(elemId);
+  }
   engine.allowContextSet(false);
 }
 
