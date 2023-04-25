@@ -306,7 +306,7 @@ if(REMILL_ENABLE_INSTALL_TARGET)
     EXPORT remillTargets
   )
 
-  install(FILES "${CMAKE_BINARY_DIR}/specfiles/ppc_32_e200_be.sla" DESTINATION "${CMAKE_INSTALL_DATADIR}/sleigh/specfiles/Ghidra/Processors/PowerPC/data/languages/")
+  install(FILES "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.sla" DESTINATION "${CMAKE_INSTALL_DATADIR}/sleigh/specfiles/Ghidra/Processors/PowerPC/data/languages/")
 
   configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
