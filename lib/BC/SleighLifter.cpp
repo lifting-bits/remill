@@ -40,6 +40,7 @@
 #include <optional>
 #include <sleigh/pcoderaw.hh>
 #include <sleigh/sleigh.hh>
+#include <sleigh/space.hh>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -86,7 +87,7 @@ static const std::string kSysCallName = "syscall";
 
 static bool isVarnodeInConstantSpace(VarnodeData vnode) {
   auto spc = vnode.getAddr().getSpace();
-  return spc->constant_space_index == spc->getIndex();
+  return spc->getType() == IPTR_CONSTANT;
 }
 
 static llvm::Value *ExtractOverflowBitFromCallToIntrinsic(

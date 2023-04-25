@@ -3,12 +3,13 @@
 
 #include <algorithm>
 #include <optional>
+#include <sleigh/space.hh>
 
 namespace remill::sleigh {
 
 bool isVarnodeInConstantSpace(VarnodeData vnode) {
   auto spc = vnode.getAddr().getSpace();
-  return spc->constant_space_index == spc->getIndex();
+  return spc->getType() == IPTR_CONSTANT;
 }
 
 
