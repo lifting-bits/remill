@@ -388,7 +388,7 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
   const llvm::DataLayout data_layout(module);
   auto reg = LoadRegValue(block, state_ptr, arch_reg.name);
   auto reg_type = reg->getType();
-  auto reg_size = data_layout.getTypeSizeInBits(reg_type).getFixedSize();
+  auto reg_size = data_layout.getTypeSizeInBits(reg_type).getFixedValue();
   auto word_size = impl->arch->address_size;
   auto op_type = llvm::Type::getIntNTy(context, op.size);
 
