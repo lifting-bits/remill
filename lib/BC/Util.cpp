@@ -1655,6 +1655,8 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
     value_map[&old_block] = new_block;
     block_map[&old_block] = new_block;
 
+    llvm::IRBuilder new_block_builder(new_block);
+
     for (auto &old_inst : old_block) {
       if (llvm::isa<llvm::DbgInfoIntrinsic>(old_inst)) {
         continue;
@@ -1671,29 +1673,13 @@ void CloneFunctionInto(llvm::Function *source_func, llvm::Function *dest_func,
 
       auto new_inst = old_inst.clone();
 
-      // Resetthe metadata after cloning.
+      // Reset the metadata after cloning.
       for (auto [md_id, val] : mds) {
         old_inst.setMetadata(md_id, val);
       }
 
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
-      auto &new_insts = new_block->getInstList();
+      new_block_builder.Insert(new_inst);
 
-      // NOTE(pag): This is pretty evil, there's no reliable way to move the
-      //            type to the destination context, and there are assertions,
-      //            e.g. in `llvm::CallBase::setCalledFunction`, that
-      //            (correctly) detect that the types don't match.
-      new_inst->*REMILL_ACCESS_MEMBER(llvm, Value, VTy) =
-          RecontextualizeType(new_inst->getType(), dest_context, type_map);
-
-
-      new_insts.push_back(new_inst);
-#else
-      // TODO(alex): Figure out how we can reproduce the above hack in LLVM 16...
-      // In LLVM 16, we can't access the instruction list directly.
-
-      new_inst->insertInto(new_block, new_block->end());
-#endif
       value_map[&old_inst] = new_inst;
     }
   }
