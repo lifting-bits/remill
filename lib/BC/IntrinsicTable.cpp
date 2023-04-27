@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "remill/BC/Util.h"
+#include "remill/BC/Version.h"
 
 namespace remill {
 namespace {
@@ -57,7 +58,9 @@ static llvm::Function *FindPureIntrinsic(llvm::Module *module,
 
   // We want memory intrinsics to be marked as not accessing memory so that
   // they don't interfere with dead store elimination.
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
   function->addFnAttr(llvm::Attribute::ReadNone);
+#endif
   return function;
 }
 
