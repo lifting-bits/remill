@@ -102,7 +102,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['macos-11']
+        os: ['macos-12']
         llvm: ['15', '16']
 
     runs-on: macos-12
@@ -129,7 +129,7 @@ jobs:
         shell: bash
         run: |
           brew install ninja
-          export CMAKE_TOOLCHAIN_FILE=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-13.0_amd64/scripts/buildsystems/vcpkg.cmake
+          export CMAKE_TOOLCHAIN_FILE=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-14.2_amd64/scripts/buildsystems/vcpkg.cmake
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
       - name: Run tests
@@ -203,8 +203,8 @@ jobs:
           zip -r9 remill_ubuntu-22.04_packages.zip \
                   ubuntu-22.04*
 
-          zip -r9 remill_macos-11_packages.zip \
-                  macos-11*
+          zip -r9 remill_macos-12_packages.zip \
+                  macos-12*
 
       - name: Upload the Ubuntu 22.04 packages
         uses: actions/upload-release-asset@v1
@@ -226,8 +226,8 @@ jobs:
 
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: remill_macos-11_packages.zip
-          asset_name: remill_macos-11_packages.zip
+          asset_path: remill_macos-12_packages.zip
+          asset_name: remill_macos-12_packages.zip
           asset_content_type: application/gzip
 
 

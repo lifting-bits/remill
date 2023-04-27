@@ -163,13 +163,16 @@ function DownloadLibraries
 
     #BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
     # Min version supported
-    OS_VERSION="macos-11"
+    OS_VERSION="macos-12"
     # Hard-coded to match pre-built binaries in CI
-    XCODE_VERSION="13.0"
-    if [[ "$(sw_vers -productVersion)" == "11."* ]]; then
-      echo "Found MacOS Big Sur"
-      # Uses 10.15 binaries
-      OS_VERSION="macos-11"
+    XCODE_VERSION="14.2"
+    SYSTEM_VERSION=$(sw_vers -productVersion)
+    if [[ "${SYSTEM_VERSION}" == "13.*" ]]; then
+      echo "Found MacOS Ventura"
+      OS_VERSION="macos-12"
+    elif [[ "${SYSTEM_VERSION}" == "12.*" ]]; then
+      echo "Found MacOS Monterey"
+      OS_VERSION="macos-12"
     else
       echo "WARNING: ****Likely unsupported MacOS Version****"
       echo "WARNING: ****Using ${OS_VERSION}****"
