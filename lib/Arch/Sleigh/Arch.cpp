@@ -96,6 +96,10 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
   }
   LOG(INFO) << "Using spec at: " << sla_path->string();
 
+  AttributeId::initialize();
+  ElementId::initialize();
+
+
   auto pspec_path = ::sleigh::FindSpecFile(pspec_name.c_str());
 
   if (!pspec_path) {
@@ -113,14 +117,23 @@ SingleInstructionSleighContext::SingleInstructionSleighContext(
 void SingleInstructionSleighContext::restoreEngineFromStorage() {
   this->ctx = ContextInternal();
   engine.initialize(storage);
-  if (const Element *spec_xml = storage.getTag("processor_spec")) {
-    for (const Element *spec_element : spec_xml->getChildren()) {
-      if (spec_element->getName() == "context_data") {
-        DLOG(INFO) << "Restoring from pspec context data";
-        ctx.restoreFromSpec(spec_element, &engine);
+  const Element *el = storage.getTag("processor_spec");
+  if (el) {
+    XmlDecode decoder(&engine, el);
+    uint4 elemId = decoder.openElement(ELEM_PROCESSOR_SPEC);
+    for (;;) {
+      uint4 subId = decoder.peekElement();
+      if (subId == 0)
         break;
+      else if (subId == ELEM_CONTEXT_DATA) {
+        ctx.decodeFromSpec(decoder);
+        break;
+      } else {
+        decoder.openElement();
+        decoder.closeElementSkipping(subId);
       }
     }
+    decoder.closeElement(elemId);
   }
   engine.allowContextSet(false);
 }

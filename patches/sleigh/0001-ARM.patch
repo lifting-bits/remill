@@ -1,6 +1,6 @@
-From e3103b7e5e1b1eca4e175f833fa43dced2298de1 Mon Sep 17 00:00:00 2001
+From e14cd23465872e8306af1e5dd6a36cbecc140c9e Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
-Date: Tue, 4 Apr 2023 12:26:56 -0400
+Date: Mon, 24 Apr 2023 09:59:22 -0400
 Subject: [PATCH] ARM
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] ARM
  1 file changed, 16 insertions(+), 1 deletion(-)
 
 diff --git a/Ghidra/Processors/ARM/data/languages/ARM.sinc b/Ghidra/Processors/ARM/data/languages/ARM.sinc
-index 5869bfe29..76e810e1a 100644
+index 09f31819e..1d5b539b0 100644
 --- a/Ghidra/Processors/ARM/data/languages/ARM.sinc
 +++ b/Ghidra/Processors/ARM/data/languages/ARM.sinc
 @@ -2,6 +2,13 @@
@@ -25,7 +25,7 @@ index 5869bfe29..76e810e1a 100644
  define alignment=2;
  
  define space ram type=ram_space size=4 default;
-@@ -238,6 +245,9 @@ macro ALUWritePC(addr) {
+@@ -237,6 +244,9 @@ macro ALUWritePC(addr) {
  
  @if defined(T_VARIANT)
  
@@ -35,7 +35,7 @@ index 5869bfe29..76e810e1a 100644
  ItCond:              is TMode=1			{ }
  CheckInIT_CZNO:      is TMode=1  	    { CY = tmpCY; ZR = tmpZR; NG = tmpNG; OV = tmpOV; }		# in older, arms always affect flags
  CheckInIT_CZN:       is TMode=1  	    { CY = tmpCY; ZR = tmpZR; NG = tmpNG; }		# in older, arms always affect flags
-@@ -274,7 +284,12 @@ ItCond:  "."thfcc    is TMode=1 & itmode=0 & cond_mask & thfcc [ itmode=1; globa
+@@ -273,7 +283,12 @@ ItCond:  "."thfcc    is TMode=1 & itmode=0 & cond_mask & thfcc [ itmode=1; globa
  
  # last ITBlock then/else case - the condition being tested is modified by the shift below
  ItCond:  "."thfcc    is TMode=1 & itmode=0 & cond_mask=8 & thfcc

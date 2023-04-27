@@ -28,7 +28,7 @@ static constexpr auto kPPCVLERegName = "VLEReg";
 
 SleighPPCDecoder::SleighPPCDecoder(const remill::Arch &arch)
     : SleighDecoder(
-          arch, "ppc_64_isa_vle_be.sla", "ppc_64.pspec",
+          arch, "ppc_32_e200_be.sla", "ppc_32.pspec",
           sleigh::ContextRegMappings({{"vle", kPPCVLERegName}}, {{"vle", 1}}),
           {}) {}
 
@@ -162,6 +162,41 @@ class SleighPPCArch : public ArchBase {
     REG(R29, gpr.r29.qword, u64);
     REG(R30, gpr.r30.qword, u64);
     REG(R31, gpr.r31.qword, u64);
+
+
+    // Subregs
+    SUB_REG(_R0, gpr.r0.dword, u32, R0);
+    SUB_REG(_R1, gpr.r1.dword, u32, R1);
+    SUB_REG(_R2, gpr.r2.dword, u32, R2);
+    SUB_REG(_R3, gpr.r3.dword, u32, R3);
+    SUB_REG(_R4, gpr.r4.dword, u32, R4);
+    SUB_REG(_R5, gpr.r5.dword, u32, R5);
+    SUB_REG(_R6, gpr.r6.dword, u32, R6);
+    SUB_REG(_R7, gpr.r7.dword, u32, R7);
+    SUB_REG(_R8, gpr.r8.dword, u32, R8);
+    SUB_REG(_R9, gpr.r9.dword, u32, R9);
+    SUB_REG(_R10, gpr.r10.dword, u32, R10);
+    SUB_REG(_R11, gpr.r11.dword, u32, R11);
+    SUB_REG(_R12, gpr.r12.dword, u32, R12);
+    SUB_REG(_R13, gpr.r13.dword, u32, R13);
+    SUB_REG(_R14, gpr.r14.dword, u32, R14);
+    SUB_REG(_R15, gpr.r15.dword, u32, R15);
+    SUB_REG(_R16, gpr.r16.dword, u32, R16);
+    SUB_REG(_R17, gpr.r17.dword, u32, R17);
+    SUB_REG(_R18, gpr.r18.dword, u32, R18);
+    SUB_REG(_R19, gpr.r19.dword, u32, R19);
+    SUB_REG(_R20, gpr.r20.dword, u32, R20);
+    SUB_REG(_R21, gpr.r21.dword, u32, R21);
+    SUB_REG(_R22, gpr.r22.dword, u32, R22);
+    SUB_REG(_R23, gpr.r23.dword, u32, R23);
+    SUB_REG(_R24, gpr.r24.dword, u32, R24);
+    SUB_REG(_R25, gpr.r25.dword, u32, R25);
+    SUB_REG(_R26, gpr.r26.dword, u32, R26);
+    SUB_REG(_R27, gpr.r27.dword, u32, R27);
+    SUB_REG(_R28, gpr.r28.dword, u32, R28);
+    SUB_REG(_R29, gpr.r29.dword, u32, R29);
+    SUB_REG(_R30, gpr.r30.dword, u32, R30);
+    SUB_REG(_R31, gpr.r31.dword, u32, R31);
 
     REG(F0, fpr.f0.qword, f64);
     REG(F1, fpr.f1.qword, f64);

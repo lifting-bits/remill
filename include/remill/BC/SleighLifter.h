@@ -25,7 +25,8 @@
 #include "remill/Arch/Instruction.h"
 #include "remill/BC/InstructionLifter.h"
 
-class Sleigh;
+
+using namespace ghidra;
 
 namespace remill {
 namespace sleigh {

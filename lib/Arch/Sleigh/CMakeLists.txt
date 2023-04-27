@@ -47,6 +47,8 @@ add_library(remill_arch_sleigh STATIC
   ARMBase.cpp
 )
 
+add_dependencies(remill_arch_sleigh sleigh_custom_specs)
+
 set_property(TARGET remill_arch_sleigh PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(remill_arch_sleigh LINK_PUBLIC
