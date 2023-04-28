@@ -39,6 +39,7 @@
 
 #include "remill/Arch/Arch.h"
 #include "remill/BC/Util.h"
+#include "remill/BC/Version.h"
 
 namespace remill {
 
@@ -63,7 +64,9 @@ void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
   builder.Inliner = llvm::createFunctionInliningPass(250);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableUnrollLoops = false;  // Unroll loops!
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
   builder.RerollLoops = false;
+#endif
   builder.SLPVectorize = guide.slp_vectorize;
   builder.LoopVectorize = guide.loop_vectorize;
   builder.VerifyInput = guide.verify_input;
@@ -101,7 +104,9 @@ void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
   builder.Inliner = llvm::createFunctionInliningPass(250);
   builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
   builder.DisableUnrollLoops = false;  // Unroll loops!
+#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
   builder.RerollLoops = false;
+#endif
   builder.SLPVectorize = guide.slp_vectorize;
   builder.LoopVectorize = guide.loop_vectorize;
   builder.VerifyInput = guide.verify_input;

@@ -307,12 +307,12 @@ struct TestCase {
 namespace llvm::json {
 bool fromJSON(const Value &E, TestCase &Out, Path P) {
   auto byte_string = E.getAsString();
-  if (!byte_string.hasValue()) {
+  if (!byte_string.has_value()) {
     P.report("Expected hex string of instruction bytes");
     return false;
   }
 
-  auto bytes = llvm::fromHex(byte_string.getValue());
+  auto bytes = llvm::fromHex(*byte_string);
 
   Out.bytes = bytes;
   // Should maybe do something else here?

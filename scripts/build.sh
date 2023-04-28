@@ -23,11 +23,11 @@ DOWNLOAD_DIR="$( cd "$( dirname "${SRC_DIR}" )" && pwd )/lifting-bits-downloads"
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
-LLVM_VERSION=llvm-15
+LLVM_VERSION=llvm-16
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
-CXX_COMMON_VERSION="0.2.22"
+CXX_COMMON_VERSION="0.3.1"
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -163,13 +163,16 @@ function DownloadLibraries
 
     #BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
     # Min version supported
-    OS_VERSION="macos-11"
+    OS_VERSION="macos-12"
     # Hard-coded to match pre-built binaries in CI
-    XCODE_VERSION="13.0"
-    if [[ "$(sw_vers -productVersion)" == "11."* ]]; then
-      echo "Found MacOS Big Sur"
-      # Uses 10.15 binaries
-      OS_VERSION="macos-11"
+    XCODE_VERSION="14.2"
+    SYSTEM_VERSION=$(sw_vers -productVersion)
+    if [[ "${SYSTEM_VERSION}" == "13.*" ]]; then
+      echo "Found MacOS Ventura"
+      OS_VERSION="macos-12"
+    elif [[ "${SYSTEM_VERSION}" == "12.*" ]]; then
+      echo "Found MacOS Monterey"
+      OS_VERSION="macos-12"
     else
       echo "WARNING: ****Likely unsupported MacOS Version****"
       echo "WARNING: ****Using ${OS_VERSION}****"
@@ -287,6 +290,10 @@ function GetLLVMVersion
   case ${1} in
     15)
       LLVM_VERSION=llvm-15
+      return 0
+    ;;
+    16)
+      LLVM_VERSION=llvm-16
       return 0
     ;;
     *)
