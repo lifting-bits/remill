@@ -30,6 +30,13 @@ class AArch64ArchBase : public virtual ArchBase {
   llvm::Triple Triple(void) const override;
 
 
+  // Align/Minimum/Maximum number of bytes in an instruction.
+  uint64_t MinInstructionAlign(const DecodingContext &) const override;
+  uint64_t MinInstructionSize(const DecodingContext &) const override;
+  uint64_t MaxInstructionSize(const DecodingContext &,
+                              bool permit_fuse_idioms) const override;
+
+
   void PopulateRegisterTable(void) const override;
   // Populate a just-initialized lifted function function with architecture-
   // specific variables.
