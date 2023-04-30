@@ -64,7 +64,6 @@ ArchName GetArchName(std::string_view arch_name) {
 
   } else if (arch_name == "thumb2") {
     return kArchThumb2LittleEndian;
-
   } else if (arch_name == "aarch64") {
     return kArchAArch64LittleEndian;
 
@@ -77,6 +76,8 @@ ArchName GetArchName(std::string_view arch_name) {
   } else if (arch_name == "ppc") {
     return kArchPPC;
 
+  } else if (arch_name == "aarch64_sleigh") {
+    return kArchAArch64LittleEndian_SLEIGH;
   } else {
     return kArchInvalid;
   }

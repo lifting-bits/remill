@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "remill/Arch/Arch.h"
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <llvm/ADT/APInt.h>
@@ -60,6 +62,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchAMD64_AVX512:
     case kArchAMD64_SLEIGH:
     case kArchAArch64LittleEndian:
+    case kArchAArch64LittleEndian_SLEIGH:
     case kArchSparc64: return 64;
   }
   return 0;
@@ -107,6 +110,7 @@ ArchLocker Arch::Lock(ArchName arch_name_) {
   switch (arch_name_) {
     case ArchName::kArchAArch32LittleEndian:
     case ArchName::kArchThumb2LittleEndian:
+    case ArchName::kArchAArch64LittleEndian_SLEIGH:
     case ArchName::kArchAMD64_SLEIGH:
     case ArchName::kArchX86_SLEIGH:
     case ArchName::kArchPPC: return &gSleighArchLock;
@@ -157,6 +161,12 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
     case kArchInvalid:
       LOG(FATAL) << "Unrecognized architecture.";
       return nullptr;
+
+    case kArchAArch64LittleEndian_SLEIGH: {
+      DLOG(INFO)
+          << "Using architecture: AArch64 Sleigh, feature set: Little Endian";
+      return GetAArch64Sleigh(context_, os_name_, arch_name_);
+    }
 
     case kArchAArch64LittleEndian: {
       DLOG(INFO) << "Using architecture: AArch64, feature set: Little Endian";
