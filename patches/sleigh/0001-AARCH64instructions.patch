@@ -1,0 +1,82 @@
+From 1f36e852b46eadd6d68bede26bda7e207449f5f6 Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Sun, 30 Apr 2023 12:31:13 -0400
+Subject: [PATCH] AARCH64instructions
+
+---
+ .../data/languages/AARCH64instructions.sinc   | 38 ++++++++++++++++---
+ 1 file changed, 32 insertions(+), 6 deletions(-)
+
+diff --git a/Ghidra/Processors/AARCH64/data/languages/AARCH64instructions.sinc b/Ghidra/Processors/AARCH64/data/languages/AARCH64instructions.sinc
+index c6bd81d3a..f629a00b7 100644
+--- a/Ghidra/Processors/AARCH64/data/languages/AARCH64instructions.sinc
++++ b/Ghidra/Processors/AARCH64/data/languages/AARCH64instructions.sinc
+@@ -37,6 +37,9 @@ define endian=little;
+ @else
+ define endian=big;
+ @endif
++@define INST_NEXT_PTR "pc"
++define pcodeop claim_eq;
++
+ define alignment=4;
+ 
+ # Unlike the above, these are preprocessor macros.  Use them with e.g. $(TAG_GRANULE) in SLEIGH statements.
+@@ -1887,6 +1890,9 @@ attach names [ sve_rot_1011 ] [ "#0" "#90" "#180" "#270" ];
+ 
+ # SECTION subtables
+ 
++
++remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:8=calculated_size; 
++ export insn_size_hinted; }
+ Rm_GPR32: aa_Wm is aa_Wm { export aa_Wm; }
+ Rm_GPR32: wzr is aa_Wm=31 & wzr { tmp:4 = 0; export tmp; }
+ 
+@@ -2104,11 +2110,26 @@ LSB_bitfield64_imm: "#"^imm6 is imm6 { export *[const]:8 imm6; }
+ LSB_bitfield32_imm_shift: "#"^shift is b_1515=0 & imm6 [ shift = 31 - imm6; ] { export *[const]:4 shift; }
+ LSB_bitfield64_imm_shift: "#"^shift is imm6 [ shift = 63 - imm6; ] { export *[const]:8 shift; }
+ 
+-AddrLoc14: reloc is simm14 [ reloc = inst_start + (4*simm14); ] { export *[const]:8 reloc; }
+-
+-AddrLoc19: reloc is simm19 [ reloc = inst_start + (4*simm19); ] { export *[const]:8 reloc; }
+-
+-AddrLoc26: reloc is simm26 [ reloc = inst_start + (4*simm26); ] { export *[const]:8 reloc; }
++AddrLoc14: reloc is simm14  ; remill_insn_size [ reloc = inst_start + (4*simm14); ] { 
++remill_please_dont_use_this_temp_name12f:8=reloc;
++claim_eq(remill_please_dont_use_this_temp_name12f,  ($(INST_NEXT_PTR)-remill_insn_size) + (4*simm14));
++ export *[const]:8 reloc;
++   }
++ 
++
++AddrLoc19: reloc is simm19  ; remill_insn_size [ reloc = inst_start + (4*simm19); ] { 
++remill_please_dont_use_this_temp_name132:8=reloc;
++claim_eq(remill_please_dont_use_this_temp_name132,  ($(INST_NEXT_PTR)-remill_insn_size) + (4*simm19));
++ export *[const]:8 reloc;
++   }
++ 
++
++AddrLoc26: reloc is simm26  ; remill_insn_size [ reloc = inst_start + (4*simm26); ] { 
++remill_please_dont_use_this_temp_name135:8=reloc;
++claim_eq(remill_please_dont_use_this_temp_name135,  ($(INST_NEXT_PTR)-remill_insn_size) + (4*simm26));
++ export *[const]:8 reloc;
++   }
++ 
+ 
+ Addr14: AddrLoc14 is AddrLoc14 { export *:8 AddrLoc14; }
+ 
+@@ -2117,7 +2138,12 @@ Addr19: AddrLoc19 is AddrLoc19 { export *:8 AddrLoc19; }
+ Addr26: AddrLoc26 is AddrLoc26 { export *:8 AddrLoc26; }
+ 
+ AdrReloff: reloff is b_31=1 & immlo & immhi [ reloff = ((inst_start) & ~0xfff) + ( ((immhi << 2) | immlo) << 12 ); ] { export *[const]:8 reloff; }
+-AdrReloff: reloff is b_31=0 & immlo & immhi [ reloff = (inst_start) + ( ((immhi << 2) | immlo) ); ] { export *[const]:8 reloff; }
++AdrReloff: reloff is b_31=0 & immlo & immhi  ; remill_insn_size [ reloff = (inst_start) + ( ((immhi << 2) | immlo) ); ] { 
++remill_please_dont_use_this_temp_name13e:8=reloff;
++claim_eq(remill_please_dont_use_this_temp_name13e,  (($(INST_NEXT_PTR)-remill_insn_size)) + ( ((immhi << 2) | immlo) ));
++ export *[const]:8 reloff;
++   }
++ 
+ 
+ ImmShift32: "#"^imm12 is aa_extreg_shift=0 & imm12 { export *[const]:4 imm12; }
+ ImmShift32: "#"^imm12, "LSL #12" is aa_extreg_shift=1 & imm12 { tmp:4 = imm12 << 12; export tmp; }
+-- 
+2.39.2 (Apple Git-143)
+

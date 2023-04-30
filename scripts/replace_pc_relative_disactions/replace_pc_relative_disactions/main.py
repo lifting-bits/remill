@@ -3,9 +3,9 @@ import re
 from typing import Dict, List, Match, Optional, Set, Tuple
 from pathlib import Path
 import os
-import tempfile
 import subprocess
 import abc
+from sortedcontainers import SortedSet
 
 CONNECTIVES_WITHOUT_SEMICOLON = "&|.!"
 CONNECTIVES = CONNECTIVES_WITHOUT_SEMICOLON+r";"
@@ -39,7 +39,6 @@ CONSTRUCTOR_BASE_REGEX = r"(?P<table_name>[\w]*):" + DISPLAY_SECTION + \
     DISASSEMBLY_ACTION_SECTION + r"?" + SEMANTICS_SECTION
 
 CONTEXTREG_STATEMENT = r"(?P<context_reg_definition>define\s+context\s+contextreg(?:[^;])*;)"
-
 
 
 class Context:
@@ -202,6 +201,51 @@ def build_constructor(env: Environment, constructor: Match[str]) -> Optional[str
 
 ENDIAN_DEF_REGEX = "define\s*endian\s*=[\w()$]+;"
 
+
+class MacroInfo:
+    OPENS = set(["@if", "@ifdef"])
+    CLOSES = set(["@endif"])
+
+    TOKEN_REGEX = r"@if|@ifdef|@endif"
+
+    def __init__(self, text) -> None:
+        self.closed_locs = SortedSet()
+        self.open_locs = SortedSet()
+        tokens = re.compile(MacroInfo.TOKEN_REGEX)
+
+        state = 0
+        for item in tokens.finditer(text):
+            content = item.string[item.start():item.end()]
+            next_state = state
+            if content in MacroInfo.OPENS:
+                next_state += 1
+            elif content in MacroInfo.CLOSES:
+                next_state -= 1
+
+            if state > 0 and next_state <= 0:
+                self.closed_locs.add(item.end())
+
+            if state <= 0 and next_state > 0:
+                self.open_locs.add(item.start())
+            state = next_state
+
+    def get_next_closed_location(self, curr_loc: int) -> int:
+        return self.closed_locs[self.closed_locs.bisect_left(curr_loc)]
+
+    def is_in_macro(self, curr_loc: int) -> bool:
+        if len(self.open_locs) == 0:
+            return False
+
+        macro_start = self.open_locs[max(
+            self.open_locs.bisect_left(curr_loc) - 1, 0)]
+        macro_end = self.closed_locs[self.closed_locs.bisect_left(
+            macro_start)]
+        return curr_loc >= macro_start and curr_loc < macro_end
+
+    def complete_macro(self, curr_loc: int) -> int:
+        return self.get_next_closed_location(curr_loc) if self.is_in_macro(curr_loc) else curr_loc
+
+
 def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out_dir):
     print(CONSTRUCTOR_BASE_REGEX)
     print(CONTEXTREG_STATEMENT)
@@ -216,30 +260,39 @@ def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out
             pc_def = pc_def_file.read()
 
             target = target_f.read()
+            minfo = MacroInfo(target)
 
             # we know that an endian def has to be the first thing that occurs so go ahead and find that and sub in the preliminaries
             endian_def = re.search(ENDIAN_DEF_REGEX, target)
 
+            target_insert_loc = 0
             if endian_def is not None:
-                total_output += target[0:endian_def.end()]
+                edef_end = minfo.complete_macro(endian_def.end())
+
+                total_output += target[0:edef_end]
 
                 # can insert our defs here
                 # we only want to define this once in the file that also defines the endian-ness
                 total_output += "\n" + pc_def
                 total_output += "\ndefine pcodeop claim_eq;\n"
 
-            *_, last_match = context_reg_def_pat.finditer(target)
-            last_context_reg_def = last_match.end()
-            print("Last context reg def at: " + str(last_context_reg_def))
-            target_insert_loc = last_context_reg_def
+                target_insert_loc = next(
+                    construct_pat.finditer(target)).start()
+                # try to override the insert loc if possible to after context regs
+                if context_reg_def_pat.match(target):
+                    *_, last_match = context_reg_def_pat.finditer(target)
+                    last_context_reg_def = last_match.end()
+                    print("Last context reg def at: " +
+                          str(last_context_reg_def))
+                    target_insert_loc = last_context_reg_def
 
+                target_insert_loc = minfo.complete_macro(target_insert_loc)
 
-            total_output += target[endian_def.end()
-                                   if endian_def is not None else 0: target_insert_loc]
+                total_output += target[edef_end: target_insert_loc]
 
-            if endian_def is not None:
-                # This should be defined once and it MUST be defined after all context definitions
-                total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
+                if endian_def is not None:
+                    # This should be defined once and it MUST be defined after all context definitions
+                    total_output += f"\n{REMILL_INSN_SIZE_NAME}: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] {{ local insn_size_hinted:{inst_next_size_hint}=calculated_size; \n export insn_size_hinted; }}\n"
 
             last_offset = target_insert_loc
             cont = Context()
@@ -286,16 +339,20 @@ def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out
 def main():
     prsr = argparse.ArgumentParser("Disassembly action replacer")
     prsr.add_argument("target_files", nargs="+", help="List of files to patch")
-    prsr.add_argument("--pc_def", required=True, help="Path to file containing definition of INST_NEXT_PTR")
-    prsr.add_argument("--inst_next_size_hint", required=True, help="Number of bytes of the PC register")
-    prsr.add_argument("--base_path", required=True, help="Path to Ghidra git repo")
+    prsr.add_argument("--pc_def", required=True,
+                      help="Path to file containing definition of INST_NEXT_PTR")
+    prsr.add_argument("--inst_next_size_hint", required=True,
+                      help="Number of bytes of the PC register")
+    prsr.add_argument("--base_path", required=True,
+                      help="Path to Ghidra git repo")
     prsr.add_argument("--out_dir", required=True)
 
     args = prsr.parse_args()
 
     for target in args.target_files:
         print(f"Processing {target}")
-        generate_patch(target, args.pc_def, args.inst_next_size_hint, args.base_path, args.out_dir)
+        generate_patch(target, args.pc_def,
+                       args.inst_next_size_hint, args.base_path, args.out_dir)
 
 
 if __name__ == "__main__":

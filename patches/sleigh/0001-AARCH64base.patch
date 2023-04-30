@@ -1,0 +1,340 @@
+From 77f5e62e3ebf2e535e1ef370315ee86fd142726e Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Sun, 30 Apr 2023 12:31:13 -0400
+Subject: [PATCH] AARCH64base
+
+---
+ .../AARCH64/data/languages/AARCH64base.sinc   | 165 +++++++++++++++---
+ 1 file changed, 141 insertions(+), 24 deletions(-)
+
+diff --git a/Ghidra/Processors/AARCH64/data/languages/AARCH64base.sinc b/Ghidra/Processors/AARCH64/data/languages/AARCH64base.sinc
+index b9c0ccb64..d1137b04e 100644
+--- a/Ghidra/Processors/AARCH64/data/languages/AARCH64base.sinc
++++ b/Ghidra/Processors/AARCH64/data/languages/AARCH64base.sinc
+@@ -875,10 +875,15 @@ is sf=1 & opc=3 & b_2428=0xa & N=1 & RegShift64Log & Rn_GPR64 & Rd_GPR64
+ 
+ :bl Addr26
+ is b_31=1 & b_2630=0x05 & Addr26
+-{
++ ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name78:8=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name78, ($(INST_NEXT_PTR)-remill_insn_size));
+ 	x30 = inst_start + 4;
++
+ 	call Addr26;
+-}
++
++  }
++ 
+ 
+ # C6.2.35 BLR page C6-1206 line 71050 MATCH xd63f0000/mask=xfffffc1f
+ # CONSTRUCT xd63f0000/mask=xfffffc1f MATCHED 1 DOCUMENTED OPCODES
+@@ -886,17 +891,29 @@ is b_31=1 & b_2630=0x05 & Addr26
+ 
+ :blr Rn_GPR64
+ is b_2531=0x6b & b_2324=0 & b_2122=1 & b_1620=0x1f & b_1015=0 & Rn_GPR64 & b_0004=0
+-{
++ ; remill_insn_size  { 
+ 	pc = Rn_GPR64;
++remill_please_dont_use_this_temp_name7a:8=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name7a, ($(INST_NEXT_PTR)-remill_insn_size));
++
+ 	x30 = inst_start + 4;
++
+ 	call [pc];
+-}
++
++  }
++ 
+ 
+ # C6.2.33 BLRAA, BLRAAZ, BLRAB, BLRABZ page C6-574 line 33668 KEEPWITH
+ 
+ # Z == 0 && M == 0 && Rm = 11111 Key A, zero modifier variant
+ 
+-blinkop: "l" is b_2122=0b01 { x30 = inst_start + 4; call [pc]; }
++blinkop: "l" is b_2122=0b01  ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name7c:8=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name7c, ($(INST_NEXT_PTR)-remill_insn_size));
++ x30 = inst_start + 4;
++ call [pc];
++   }
++ 
+ blinkop: "" is b_2122=0b00 { goto[pc]; }
+ 
+ # C6.2.36 BLRAA, BLRAAZ, BLRAB, BLRABZ page C6-1207 line 71095 MATCH xd63f0800/mask=xfefff800
+@@ -1213,17 +1230,29 @@ is sf=1 & b_2530=0x1a & cmpr_op=0 & Addr19 & Rt_GPR64
+ 
+ :ccmn Rn_GPR32, UImm5, NZCVImm_uimm4, CondOp
+ is sf=0 & op=0 & s=1 & b_2428=0x1a & b_2123=2 & UImm5 & CondOp & b_1111=1 & o2=0 & Rn_GPR32 & o3=0 & NZCVImm_uimm4
+-{
++ ; remill_insn_size  { 
+ 	condition:1 = CondOp;
++
+ 	condMask:1 = NZCVImm_uimm4;
++
+ 	setCC_NZCV(condMask);
++remill_please_dont_use_this_temp_namea9:8=inst_next;
++claim_eq(remill_please_dont_use_this_temp_namea9, $(INST_NEXT_PTR));
++
+ 	if (!condition) goto inst_next;
++
+ 	tmp:4 = UImm5;
++
+ 	addflags(Rn_GPR32, tmp);
++
+ 	result:4 = Rn_GPR32 + tmp;
++
+ 	resultflags(result);
++
+ 	affectflags();
+-}
++
++  }
++ 
+ 
+ # C6.2.48 CCMN (immediate) page C6-1228 line 72273 MATCH x3a400800/mask=x7fe00c10
+ # CONSTRUCT xba400800/mask=xffe00c10 MATCHED 1 DOCUMENTED OPCODES
+@@ -1231,17 +1260,29 @@ is sf=0 & op=0 & s=1 & b_2428=0x1a & b_2123=2 & UImm5 & CondOp & b_1111=1 & o2=0
+ 
+ :ccmn Rn_GPR64, UImm5, NZCVImm_uimm4, CondOp
+ is sf=1 & op=0 & s=1 & b_2428=0x1a & b_2123=2 & UImm5 & CondOp & b_1111=1 & o2=0 & Rn_GPR64 & o3=0 & NZCVImm_uimm4
+-{
++ ; remill_insn_size  { 
+ 	condition:1 = CondOp;
++
+ 	condMask:1 = NZCVImm_uimm4;
++
+ 	setCC_NZCV(condMask);
++remill_please_dont_use_this_temp_nameab:8=inst_next;
++claim_eq(remill_please_dont_use_this_temp_nameab, $(INST_NEXT_PTR));
++
+ 	if (!condition) goto inst_next;
++
+ 	tmp:8 = zext(UImm5);
++
+ 	addflags(Rn_GPR64, tmp);
++
+ 	result:8 = Rn_GPR64 + tmp;
++
+ 	resultflags(result);
++
+ 	affectflags();
+-}
++
++  }
++ 
+ 
+ # C6.2.49 CCMN (register) page C6-1230 line 72358 MATCH x3a400000/mask=x7fe00c10
+ # CONSTRUCT x3a400000/mask=xffe00c10 MATCHED 1 DOCUMENTED OPCODES
+@@ -1249,17 +1290,29 @@ is sf=1 & op=0 & s=1 & b_2428=0x1a & b_2123=2 & UImm5 & CondOp & b_1111=1 & o2=0
+ 
+ :ccmn Rn_GPR32, Rm_GPR32, NZCVImm_uimm4, CondOp
+ is sf=0 & op=0 & s=1 & b_2428=0x1a & b_2123=2 & Rm_GPR32 & CondOp & b_1111=0 & o2=0 & Rn_GPR32 & o3=0 & NZCVImm_uimm4
+-{
++ ; remill_insn_size  { 
+ 	condition:1 = CondOp;
++
+ 	condMask:1 = NZCVImm_uimm4;
++
+ 	setCC_NZCV(condMask);
++remill_please_dont_use_this_temp_namead:8=inst_next;
++claim_eq(remill_please_dont_use_this_temp_namead, $(INST_NEXT_PTR));
++
+ 	if (!condition) goto inst_next;
++
+ 	tmp:4 = Rm_GPR32;
++
+ 	addflags(Rn_GPR32, tmp);
++
+ 	result:4 = Rn_GPR32 + tmp;
++
+ 	resultflags(result);
++
+ 	affectflags();
+-}
++
++  }
++ 
+ 
+ # C6.2.49 CCMN (register) page C6-1230 line 72358 MATCH x3a400000/mask=x7fe00c10
+ # CONSTRUCT xba400000/mask=xffe00c10 MATCHED 1 DOCUMENTED OPCODES
+@@ -1267,17 +1320,29 @@ is sf=0 & op=0 & s=1 & b_2428=0x1a & b_2123=2 & Rm_GPR32 & CondOp & b_1111=0 & o
+ 
+ :ccmn Rn_GPR64, Rm_GPR64, NZCVImm_uimm4, CondOp
+ is sf=1 & op=0 & s=1 & b_2428=0x1a & b_2123=2 & Rm_GPR64 & CondOp & b_1111=0 & o2=0 & Rn_GPR64 & o3=0 & NZCVImm_uimm4
+-{
++ ; remill_insn_size  { 
+ 	condition:1 = CondOp;
++
+ 	condMask:1 = NZCVImm_uimm4;
++
+ 	setCC_NZCV(condMask);
++remill_please_dont_use_this_temp_nameaf:8=inst_next;
++claim_eq(remill_please_dont_use_this_temp_nameaf, $(INST_NEXT_PTR));
++
+ 	if (!condition) goto inst_next;
++
+ 	tmp:8 = Rm_GPR64;
++
+ 	addflags(Rn_GPR64, tmp);
++
+ 	result:8 = Rn_GPR64 + tmp;
++
+ 	resultflags(result);
++
+ 	affectflags();
+-}
++
++  }
++ 
+ 
+ # C6.2.50 CCMP (immediate) page C6-1232 line 72446 MATCH x7a400800/mask=x7fe00c10
+ # CONSTRUCT x7a400800/mask=xffe00c10 MATCHED 1 DOCUMENTED OPCODES
+@@ -1285,16 +1350,27 @@ is sf=1 & op=0 & s=1 & b_2428=0x1a & b_2123=2 & Rm_GPR64 & CondOp & b_1111=0 & o
+ 
+ :ccmp Rn_GPR32, UImm5, NZCVImm_uimm4, CondOp
+ is sf=0 & op=1 & s=1 & b_2428=0x1a & b_2123=2 & UImm5 & CondOp & b_1111=1 & o2=0 & Rn_GPR32 & o3=0 & NZCVImm_uimm4
+-{
++ ; remill_insn_size  { 
+ 	condition:1 = CondOp;
++
+ 	condMask:1 = NZCVImm_uimm4;
++
+ 	setCC_NZCV(condMask);
++remill_please_dont_use_this_temp_nameb1:8=inst_next;
++claim_eq(remill_please_dont_use_this_temp_nameb1, $(INST_NEXT_PTR));
++
+ 	if (!condition) goto inst_next;
++
+ 	subflags(Rn_GPR32, UImm5);
++
+ 	tmp:4 = Rn_GPR32 - UImm5;
++
+ 	resultflags(tmp);
++
+ 	affectflags();
+-}
++
++  }
++ 
+ 
+ # C6.2.50 CCMP (immediate) page C6-1232 line 72446 MATCH x7a400800/mask=x7fe00c10
+ # CONSTRUCT xfa400800/mask=xffe00c10 MATCHED 1 DOCUMENTED OPCODES
+@@ -1302,17 +1378,29 @@ is sf=0 & op=1 & s=1 & b_2428=0x1a & b_2123=2 & UImm5 & CondOp & b_1111=1 & o2=0
+ 
+ :ccmp Rn_GPR64, UImm5, NZCVImm_uimm4, CondOp
+ is sf=1 & op=1 & s=1 & b_2428=0x1a & b_2123=2 & UImm5 & CondOp & b_1111=1 & o2=0 & Rn_GPR64 & o3=0 & NZCVImm_uimm4
+-{
++ ; remill_insn_size  { 
+ 	condition:1 = CondOp;
++
+ 	condMask:1 = NZCVImm_uimm4;
++
+ 	setCC_NZCV(condMask);
++remill_please_dont_use_this_temp_nameb3:8=inst_next;
++claim_eq(remill_please_dont_use_this_temp_nameb3, $(INST_NEXT_PTR));
++
+ 	if (!condition) goto inst_next;
++
+ 	tmp:8 = zext(UImm5);
++
+ 	subflags(Rn_GPR64, tmp);
++
+ 	tmp = Rn_GPR64 - tmp;
++
+ 	resultflags(tmp);
++
+ 	affectflags();
+-}
++
++  }
++ 
+ 
+ # C6.2.51 CCMP (register) page C6-1234 line 72531 MATCH x7a400000/mask=x7fe00c10
+ # CONSTRUCT x7a400000/mask=xffe00c10 MATCHED 1 DOCUMENTED OPCODES
+@@ -1320,16 +1408,27 @@ is sf=1 & op=1 & s=1 & b_2428=0x1a & b_2123=2 & UImm5 & CondOp & b_1111=1 & o2=0
+ 
+ :ccmp Rn_GPR32, Rm_GPR32, NZCVImm_uimm4, CondOp
+ is sf=0 & op=1 & s=1 & b_2428=0x1a & b_2123=2 & Rm_GPR32 & CondOp & b_1111=0 & o2=0 & Rn_GPR32 & o3=0 & NZCVImm_uimm4
+-{
++ ; remill_insn_size  { 
+ 	condition:1 = CondOp;
++
+ 	condMask:1 = NZCVImm_uimm4;
++
+ 	setCC_NZCV(condMask);
++remill_please_dont_use_this_temp_nameb5:8=inst_next;
++claim_eq(remill_please_dont_use_this_temp_nameb5, $(INST_NEXT_PTR));
++
+ 	if (!condition) goto inst_next;
++
+ 	subflags(Rn_GPR32, Rm_GPR32);
++
+ 	tmp:4 = Rn_GPR32 - Rm_GPR32;
++
+ 	resultflags(tmp);
++
+ 	affectflags();
+-}
++
++  }
++ 
+ 
+ # C6.2.51 CCMP (register) page C6-1234 line 72531 MATCH x7a400000/mask=x7fe00c10
+ # CONSTRUCT xfa400000/mask=xffe00c10 MATCHED 1 DOCUMENTED OPCODES
+@@ -1337,16 +1436,27 @@ is sf=0 & op=1 & s=1 & b_2428=0x1a & b_2123=2 & Rm_GPR32 & CondOp & b_1111=0 & o
+ 
+ :ccmp Rn_GPR64, Rm_GPR64, NZCVImm_uimm4, CondOp
+ is sf=1 & op=1 & s=1 & b_2428=0x1a & b_2123=2 & Rm_GPR64 & CondOp & b_1111=0 & o2=0 & Rn_GPR64 & o3=0 & NZCVImm_uimm4
+-{
++ ; remill_insn_size  { 
+ 	condition:1 = CondOp;
++
+ 	condMask:1 = NZCVImm_uimm4;
++
+ 	setCC_NZCV(condMask);
++remill_please_dont_use_this_temp_nameb7:8=inst_next;
++claim_eq(remill_please_dont_use_this_temp_nameb7, $(INST_NEXT_PTR));
++
+ 	if (!condition) goto inst_next;
++
+ 	subflags(Rn_GPR64, Rm_GPR64);
++
+ 	tmp:8 = Rn_GPR64 - Rm_GPR64;
++
+ 	resultflags(tmp);
++
+ 	affectflags();
+-}
++
++  }
++ 
+ 
+ # C6.2.52 CFINV page C6-1236 line 72619 MATCH xd500401f/mask=xfffff0ff
+ # C6.2.229 MSR (immediate) page C6-1684 line 99649 MATCH xd500401f/mask=xfff8f01f
+@@ -8363,12 +8473,19 @@ is b_0531=0x6a9198b & Rd_GPR64 {
+ # Undefined instruction
+ :udf b_0015
+ is b_1631=0b0000000000000000 & b_0015
+-{
+-    local excaddr:8 = inst_start;
++ ; remill_insn_size  { 
++remill_please_dont_use_this_temp_name716:8=inst_start;
++claim_eq(remill_please_dont_use_this_temp_name716, ($(INST_NEXT_PTR)-remill_insn_size));
++ local excaddr:8 = inst_start;
++
+     local id:2 = b_0015;
++
+ 	local target:8 = UndefinedInstructionException(id, excaddr);
++
+ 	goto [target];
+-}
++
++  }
++ 
+ 
+ 
+ # C6.2.400 XAFLAG page C6-2008 line 117528 MATCH xd500403f/mask=xfffff0ff
+-- 
+2.39.2 (Apple Git-143)
+
