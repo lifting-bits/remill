@@ -46,7 +46,6 @@
 #include "remill/OS/OS.h"
 
 // clang-format off
-#define ADDRESS_SIZE_BITS 64
 #define INCLUDED_FROM_REMILL
 #include "remill/Arch/AArch64/Runtime/State.h"
 
