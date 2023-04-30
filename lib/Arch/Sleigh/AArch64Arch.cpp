@@ -21,6 +21,22 @@
 
 namespace remill {
 
+// TODO(Ian): support different arm versions
+SleighAArch64Decoder::SleighAArch64Decoder(const remill::Arch &arch)
+    : SleighDecoder(arch, "AARCH64.sla", "AARCH64.pspec",
+                    sleigh::ContextRegMappings({}, {}),
+                    {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
+
+
+void SleighAArch64Decoder::InitializeSleighContext(
+    uint64_t addr, remill::sleigh::SingleInstructionSleighContext &ctxt,
+    const ContextValues &values) const {}
+
+llvm::Value *SleighAArch64Decoder::LiftPcFromCurrPc(
+    llvm::IRBuilder<> &bldr, llvm::Value *curr_pc, size_t curr_insn_size,
+    const DecodingContext &context) const {
+  return bldr.CreateAdd(curr_pc, llvm::ConstantInt::get(curr_pc->getType(), 4));
+}
 
 AArch64Arch::AArch64Arch(llvm::LLVMContext *context_, OSName os_name_,
                          ArchName arch_name_)

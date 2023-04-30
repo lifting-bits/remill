@@ -118,7 +118,6 @@ class AArch64Arch final : public AArch64ArchBase, DefaultContextAndLifter {
   bool ArchDecodeInstruction(uint64_t address, std::string_view instr_bytes,
                              Instruction &inst) const final;
 
-
  private:
   AArch64Arch(void) = delete;
 };

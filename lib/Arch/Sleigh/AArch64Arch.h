@@ -37,10 +37,6 @@ class AArch64Arch final : public AArch64ArchBase {
   OperandLifter::OpLifterPtr
   DefaultLifter(const remill::IntrinsicTable &intrinsics) const override;
 
-  // Maximum number of bytes in an instruction for this particular architecture.
-  uint64_t MaxInstructionSize(const DecodingContext &, bool) const override;
-  static bool IsThumb(const DecodingContext &context);
-
   AArch64Arch(void) = delete;
 
  private:
