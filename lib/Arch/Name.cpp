@@ -98,6 +98,7 @@ static const std::string_view kArchNames[] = {
     [kArchAArch32LittleEndian] = "aarch32",
     [kArchThumb2LittleEndian] = "thumb2",
     [kArchAArch64LittleEndian] = "aarch64",
+    [kArchAArch64LittleEndian_SLEIGH] = "aarch64_sleigh",
     [kArchSparc32] = "sparc32",
     [kArchSparc64] = "sparc64",
     [kArchPPC] = "ppc",

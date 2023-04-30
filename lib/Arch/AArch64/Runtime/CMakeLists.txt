@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -74,6 +74,7 @@ function(add_runtime_helper target_name address_bit_size little_endian)
 endfunction()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  #add_runtime_helper(aarch64be 64 0)
+  # add_runtime_helper(aarch64be 64 0)
   add_runtime_helper(aarch64 64 1)
+  add_runtime_helper(aarch64_sleigh 64 1)
 endif()
