@@ -45,6 +45,10 @@ add_library(remill_arch_sleigh STATIC
   AArch32Arch.cpp
   AArch32Arch.h
   ARMBase.cpp
+
+  AArch64Arch.cpp
+  AArch64Arch.h
+  AArch64Base.cpp
 )
 
 add_dependencies(remill_arch_sleigh sleigh_custom_specs)
