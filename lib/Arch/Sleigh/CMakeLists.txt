@@ -30,6 +30,10 @@ add_library(remill_arch_sleigh STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/State.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/AArch32/Runtime/Types.h"
 
+  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/Operators.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/State.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/AArch64/Runtime/Types.h"
+
   "${REMILL_INCLUDE_DIR}/remill/Arch/PPC/Runtime/State.h"
 
   Arch.h
@@ -45,6 +49,10 @@ add_library(remill_arch_sleigh STATIC
   AArch32Arch.cpp
   AArch32Arch.h
   ARMBase.cpp
+
+  AArch64Arch.cpp
+  AArch64Arch.h
+  AArch64Base.cpp
 )
 
 add_dependencies(remill_arch_sleigh sleigh_custom_specs)

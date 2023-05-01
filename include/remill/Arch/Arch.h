@@ -39,10 +39,10 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <optional>
 
 #include "Instruction.h"
 
@@ -420,6 +420,10 @@ class Arch {
   // Defined in `lib/Arch/AArch64/Arch.cpp`.
   static ArchPtr GetAArch64(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
+
+  // Defined in `lib/Arch/Sleigh/AArch64Arch.cpp`.
+  static ArchPtr GetAArch64Sleigh(llvm::LLVMContext *context, OSName os,
+                                  ArchName arch_name);
 
   // Defined in `lib/Arch/Sleigh/X86Arch.cpp`
   static ArchPtr GetSleighX86(llvm::LLVMContext *context, OSName os,
