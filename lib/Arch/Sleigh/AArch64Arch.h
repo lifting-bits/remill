@@ -27,6 +27,8 @@ class AArch64Arch final : public AArch64ArchBase {
   virtual ~AArch64Arch(void);
 
 
+  void PopulateRegisterTable(void) const override;
+
   virtual DecodingContext CreateInitialContext(void) const override;
 
   bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,

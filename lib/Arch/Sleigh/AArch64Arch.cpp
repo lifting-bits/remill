@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 
+#include "remill/Arch/AArch64/AArch64Base.h"
 #include "remill/Arch/Instruction.h"
 #include "remill/Arch/Name.h"
 #include "remill/BC/ABI.h"
@@ -24,8 +25,7 @@ namespace remill {
 // TODO(Ian): support different arm versions
 SleighAArch64Decoder::SleighAArch64Decoder(const remill::Arch &arch)
     : SleighDecoder(arch, "AARCH64.sla", "AARCH64.pspec",
-                    sleigh::ContextRegMappings({}, {}),
-                    {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
+                    sleigh::ContextRegMappings({}, {}), {}) {}
 
 
 void SleighAArch64Decoder::InitializeSleighContext(
@@ -74,6 +74,32 @@ bool AArch64Arch::DecodeInstruction(uint64_t address,
 
 DecodingContext AArch64Arch::CreateInitialContext(void) const {
   return DecodingContext();
+}
+
+void AArch64Arch::PopulateRegisterTable(void) const {
+  AArch64ArchBase::PopulateRegisterTable();
+
+#define OFFSET_OF(type, access) \
+  (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
+      static_cast<type *>(nullptr)->access)))
+
+#define REG(name, access, type) \
+  AddRegister(#name, type, OFFSET_OF(AArch64State, access), nullptr)
+
+#define SUB_REG(name, access, type, parent_reg_name) \
+  AddRegister(#name, type, OFFSET_OF(AArch64State, access), #parent_reg_name)
+
+  auto u8 = llvm::Type::getInt8Ty(*context);
+
+  REG(NG, sleigh_flags.NG, u8);
+  REG(ZR, sleigh_flags.ZR, u8);
+  REG(CY, sleigh_flags.CY, u8);
+  REG(OV, sleigh_flags.OV, u8);
+  REG(SHIFT_CARRY, sleigh_flags.shift_carry, u8);
+  REG(TMPCY, sleigh_flags.tmpCY, u8);
+  REG(TMPOV, sleigh_flags.tmpOV, u8);
+  REG(TMPZR, sleigh_flags.tmpZR, u8);
+  REG(TMPNG, sleigh_flags.tmpNG, u8);
 }
 
 
