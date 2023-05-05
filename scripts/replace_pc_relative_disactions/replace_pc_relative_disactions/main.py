@@ -245,6 +245,14 @@ class MacroInfo:
     def complete_macro(self, curr_loc: int) -> int:
         return self.get_next_closed_location(curr_loc) if self.is_in_macro(curr_loc) else curr_loc
 
+    def get_prev_closed_location(self, curr_loc: int) -> int:
+        ind = self.open_locs.bisect_left(curr_loc)
+        return self.open_locs[max(ind-1, 0)]
+
+    def find_prev_closed(self, curr_loc: int) -> int:
+        return self.get_prev_closed_location(
+            curr_loc) if self.is_in_macro(curr_loc) else curr_loc
+
 
 def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out_dir):
     print(CONSTRUCTOR_BASE_REGEX)
@@ -285,8 +293,8 @@ def generate_patch(target_file, pc_def_path, inst_next_size_hint, base_path, out
                     print("Last context reg def at: " +
                           str(last_context_reg_def))
                     target_insert_loc = last_context_reg_def
-
-                target_insert_loc = minfo.complete_macro(target_insert_loc)
+                    target_insert_loc = minfo.complete_macro(target_insert_loc)
+                target_insert_loc = minfo.find_prev_closed(target_insert_loc)
 
                 total_output += target[edef_end: target_insert_loc]
 
