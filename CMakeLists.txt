@@ -224,7 +224,7 @@ list(APPEND ghidra_patches ${sleigh_ADDITIONAL_PATCHES})
 
 FetchContent_Declare(ghidra-fork
   GIT_REPOSITORY https://github.com/trail-of-forks/ghidra.git
-  GIT_TAG a5214a7
+  GIT_TAG e7196d8
   ${ghidra_patches}
 )
 
