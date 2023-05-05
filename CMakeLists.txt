@@ -97,7 +97,7 @@ set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
   GIT_REPOSITORY https://github.com/lifting-bits/sleigh.git
-  GIT_TAG e1562dd
+  GIT_TAG 7c6b742
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
