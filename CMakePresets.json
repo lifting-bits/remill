@@ -7,8 +7,16 @@
     },
     "configurePresets": [
         {
+            "name": "common",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_POSITION_INDEPENDENT_CODE": "ON"
+            }
+        },
+        {
             "name": "debug-flags",
             "hidden": true,
+            "inherits": "common",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_C_FLAGS": "-fno-omit-frame-pointer -fno-optimize-sibling-calls -gfull -O0",
@@ -18,6 +26,7 @@
         {
             "name": "release-flags",
             "hidden": true,
+            "inherits": "common",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
