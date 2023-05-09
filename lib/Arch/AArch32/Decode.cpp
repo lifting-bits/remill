@@ -1478,18 +1478,18 @@ static bool TryDecodeMultiplyAndAccumulate(Instruction &inst, uint32_t bits) {
 
 static const char *const kHMulAccRRR[] = {
     [0b0000] = "SMLABB",  // (M == 0 && N == 0)
-    [0b0010] = "SMLABT",  // (M == 1 && N == 0)
     [0b0001] = "SMLATB",  // (M == 0 && N == 1)
+    [0b0010] = "SMLABT",  // (M == 1 && N == 0)
     [0b0011] = "SMLATT",  // (M == 1 && N == 1)
     [0b0100] = "SMLAWB",  [0b0101] = "SMULWB",
     [0b0110] = "SMLAWT",  [0b0111] = "SMULWT",
     [0b1000] = "SMLALBB",  // (M == 0 && N == 0)
-    [0b1010] = "SMLALBT",  // (M == 1 && N == 0)
     [0b1001] = "SMLALTB",  // (M == 0 && N == 1)
+    [0b1010] = "SMLALBT",  // (M == 1 && N == 0)
     [0b1011] = "SMLALTT",  // (M == 1 && N == 1)
     [0b1100] = "SMULBB",  // (M == 0 && N == 0)
-    [0b1110] = "SMULBT",  // (M == 1 && N == 0)
     [0b1101] = "SMULTB",  // (M == 0 && N == 1)
+    [0b1110] = "SMULBT",  // (M == 1 && N == 0)
     [0b1111] = "SMULTT",  // (M == 1 && N == 1)
 };
 
@@ -1944,13 +1944,21 @@ static bool TryDecodeLoadStoreWordUBReg(Instruction &inst, uint32_t bits) {
 // op2 != 00 for extra load store instructions
 // (see: Data-processing and miscellaneous instructions & Extra load/store)
 static const char *const kLoadStoreDHSB[] = {
-    [0b00010] = "LDRDp", [0b00001] = "STRHp",  [0b00011] = "STRDp",
+    [0b00000] = nullptr,
+    [0b00001] = "STRHp", [0b00010] = "LDRDp",  [0b00011] = "STRDp",
+    [0b00100] = nullptr,
     [0b00101] = "LDRHp", [0b00110] = "LDRSBp", [0b00111] = "LDRSHp",
-    [0b01010] = nullptr, [0b01001] = "STRHT",  [0b01011] = nullptr,
+    [0b01000] = nullptr,
+    [0b01001] = "STRHT", [0b01010] = nullptr,  [0b01011] = nullptr,
+    [0b01100] = nullptr,
     [0b01101] = "LDRHT", [0b01110] = "LDRSBT", [0b01111] = "LDRSHT",
-    [0b10010] = "LDRD",  [0b10001] = "STRH",   [0b10011] = "STRD",
+    [0b10000] = nullptr,
+    [0b10001] = "STRH",  [0b10010] = "LDRD",   [0b10011] = "STRD",
+    [0b10100] = nullptr,
     [0b10101] = "LDRH",  [0b10110] = "LDRSB",  [0b10111] = "LDRSH",
-    [0b11010] = "LDRDp", [0b11001] = "STRHp",  [0b11011] = "STRDp",
+    [0b11000] = nullptr,
+    [0b11001] = "STRHp", [0b11010] = "LDRDp",  [0b11011] = "STRDp",
+    [0b11100] = nullptr,
     [0b11101] = "LDRHp", [0b11110] = "LDRSBp", [0b11111] = "LDRSHp",
 };
 
@@ -2855,6 +2863,7 @@ static bool TryBranchImm(Instruction &inst, uint32_t bits) {
 }
 
 static const char *const kBX[] = {
+    [0b00] = nullptr,
     [0b01] = "BX",
     [0b10] = "BXJ",  // unsupported
     [0b11] = "BLX",
@@ -3422,6 +3431,7 @@ static TryDecode *kLoadStoreWordUBR[] = {
 
 // Extra load/store
 static TryDecode *kExtraLoadStore[] = {
+    [0b000000] = nullptr,
     [0b000001] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite,
                                              Operand::kActionRead, 16u>,
@@ -3431,6 +3441,7 @@ static TryDecode *kExtraLoadStore[] = {
     [0b000011] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite,
                                              Operand::kActionRead, 64u>,
+    [0b000100] = nullptr,
     [0b000101] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead,
                                              Operand::kActionWrite, 16u, true>,
@@ -3440,11 +3451,13 @@ static TryDecode *kExtraLoadStore[] = {
     [0b000111] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead,
                                              Operand::kActionWrite, 16u, true>,
+    [0b001000] = nullptr,
     [0b001001] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite,
                                              Operand::kActionRead, 16u>,
     [0b001010] = nullptr,
     [0b001011] = nullptr,
+    [0b001100] = nullptr,
     [0b001101] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead,
                                              Operand::kActionWrite, 16u, true>,
@@ -3454,6 +3467,7 @@ static TryDecode *kExtraLoadStore[] = {
     [0b001111] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead,
                                              Operand::kActionWrite, 16u, true>,
+    [0b010000] = nullptr,
     [0b010001] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite,
                                              Operand::kActionRead, 16u>,
@@ -3463,6 +3477,7 @@ static TryDecode *kExtraLoadStore[] = {
     [0b010011] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite,
                                              Operand::kActionRead, 64u>,
+    [0b010100] = nullptr,
     [0b010101] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead,
                                              Operand::kActionWrite, 16u, true>,
@@ -3472,6 +3487,7 @@ static TryDecode *kExtraLoadStore[] = {
     [0b010111] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead,
                                              Operand::kActionWrite, 16u, true>,
+    [0b011000] = nullptr,
     [0b011001] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite,
                                              Operand::kActionRead, 16u>,
@@ -3481,6 +3497,7 @@ static TryDecode *kExtraLoadStore[] = {
     [0b011011] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionWrite,
                                              Operand::kActionRead, 64u>,
+    [0b011100] = nullptr,
     [0b011101] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead,
                                              Operand::kActionWrite, 16u, true>,
@@ -3490,6 +3507,7 @@ static TryDecode *kExtraLoadStore[] = {
     [0b011111] =
         TryDecodeLoadStoreDualHalfSignedBReg<Operand::kActionRead,
                                              Operand::kActionWrite, 16u, true>,
+    [0b100000] = nullptr,
     [0b100001] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite,
                                                      Operand::kActionRead, 16u>,
     [0b100010] =
@@ -3497,6 +3515,7 @@ static TryDecode *kExtraLoadStore[] = {
                                             Operand::kActionWrite, 64u, true>,
     [0b100011] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite,
                                                      Operand::kActionRead, 64u>,
+    [0b100100] = nullptr,
     [0b100101] =
         TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead,
                                             Operand::kActionWrite, 16u, true>,
@@ -3506,12 +3525,14 @@ static TryDecode *kExtraLoadStore[] = {
     [0b100111] =
         TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead,
                                             Operand::kActionWrite, 16u, true>,
+    [0b101000] = nullptr,
     [0b101001] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite,
                                                      Operand::kActionRead, 16u>,
     [0b101010] = TryDecodeLoadStoreDualHalfSignedBIL<
         Operand::kActionRead, Operand::kActionWrite, 16u,
         true>,  // only valid for Rn == 15 (PC)
     [0b101011] = nullptr,
+    [0b101100] = nullptr,
     [0b101101] =
         TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead,
                                             Operand::kActionWrite, 16u, true>,
@@ -3521,6 +3542,7 @@ static TryDecode *kExtraLoadStore[] = {
     [0b101111] =
         TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead,
                                             Operand::kActionWrite, 16u, true>,
+    [0b110000] = nullptr,
     [0b110001] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite,
                                                      Operand::kActionRead, 16u>,
     [0b110010] =
@@ -3528,6 +3550,7 @@ static TryDecode *kExtraLoadStore[] = {
                                             Operand::kActionWrite, 64u, true>,
     [0b110011] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite,
                                                      Operand::kActionRead, 64u>,
+    [0b110100] = nullptr,
     [0b110101] =
         TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead,
                                             Operand::kActionWrite, 16u, true>,
@@ -3537,6 +3560,7 @@ static TryDecode *kExtraLoadStore[] = {
     [0b110111] =
         TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead,
                                             Operand::kActionWrite, 16u, true>,
+    [0b111000] = nullptr,
     [0b111001] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite,
                                                      Operand::kActionRead, 16u>,
     [0b111010] =
@@ -3544,6 +3568,7 @@ static TryDecode *kExtraLoadStore[] = {
                                             Operand::kActionWrite, 64u, true>,
     [0b111011] = TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionWrite,
                                                      Operand::kActionRead, 64u>,
+    [0b111100] = nullptr,
     [0b111101] =
         TryDecodeLoadStoreDualHalfSignedBIL<Operand::kActionRead,
                                             Operand::kActionWrite, 16u, true>,

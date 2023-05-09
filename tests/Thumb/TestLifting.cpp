@@ -48,12 +48,12 @@
 namespace {
 
 const static std::unordered_map<std::string,
-                                std::function<uint32_t &(AArch32State &)>>
+                                std::function<uint32_t *(AArch32State &)>>
     reg_to_accessor = {
         {"r15",
-         [](AArch32State &st) -> uint32_t & { return st.gpr.r15.dword; }},
-        {"sp", [](AArch32State &st) -> uint32_t & { return st.gpr.r13.dword; }},
-        {"r1", [](AArch32State &st) -> uint32_t & { return st.gpr.r1.dword; }}};
+         [](AArch32State &st) -> uint32_t * { return &st.gpr.r15.dword; }},
+        {"sp", [](AArch32State &st) -> uint32_t * { return &st.gpr.r13.dword; }},
+        {"r1", [](AArch32State &st) -> uint32_t * { return &st.gpr.r1.dword; }}};
 
 
 std::optional<remill::Instruction> GetFlows(std::string_view bytes,
@@ -104,7 +104,7 @@ class TestOutputSpec {
                       uint32_t value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
-      accessor->second(state) = value;
+      *(accessor->second(state)) = value;
     }
   }
 
@@ -112,7 +112,7 @@ class TestOutputSpec {
                       uint32_t value) const {
     auto accessor = reg_to_accessor.find(reg);
     if (accessor != reg_to_accessor.end()) {
-      CHECK_EQ(accessor->second(state), value);
+      CHECK_EQ(*(accessor->second(state)), value);
     }
   }
 
