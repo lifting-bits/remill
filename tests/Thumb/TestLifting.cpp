@@ -53,18 +53,18 @@ const static std::unordered_map<
     reg_to_accessor = {
         {"r15",
          [](AArch32State &st) -> test_runner::RegisterValueRef {
-           return st.gpr.r15.dword;
+           return &st.gpr.r15.dword;
          }},
         {"sp",
          [](AArch32State &st) -> test_runner::RegisterValueRef {
-           return st.gpr.r13.dword;
+           return &st.gpr.r13.dword;
          }},
         {"r1",
          [](AArch32State &st) -> test_runner::RegisterValueRef {
-           return st.gpr.r1.dword;
+           return &st.gpr.r1.dword;
          }},
         {"z", [](AArch32State &st) -> test_runner::RegisterValueRef {
-           return st.sr.z;
+           return &st.sr.z;
          }}};
 
 
@@ -114,7 +114,7 @@ class TestOutputSpec {
       T value,
       std::function<test_runner::RegisterValueRef(AArch32State &)> accessor,
       AArch32State &state) const {
-    std::get<std::reference_wrapper<T>>(accessor(state)).get() = value;
+    *(std::get<T *>(accessor(state))) = value;
   }
 
   void ApplyCondition(AArch32State &state, std::string reg,
@@ -137,7 +137,7 @@ class TestOutputSpec {
       T value,
       std::function<test_runner::RegisterValueRef(AArch32State &)> accessor,
       AArch32State &state) const {
-    auto sval = std::get<std::reference_wrapper<T>>(accessor(state)).get();
+    T sval = *(std::get<T *>(accessor(state)));
     LOG(INFO) << "state value: " << sval;
     CHECK_EQ(sval, value);
   }
