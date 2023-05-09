@@ -24,6 +24,15 @@ jobs:
         image:
           - { name: 'ubuntu', tag: '22.04' }
         llvm: ['15', '16']
+        compiler:
+          - { CC: 'clang', CXX: 'clang++' }
+          - { CC: 'gcc', CXX: 'g++' }
+        exclude:
+          - { llvm: '15', compiler: { CC: 'gcc', CXX: 'g++' } }
+
+    env:
+      CC: ${{ matrix.compiler.CC }}
+      CXX: ${{ matrix.compiler.CXX }}
 
     runs-on: ubuntu-22.04
     container:
@@ -45,7 +54,6 @@ jobs:
         shell: bash
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          sudo apt-get update && sudo apt-get install g++-8
           ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
       - name: Build with build-presets script
         shell: bash
