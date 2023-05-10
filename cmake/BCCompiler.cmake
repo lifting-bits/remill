@@ -178,6 +178,10 @@ function(add_runtime target_name)
     # The hyper call implementation contains inline assembly for each architecture so we'll need to
     # cross-compile for the runtime architecture.
     if(${source_file} STREQUAL ${hyper_call_source})
+      # Some architectures add an explicit target for the host to successfully
+      # compile with 32 bits (like AArch64 to arm), however, we don't want that
+      # to interfere with the hyper call crosscompile
+      list(FILTER bc_flag_list EXCLUDE REGEX "--target=.*")
       set(target_decl "-target" "${arch}-none-eabi")
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       set(target_decl "-target" "x86_64-apple-macosx11.0.0")
