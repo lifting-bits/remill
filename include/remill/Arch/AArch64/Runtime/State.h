@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <_types/_uint8_t.h>
 #pragma clang diagnostic push
 #pragma clang diagnostic fatal "-Wpadded"
 
