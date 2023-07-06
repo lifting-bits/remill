@@ -1,4 +1,4 @@
-# Remill [![Slack Chat](http://empireslacking.herokuapp.com/badge.svg)](https://empireslacking.herokuapp.com/)
+# Remill [![Slack Chat](http://slack.empirehacking.nyc/badge.svg)](https://slack.empirehacking.nyc/)
 
 <p align="center">
      <img src="docs/images/remill_logo.png" />
@@ -21,7 +21,7 @@ Remill focuses on accurately lifting instructions. It is meant to be used as a l
 
 ## Getting Help
 
-If you are experiencing undocumented problems with Remill then ask for help in the `#binary-lifting` channel of the [Empire Hacking Slack](https://empireslacking.herokuapp.com/).
+If you are experiencing undocumented problems with Remill then ask for help in the `#binary-lifting` channel of the [Empire Hacking Slack](https://slack.empirehacking.nyc/).
 
 ## Supported Platforms
 
