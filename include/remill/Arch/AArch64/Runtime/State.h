@@ -281,23 +281,23 @@ static_assert(512 == sizeof(SIMD), "Invalid packing of `struct SIMD`.");
 
 struct alignas(8) SleighFlagState {
   uint8_t NG;
-  uint8_t _1;
+  volatile uint8_t _1;
   uint8_t ZR;
-  uint8_t _2;
+  volatile uint8_t _2;
   uint8_t CY;
-  uint8_t _3;
+  volatile uint8_t _3;
   uint8_t OV;
-  uint8_t _4;
+  volatile uint8_t _4;
   uint8_t shift_carry;
-  uint8_t _5;
+  volatile uint8_t _5;
   uint8_t tmpCY;
-  uint8_t _6;
+  volatile uint8_t _6;
   uint8_t tmpOV;
-  uint8_t _7;
+  volatile uint8_t _7;
   uint8_t tmpNG;
-  uint8_t _8;
+  volatile uint8_t _8;
   uint8_t tmpZR;
-  uint8_t _9;
+  volatile uint8_t _9;
   uint8_t padding[6];
 } __attribute__((packed));
 
