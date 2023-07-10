@@ -249,7 +249,20 @@ function Build
 
   (
     set -x
-    cmake --build . -- -j"${NPROC}"
+    cmake --build . -- -j"${NPROC}" -v
+  ) || return $?
+
+  return $?
+}
+
+#Install only
+function Install
+{
+  (
+    set -x
+    cmake --build . \
+      --target install
+
   ) || return $?
 
   return $?
@@ -315,6 +328,7 @@ function Help
   echo "  --build-dir        Change the default (${BUILD_DIR}) build directory."
   echo "  --debug            Build with Debug symbols."
   echo "  --extra-cmake-args Extra CMake arguments to build with."
+  echo "  --install          Just install Remill, do not package it."
   echo "  --dyinst-frontend  Build McSema with dyninst frontend as well."
   echo "  -h --help          Print help."
 }
@@ -372,6 +386,12 @@ function main
         echo "[+] Enabling a debug build of remill"
       ;;
 
+      # Only install, do not pakage
+      --install)
+        INSTALL_ONLY="yes"
+        echo "[+] Install only. No packaging will be done."
+      ;;
+
       --extra-cmake-args)
         BUILD_FLAGS="${BUILD_FLAGS} ${2}"
         echo "[+] Will supply additional arguments to cmake: ${BUILD_FLAGS}"
@@ -407,9 +427,20 @@ function main
   mkdir -p "${BUILD_DIR}"
   cd "${BUILD_DIR}" || exit 1
 
-  if ! (DownloadLibraries && Configure && Build && Package); then
+  if ! (DownloadLibraries && Configure && Build ); then
     echo "[x] Build aborted."
     exit 1
+  fi
+
+  if [[ "${INSTALL_ONLY}" = "yes" ]]
+  then
+    if ! Install; then
+      echo "[x] Installation Failed"
+    fi
+  else
+    if ! Package; then
+      echo "[x] Packaging Failed"
+    fi
   fi
 
   return $?
