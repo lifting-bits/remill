@@ -31,8 +31,6 @@ add_library(remill_arch_sparc64 STATIC
   Extract.cpp
 )
 
-add_subdirectory(Runtime)
-
 set_property(TARGET remill_arch_sparc64 PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 target_link_libraries(remill_arch_sparc64 LINK_PUBLIC

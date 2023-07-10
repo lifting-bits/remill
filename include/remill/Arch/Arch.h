@@ -438,12 +438,20 @@ class Arch {
                               ArchName arch_name);
 
   // Defined in `lib/Arch/SPARC32/Arch.cpp`.
-  static ArchPtr GetSPARC(llvm::LLVMContext *context, OSName os,
+  static ArchPtr GetSPARC32(llvm::LLVMContext *context, OSName os,
                           ArchName arch_name);
 
   // Defined in `lib/Arch/SPARC64/Arch.cpp`.
   static ArchPtr GetSPARC64(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
+
+  // Defined in `lib/Arch/Sleigh/SPARC32/SPARC32Arch.cpp
+  static ArchPtr GetSPARC32Sleigh(llvm::LLVMContext *context, OSName os,
+                                ArchName arch_name);
+
+  // Defined in `lib/Arch/Sleigh/SPARC64/SPARC64.cpp
+  static ArchPtr GetSPARC64Sleigh(llvm::LLVMContext *context, OSName os,
+                                  ArchName arch_name);
 
   Arch(void) = delete;
 };
