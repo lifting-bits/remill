@@ -277,7 +277,7 @@ function Package
       --target install
 
 
-    if [ "$CREATE_PACKAGES" = true ]
+    if [ "$CREATE_PACKAGES" = true ]; then
       cpack -D REMILL_DATA_PATH="${DESTDIR}" \
         -R ${remill_version} \
         --config "${SRC_DIR}/packaging/main.cmake"
