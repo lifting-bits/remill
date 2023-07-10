@@ -279,6 +279,31 @@ struct alignas(16) SIMD {
 
 static_assert(512 == sizeof(SIMD), "Invalid packing of `struct SIMD`.");
 
+struct alignas(8) SleighFlagState {
+  uint8_t NG;
+  volatile uint8_t _1;
+  uint8_t ZR;
+  volatile uint8_t _2;
+  uint8_t CY;
+  volatile uint8_t _3;
+  uint8_t OV;
+  volatile uint8_t _4;
+  uint8_t shift_carry;
+  volatile uint8_t _5;
+  uint8_t tmpCY;
+  volatile uint8_t _6;
+  uint8_t tmpOV;
+  volatile uint8_t _7;
+  uint8_t tmpNG;
+  volatile uint8_t _8;
+  uint8_t tmpZR;
+  volatile uint8_t _9;
+  uint8_t padding[6];
+} __attribute__((packed));
+
+static_assert(24 == sizeof(SleighFlagState),
+              "Invalid packing of `struct SleighFlagState`.");
+
 struct alignas(16) AArch64State : public ArchState {
   SIMD simd;  // 512 bytes.
 
@@ -298,9 +323,13 @@ struct alignas(16) AArch64State : public ArchState {
 
   uint64_t _3;
 
+  SleighFlagState sleigh_flags;
+
+  uint8_t padding[8];
+
 } __attribute__((packed));
 
-static_assert((1152 + 16) == sizeof(AArch64State),
+static_assert((1152 + 16 + 24 + 8) == sizeof(AArch64State),
               "Invalid packing of `struct State`");
 
 struct State : public AArch64State {};

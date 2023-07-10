@@ -36,7 +36,8 @@ RUN git config --global user.email "41898282+github-actions[bot]@users.noreply.g
 RUN ./scripts/build.sh \
     --llvm-version ${LLVM_VERSION} \
     --prefix /opt/trailofbits \
-    --extra-cmake-args "-DCMAKE_BUILD_TYPE=Release"
+    --extra-cmake-args "-DCMAKE_BUILD_TYPE=Release" \
+    --disable-package
 
 RUN pip3 install ./scripts/diff_tester_export_insns
 
