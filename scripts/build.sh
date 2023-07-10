@@ -28,7 +28,7 @@ OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
 CXX_COMMON_VERSION="0.3.1"
-CREATE_PACKAGES=false
+CREATE_PACKAGES=true
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -276,9 +276,12 @@ function Package
     cmake --build . \
       --target install
 
-    cpack -D REMILL_DATA_PATH="${DESTDIR}" \
-      -R ${remill_version} \
-      --config "${SRC_DIR}/packaging/main.cmake"
+
+    if [ "$CREATE_PACKAGES" = true ]
+      cpack -D REMILL_DATA_PATH="${DESTDIR}" \
+        -R ${remill_version} \
+        --config "${SRC_DIR}/packaging/main.cmake"
+    fi
   ) || return $?
 
   return $?
@@ -416,7 +419,7 @@ function main
   mkdir -p "${BUILD_DIR}"
   cd "${BUILD_DIR}" || exit 1
 
-  if ! (DownloadLibraries && Configure && Build && ( ["$CREATE_PACKAGES" = false] || Package )); then
+  if ! (DownloadLibraries && Configure && Build && Package ); then
     echo "[x] Build aborted."
     exit 1
   fi
