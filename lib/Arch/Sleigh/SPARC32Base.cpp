@@ -23,12 +23,12 @@
 namespace remill {
 // Returns the name of the stack pointer register.
 std::string_view SPARC32ArchBase::StackPointerRegisterName(void) const {
-  return "sp";
+  return "SP";
 }
 
 // Returns the name of the program counter register.
 std::string_view SPARC32ArchBase::ProgramCounterRegisterName(void) const {
-  return "pc";
+  return "PC";
 }
 
 uint64_t SPARC32ArchBase::MinInstructionAlign(const DecodingContext &) const {
@@ -100,50 +100,49 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   auto f32 = llvm::Type::getFloatTy(*context);
   auto f64 = llvm::Type::getDoubleTy(*context);
 
-  REG(pc, pc.dword, u32);
-  SUB_REG(PC, pc.dword, u32, pc);
+  REG(PC, pc.dword, u32);
 
-  REG(npc, next_pc.dword, u32);
-  SUB_REG(NEXT_PC, next_pc.dword, u32, npc);
+  REG(NEXT_PC, next_pc.dword, u32);
 
-  REG(sp, gpr.o6.dword, u32);
-  SUB_REG(SP, gpr.o6.dword, u32, sp);
+  REG(CWP, cwp.dword, u32);
 
-  REG(fp, gpr.i6.dword, u32);
-  SUB_REG(FP, gpr.i6.dword, u32, fp);
+  REG(SP, gpr.o6.dword, u32);
 
-  REG(i0, gpr.i0.dword, u32);
-  REG(i1, gpr.i1.dword, u32);
-  REG(i2, gpr.i2.dword, u32);
-  REG(i3, gpr.i3.dword, u32);
-  REG(i4, gpr.i4.dword, u32);
-  REG(i5, gpr.i5.dword, u32);
-  SUB_REG(i6, gpr.i6.dword, u32, fp);
-  REG(i7, gpr.i7.dword, u32);
-  REG(l0, gpr.l0.dword, u32);
-  REG(l1, gpr.l1.dword, u32);
-  REG(l2, gpr.l2.dword, u32);
-  REG(l3, gpr.l3.dword, u32);
-  REG(l4, gpr.l4.dword, u32);
-  REG(l5, gpr.l5.dword, u32);
-  REG(l6, gpr.l6.dword, u32);
-  REG(l7, gpr.l7.dword, u32);
-  REG(o0, gpr.o0.dword, u32);
-  REG(o1, gpr.o1.dword, u32);
-  REG(o2, gpr.o2.dword, u32);
-  REG(o3, gpr.o3.dword, u32);
-  REG(o4, gpr.o4.dword, u32);
-  REG(o5, gpr.o5.dword, u32);
-  SUB_REG(o6, gpr.o6.dword, u32, sp);
-  REG(o7, gpr.o7.dword, u32);
+  REG(FP, gpr.i6.dword, u32);
 
-  REG(g1, gpr.g1.dword, u32);
-  REG(g2, gpr.g2.dword, u32);
-  REG(g3, gpr.g3.dword, u32);
-  REG(g4, gpr.g4.dword, u32);
-  REG(g5, gpr.g5.dword, u32);
-  REG(g6, gpr.g6.dword, u32);
-  REG(g7, gpr.g7.dword, u32);
+  REG(I0, gpr.i0.dword, u32);
+  REG(I1, gpr.i1.dword, u32);
+  REG(I2, gpr.i2.dword, u32);
+  REG(I3, gpr.i3.dword, u32);
+  REG(I4, gpr.i4.dword, u32);
+  REG(I5, gpr.i5.dword, u32);
+  SUB_REG(I6, gpr.i6.dword, u32, FP);
+  REG(I7, gpr.i7.dword, u32);
+  REG(L0, gpr.l0.dword, u32);
+  REG(L1, gpr.l1.dword, u32);
+  REG(L2, gpr.l2.dword, u32);
+  REG(L3, gpr.l3.dword, u32);
+  REG(L4, gpr.l4.dword, u32);
+  REG(L5, gpr.l5.dword, u32);
+  REG(L6, gpr.l6.dword, u32);
+  REG(L7, gpr.l7.dword, u32);
+  REG(O0, gpr.o0.dword, u32);
+  REG(O1, gpr.o1.dword, u32);
+  REG(O2, gpr.o2.dword, u32);
+  REG(O3, gpr.o3.dword, u32);
+  REG(O4, gpr.o4.dword, u32);
+  REG(O5, gpr.o5.dword, u32);
+  SUB_REG(O6, gpr.o6.dword, u32, SP);
+  REG(O7, gpr.o7.dword, u32);
+
+  REG(G0, gpr.g0.dword, u32);
+  REG(G1, gpr.g1.dword, u32);
+  REG(G2, gpr.g2.dword, u32);
+  REG(G3, gpr.g3.dword, u32);
+  REG(G4, gpr.g4.dword, u32);
+  REG(G5, gpr.g5.dword, u32);
+  REG(G6, gpr.g6.dword, u32);
+  REG(G7, gpr.g7.dword, u32);
 
   // Ancillary State Register
   REG(tick, tick.dword, u32);

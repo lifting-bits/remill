@@ -312,34 +312,35 @@ struct alignas(16) SPARC32State : public ArchState {
   volatile uint32_t _6;
   Reg next_pc;  // 4 bytes
   volatile uint32_t _7;
-  Reg tick;
+  Reg cwp;
   volatile uint32_t _8;
-  Reg yreg;
+  Reg tick;
   volatile uint32_t _9;
-  Reg ccs;
+  Reg yreg;
   volatile uint32_t _10;
-  Reg pcr;
+  Reg ccs;
   volatile uint32_t _11;
-  Reg pic;
+  Reg pcr;
   volatile uint32_t _12;
-  Reg gsr;
+  Reg pic;
   volatile uint32_t _13;
-  Reg softint_set;
+  Reg gsr;
   volatile uint32_t _14;
-  Reg softint_clr;
+  Reg softint_set;
   volatile uint32_t _15;
-  Reg softint;
+  Reg softint_clr;
   volatile uint32_t _16;
-  Reg tick_cmpr;
+  Reg softint;
   volatile uint32_t _17;
-  Reg stick;
+  Reg tick_cmpr;
   volatile uint32_t _18;
-  Reg stick_cmpr;
+  Reg stick;
   volatile uint32_t _19;
+  Reg stick_cmpr;
+  volatile uint32_t _20;
   // fake register for sleigh
   uint8_t decompile_mode;
   volatile uint8_t _padding0[3];
-  volatile uint32_t _padding1[2];
 };
 
 struct State : public SPARC32State {};
