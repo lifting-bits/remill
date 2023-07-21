@@ -798,6 +798,8 @@ const Register *ArchBase::AddRegister(const char *reg_name_,
     parent_reg = reg_by_name[parent_reg_name];
   }
 
+  DLOG(INFO) << "Adding register " << reg_name << " with type " << val_type;
+
   auto reg_impl = new Register(reg_name, offset, val_type, parent_reg, this);
 
   //reg_impl->ComputeGEPAccessors(dl, this->state_type);
