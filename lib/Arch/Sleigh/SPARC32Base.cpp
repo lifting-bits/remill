@@ -264,6 +264,7 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   SUB_REG(q28, fpreg.v[7].doubles.elems[0], f64, v7);
   
   REG(DECOMPILE_MODE, decompile_mode, u8);
+  REG(DIDRESTORE, didrestore, u8);
 }
 
 // Populate a just-initialized lifted function function with architecture-

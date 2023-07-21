@@ -340,7 +340,10 @@ struct alignas(16) SPARC32State : public ArchState {
   volatile uint32_t _20;
   // fake register for sleigh
   uint8_t decompile_mode;
-  volatile uint8_t _padding0[3];
+  volatile uint8_t _21;
+  // fake register for sleigh
+  uint8_t didrestore;
+  volatile uint8_t _22;
 };
 
 struct State : public SPARC32State {};
