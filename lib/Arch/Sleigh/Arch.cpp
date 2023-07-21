@@ -166,7 +166,7 @@ void CustomLoadImage::loadFill(unsigned char *ptr, int size,
       continue;
     }
 
-    ptr[i] = this->current_bytes[i];
+    ptr[i] = this->current_bytes[index];
   }
 }
 
