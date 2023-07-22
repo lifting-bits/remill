@@ -1,9 +1,16 @@
 #include <glog/logging.h>
 #include <lib/Arch/Sleigh/ControlFlowStructuring.h>
+#include <llvm/ADT/APInt.h>
 
 #include <algorithm>
+#include <any>
+#include <cstddef>
+#include <memory>
 #include <optional>
 #include <sleigh/space.hh>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace remill::sleigh {
 
@@ -14,6 +21,92 @@ bool isVarnodeInConstantSpace(VarnodeData vnode) {
 
 
 namespace {
+
+// Handles some basic constant analysis for pcode that does not have intra-instruction flow
+
+class ConstantAnalysis {
+ public:
+  virtual std::optional<llvm::APInt>
+  compute_op(const VarnodeData &vnode) const {
+    return std::nullopt;
+  }
+
+  virtual void apply(const RemillPcodeOp &op) {
+    return;
+  }
+
+  virtual ~ConstantAnalysis() = default;
+};
+
+class SimpleConstantAnalysis : public ConstantAnalysis {
+ private:
+  std::map<VarnodeData, llvm::APInt> constants;
+  std::unordered_set<std::string> target_register;
+  const ghidra::Sleigh &engine;
+
+
+ public:
+  SimpleConstantAnalysis(const ghidra::Sleigh &engine) : engine(engine) {
+    this->target_register.insert("didrestore");
+  }
+  // we dont want to touch registers that can have subreg accesses because I dont feel like
+  // doing some interval tree stuff here right now
+  bool is_viable_target(const VarnodeData &maybe_reg) {
+    return maybe_reg.getAddr().getSpace()->getName() == "unique" ||
+           (maybe_reg.getAddr().getSpace()->getName() == "register" &&
+            target_register.find(this->engine.getRegisterName(
+                maybe_reg.space, maybe_reg.offset, maybe_reg.size)) !=
+                target_register.end());
+  }
+
+  void clear(const VarnodeData &data) {
+    this->constants.erase(data);
+  }
+
+
+  std::optional<llvm::APInt>
+  compute_op(const VarnodeData &vnode) const override {
+    if (this->constants.find(vnode) != this->constants.end()) {
+      return this->constants.find(vnode)->second;
+    }
+
+    if (vnode.space->getName() == "const") {
+      return llvm::APInt(vnode.size * 8, vnode.offset);
+    }
+
+    return std::nullopt;
+  }
+
+  void apply(const RemillPcodeOp &op) override {
+    if (!op.outvar || !is_viable_target(*op.outvar)) {
+      return;
+    }
+
+    switch (op.op) {
+      case ghidra::CPUI_COPY: {
+        if (auto rhs = this->compute_op(op.vars[0])) {
+          this->constants.emplace(*op.outvar, *rhs);
+          return;
+        }
+        break;
+      }
+      case ghidra::CPUI_INT_EQUAL: {
+        auto lhs = this->compute_op(op.vars[0]);
+        auto rhs = this->compute_op(op.vars[1]);
+        if (lhs && rhs) {
+          this->constants.emplace(*op.outvar, lhs->eq(*rhs)
+                                                  ? llvm::APInt(8, 1)
+                                                  : llvm::APInt(8, 0));
+          return;
+        }
+      }
+      default: {
+      }
+    }
+
+    this->clear(*op.outvar);
+  }
+};
 
 // variant casting taken c&ped.
 template <class... Args>
@@ -55,8 +148,19 @@ static CoarseEffect EffectFromDirectControlFlowOp(const RemillPcodeOp &op,
                                       : CoarseEffect::kAbnormal;
 }
 
+
+static bool CbranchIsNoop(const std::optional<llvm::APInt> &res) {
+  return res && res->isZero();
+}
+
+static bool CbranchIsBranch(const std::optional<llvm::APInt> &res) {
+  return res && !res->isZero();
+}
+
 static std::optional<CoarseFlow>
-CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
+CoarseFlowFromControlFlowOp(const RemillPcodeOp &op,
+                            const ConstantAnalysis &analysis,
+                            uint64_t next_pc) {
   if (op.op == CPUI_CALL || op.op == CPUI_CALLIND || op.op == CPUI_BRANCHIND ||
       op.op == CPUI_RETURN) {
     return {{CoarseEffect::kAbnormal, false}};
@@ -66,7 +170,16 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
 
   // figure out if this is a fallthrough, input 0 is the next target
 
-  auto is_conditional = op.op == CPUI_CBRANCH;
+
+  auto is_conditional = false;
+  if (CPUI_CBRANCH == op.op) {
+    auto maybe_const = analysis.compute_op(op.vars[1]);
+    if (CbranchIsNoop(maybe_const)) {
+      return std::nullopt;
+    }
+    is_conditional = !CbranchIsBranch(maybe_const);
+  }
+
   if (isVarnodeInConstantSpace(op.vars[0])) {
     return {{CoarseEffect::kIntraInstruction, is_conditional}};
   }
@@ -76,19 +189,35 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
 
 // gets a list of indices and coarse categories in this pcodeop block
 static std::optional<std::map<size_t, CoarseFlow>>
-CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
+CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc,
+            const Sleigh &engine) {
+
+  auto can_do_intra_flow =
+      std::any_of(ops.begin(), ops.end(), [](const RemillPcodeOp &op) -> bool {
+        return (op.op == CPUI_BRANCH || op.op == ghidra::CPUI_CBRANCH) &&
+               isVarnodeInConstantSpace(op.vars[0]);
+      });
+
+  std::unique_ptr<ConstantAnalysis> analysis =
+      can_do_intra_flow ? std::make_unique<ConstantAnalysis>()
+                        : std::make_unique<SimpleConstantAnalysis>(engine);
   std::map<size_t, CoarseFlow> res;
   size_t ind = 0;
   for (auto op : ops) {
     if (ControlFlowStructureAnalysis::isControlFlowPcodeOp(op.op)) {
-      auto cc = CoarseFlowFromControlFlowOp(op, next_pc);
-      if (!cc) {
-        return std::nullopt;
+      auto cc = CoarseFlowFromControlFlowOp(op, *analysis, next_pc);
+      if (cc) {
+        // if nullopt then this control flow op has no effect
+        res.emplace(ind, *cc);
+        if (!cc->is_conditional && !can_do_intra_flow) {
+          // if we've executed a control flow effect and it's non conditional and we dont do any intraflow
+          // then the rest of the instruction cannot execute
+          return res;
+        }
       }
-
-      res.emplace(ind, *cc);
     }
 
+    analysis->apply(op);
     ind++;
   }
 
@@ -415,7 +544,7 @@ ControlFlowStructureAnalysis::ComputeCategory(
     const std::vector<RemillPcodeOp> &ops, uint64_t fallthrough_addr,
     DecodingContext entry_context) {
 
-  auto maybe_cc = CoarseFlows(ops, fallthrough_addr);
+  auto maybe_cc = CoarseFlows(ops, fallthrough_addr, this->engine);
   if (!maybe_cc) {
     DLOG(ERROR) << "No coarse flow found";
     return std::nullopt;

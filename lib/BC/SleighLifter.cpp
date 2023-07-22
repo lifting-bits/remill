@@ -640,10 +640,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
 
   LiftStatus RedirectControlFlow(llvm::IRBuilder<> &bldr,
-                                 llvm::Value *target_addr) {
+                                 llvm::Value *target_addr,
+                                 bool should_term = true) {
 
     bldr.CreateStore(target_addr, this->GetNextPcRef());
-    this->TerminateBlock();
+    if (should_term) {
+      this->TerminateBlock();
+    }
     return LiftStatus::kLiftedInstruction;
   }
 
@@ -774,7 +777,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         // directs dont read the address of the variable, the offset is the jump
         // TODO(Ian): handle other address spaces
         if (isVarnodeInConstantSpace(input_var)) {
-          this->TerminateBlock();
+          //this->TerminateBlock();
           return LiftStatus::kLiftedInstruction;
         }
 
@@ -782,7 +785,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
             bldr, input_var,
             llvm::IntegerType::get(this->context, input_var.size * 8));
 
-        return this->RedirectControlFlow(bldr, input_val);
+        return this->RedirectControlFlow(bldr, input_val, opc != CPUI_CALL);
       }
       case OpCode::CPUI_RETURN:
       case OpCode::CPUI_BRANCHIND:
@@ -793,7 +796,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         if (!copy_inval) {
           return LiftStatus::kLiftedUnsupportedInstruction;
         }
-        return this->RedirectControlFlow(bldr, *copy_inval);
+        return this->RedirectControlFlow(bldr, *copy_inval,
+                                         opc != CPUI_CALLIND);
       }
         // TODO(alex): Maybe extract this into a method like `LiftIntegerUnOp`?
         // Let's see how much duplication there is.
