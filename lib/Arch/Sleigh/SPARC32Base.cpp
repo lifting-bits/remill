@@ -278,7 +278,6 @@ void SPARC32ArchBase::FinishLiftedFunctionInitialization(
 
   auto zero_u8 = llvm::Constant::getNullValue(u8);
   auto zero_u32 = llvm::Constant::getNullValue(u32);
-  auto one_u8 = llvm::ConstantInt::get(u8, 1, false);
 
   const auto entry_block = &bb_func->getEntryBlock();
   llvm::IRBuilder<> ir(entry_block);
@@ -306,8 +305,6 @@ void SPARC32ArchBase::FinishLiftedFunctionInitialization(
   ir.CreateStore(pc_arg,
                  RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir),
                  false);
-  ir.CreateStore(one_u8, RegisterByName("DECOMPILE_MODE")->AddressOf(state_ptr_arg, ir), false);
-
 }
 
 llvm::Triple SPARC32ArchBase::Triple(void) const {
