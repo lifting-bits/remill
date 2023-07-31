@@ -145,44 +145,28 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   REG(G7, gpr.g7.dword, u32);
 
   // Ancillary State Register
-  REG(tick, tick.dword, u32);
-  REG(y, yreg.dword, u32);
-  REG(ccs, ccs.dword, u32);
-  REG(pcr, pcr.dword, u32);
-  REG(pic, pic.dword, u32);
-  REG(gsr, gsr.dword, u32);
-  REG(softint_set, softint_set, u32);
-  REG(softint_clr, softint_clr, u32);
-  REG(softint, softint, u32);
-  REG(tick_cmpr, tick_cmpr, u32);
-  REG(stick, stick, u32);
-  REG(stick_cmpr, stick_cmpr, u32);
+  REG(Y, asr.yreg.dword, u32);
+  REG(TICK, asr.tick.dword, u32);
+  REG(CCR, asr.ccr.dword, u32);
+  REG(PCR, asr.pcr.dword, u32);
+  REG(PIC, asr.pic.dword, u32);
+  REG(GSR, asr.gsr.dword, u32);
+  REG(SOFTINT_SET, asr.softint_set.dword, u32);
+  REG(SOFTINT_CLR, asr.softint_clr.dword, u32);
+  REG(SOFTINT, asr.softint.dword, u32);
+  REG(TICK_CMPR, asr.tick_cmpr.dword, u32);
+  REG(STICK, asr.stick.dword, u32);
+  REG(STICK_CMPR, asr.stick_cmpr.dword, u32);
 
-  REG(asr7, asr.asr7, u32);
-  REG(asr8, asr.asr8, u32);
-  REG(asr9, asr.asr9, u32);
-  REG(asr10, asr.asr10, u32);
-  REG(asr11, asr.asr11, u32);
-  REG(asr12, asr.asr12, u32);
-  REG(asr13, asr.asr13, u32);
-  REG(asr14, asr.asr14, u32);
-  REG(asr15, asr.asr15, u32);
-  REG(asr16, asr.asr16, u32);
-  REG(asr17, asr.asr17, u32);
-  REG(asr18, asr.asr18, u32);
-  REG(asr19, asr.asr19, u32);
-  REG(asr20, asr.asr20, u32);
-  REG(asr21, asr.asr21, u32);
-  REG(asr22, asr.asr22, u32);
-  REG(asr23, asr.asr23, u32);
-  REG(asr24, asr.asr24, u32);
-  REG(asr25, asr.asr25, u32);
-  REG(asr26, asr.asr26, u32);
-  REG(asr27, asr.asr27, u32);
-  REG(asr28, asr.asr28, u32);
-  REG(asr29, asr.asr29, u32);
-  REG(asr30, asr.asr30, u32);
-  REG(asr31, asr.asr31, u32);
+  REG(I_CF, ccr.icc.i_cf, u8);
+  REG(I_VF, ccr.icc.i_vf, u8);
+  REG(I_ZF, ccr.icc.i_zf, u8);
+  REG(I_NF, ccr.icc.i_nf, u8);
+
+  REG(X_CF, ccr.xcc.x_cf, u8);
+  REG(X_VF, ccr.xcc.x_vf, u8);
+  REG(X_ZF, ccr.xcc.x_zf, u8);
+  REG(X_NF, ccr.xcc.x_nf, u8);
 
   REG(ccf_fcc0, fsr.fcc0, u8);
   REG(ccf_fcc1, fsr.fcc1, u8);

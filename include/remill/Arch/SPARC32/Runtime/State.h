@@ -160,18 +160,28 @@ struct FSRReg final {
 static_assert(24 == sizeof(struct FSRReg),
               "Invalid packing of `struct FSRReg`.");
 
-// Integer condition code register flags
-struct ICCRFlags final {
+// Condition Codes register flags
+struct CCRFlags final {
   struct {
     volatile uint8_t _0;
-    bool c;
+    bool i_cf;
     volatile uint8_t _1;
-    bool v;
+    bool i_vf;
     volatile uint8_t _2;
-    bool z;
+    bool i_zf;
     volatile uint8_t _3;
-    bool n;
-  } __attribute__((packed)) icc, xcc;
+    bool i_nf;
+  } __attribute__((packed)) icc;
+  struct {
+    volatile uint8_t _0;
+    bool x_cf;
+    volatile uint8_t _1;
+    bool x_vf;
+    volatile uint8_t _2;
+    bool x_zf;
+    volatile uint8_t _3;
+    bool x_nf;
+  } __attribute__((packed)) xcc;
 } __attribute__((packed));
 
 union GSRFlags final {
@@ -188,56 +198,31 @@ union GSRFlags final {
 } __attribute__((packed));
 
 struct ASR final {
-  Reg asr7;
   volatile uint32_t _0;
-  Reg asr8;
+  Reg yreg;  // asr 0
   volatile uint32_t _1;
-  Reg asr9;
+  Reg ccr;   // asr 2
   volatile uint32_t _2;
-  Reg asr10;
+  Reg tick;  // asr 4
   volatile uint32_t _3;
-  Reg asr11;
+  Reg pcr;   // asr16
   volatile uint32_t _4;
-  Reg asr12;
+  Reg pic;   // asr 17
   volatile uint32_t _5;
-  Reg asr13;
+  Reg gsr;   // asr 19
   volatile uint32_t _6;
-  Reg asr14;
+  Reg softint_set; // asr 20
   volatile uint32_t _7;
-  Reg asr15;
+  Reg softint_clr; // asr 21
   volatile uint32_t _8;
-  Reg asr16;
+  Reg softint;     // asr 22
   volatile uint32_t _9;
-  Reg asr17;
+  Reg tick_cmpr;   // asr 23
   volatile uint32_t _10;
-  Reg asr18;
+  Reg stick;       // asr 24
   volatile uint32_t _11;
-  Reg asr19;
+  Reg stick_cmpr;  // asr 25
   volatile uint32_t _12;
-  Reg asr20;
-  volatile uint32_t _13;
-  Reg asr21;
-  volatile uint32_t _14;
-  Reg asr22;
-  volatile uint32_t _15;
-  Reg asr23;
-  volatile uint32_t _16;
-  Reg asr24;
-  volatile uint32_t _17;
-  Reg asr25;
-  volatile uint32_t _18;
-  Reg asr26;
-  volatile uint32_t _19;
-  Reg asr27;
-  volatile uint32_t _20;
-  Reg asr28;
-  volatile uint32_t _21;
-  Reg asr29;
-  volatile uint32_t _22;
-  Reg asr30;
-  volatile uint32_t _23;
-  Reg asr31;
-  volatile uint32_t _24;
 } __attribute__((packed));
 
 struct CSR {
@@ -302,48 +287,26 @@ struct alignas(16) SPARC32State : public ArchState {
   volatile uint64_t _1;
   GPR gpr;  // 256 bytes
   volatile uint64_t _2;
-  ASR asr;  // 168 bytes
-  volatile uint64_t _3;
-  PSR psr;  // 56 bytes
-  volatile uint64_t _4;
   FSRReg fsr;  // 24 bytes
+  volatile uint64_t _3;
+  ASR asr;  // 168 bytes
+  volatile uint32_t _4;
+  CCRFlags ccr;
   volatile uint32_t _5;
-  Reg pc;  // 4 bytes
+  PSR psr;  // 56 bytes
   volatile uint32_t _6;
-  Reg next_pc;  // 4 bytes
+  Reg pc;  // 4 bytes
   volatile uint32_t _7;
-  Reg cwp;
+  Reg next_pc;  // 4 bytes
   volatile uint32_t _8;
-  Reg tick;
-  volatile uint32_t _9;
-  Reg yreg;
-  volatile uint32_t _10;
-  Reg ccs;
-  volatile uint32_t _11;
-  Reg pcr;
-  volatile uint32_t _12;
-  Reg pic;
-  volatile uint32_t _13;
-  Reg gsr;
-  volatile uint32_t _14;
-  Reg softint_set;
-  volatile uint32_t _15;
-  Reg softint_clr;
-  volatile uint32_t _16;
-  Reg softint;
-  volatile uint32_t _17;
-  Reg tick_cmpr;
-  volatile uint32_t _18;
-  Reg stick;
-  volatile uint32_t _19;
-  Reg stick_cmpr;
-  volatile uint32_t _20;
+  Reg cwp;
   // fake register for sleigh
   uint8_t decompile_mode;
   volatile uint8_t _21;
   // fake register for sleigh
   uint8_t didrestore;
   volatile uint8_t _22;
+  volatile uint8_t _padding[8];
 };
 
 struct State : public SPARC32State {};

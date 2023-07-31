@@ -24,7 +24,7 @@ namespace remill {
 SleighSPARC32Decoder::SleighSPARC32Decoder(const remill::Arch &arch)
     : SleighDecoder(arch, "SparcV9_32.sla", "SparcV9.pspec",
                     sleigh::ContextRegMappings({}, {}),
-                    {{"CY", "C"}, {"NG", "N"}, {"ZR", "Z"}, {"OV", "V"}}) {}
+                    {}) {}
 
 
 void SleighSPARC32Decoder::InitializeSleighContext(
