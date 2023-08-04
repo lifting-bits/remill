@@ -102,6 +102,9 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
 
   REG(PC, pc.dword, u32);
 
+  REG(NPC, next_pc.dword, u32);
+  SUB_REG(NEXT_PC, next_pc.dword, u32, NPC);
+
   REG(CWP, cwp.dword, u32);
 
   REG(SP, gpr.o6.dword, u32);
