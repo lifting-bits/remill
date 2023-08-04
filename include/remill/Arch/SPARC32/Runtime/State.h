@@ -297,16 +297,13 @@ struct alignas(16) SPARC32State : public ArchState {
   volatile uint32_t _6;
   Reg pc;  // 4 bytes
   volatile uint32_t _7;
-  Reg next_pc;  // 4 bytes
-  volatile uint32_t _8;
   Reg cwp;
   // fake register for sleigh
   uint8_t decompile_mode;
-  volatile uint8_t _9;
+  volatile uint8_t _8;
   // fake register for sleigh
   uint8_t didrestore;
-  volatile uint8_t _10;
-  volatile uint8_t _padding[8];
+  volatile uint8_t _9;
 };
 
 struct State : public SPARC32State {};

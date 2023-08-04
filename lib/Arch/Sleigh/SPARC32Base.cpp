@@ -102,9 +102,6 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
 
   REG(PC, pc.dword, u32);
 
-  REG(NPC, next_pc.dword, u32);
-  SUB_REG(NEXT_PC, next_pc.dword, u32, NPC);
-
   REG(CWP, cwp.dword, u32);
 
   REG(SP, gpr.o6.dword, u32);
@@ -260,6 +257,7 @@ void SPARC32ArchBase::FinishLiftedFunctionInitialization(
   auto &context = module->getContext();
   auto u8 = llvm::Type::getInt8Ty(context);
   auto u32 = llvm::Type::getInt32Ty(context);
+  auto addr = llvm::Type::getIntNTy(context, address_size);
 
   auto zero_u8 = llvm::Constant::getNullValue(u8);
   auto zero_u32 = llvm::Constant::getNullValue(u32);
@@ -277,15 +275,17 @@ void SPARC32ArchBase::FinishLiftedFunctionInitialization(
   ir.CreateStore(zero_u8, ir.CreateAlloca(u8, nullptr, "IGNORE_BRANCH_TAKEN"),
                  false);
   ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "IGNORE_PC"), false);
-  ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "IGNORE_NEXT_PC"),
-                 false);
   ir.CreateStore(zero_u32, ir.CreateAlloca(u32, nullptr, "IGNORE_RETURN_PC"),
                  false);
 
   const auto pc_arg = NthArgument(bb_func, kPCArgNum);
   const auto state_ptr_arg = NthArgument(bb_func, kStatePointerArgNum);
 
-  (void) RegisterByName(kNextPCVariableName)->AddressOf(state_ptr_arg, ir);
+  ir.CreateStore(pc_arg,
+                 ir.CreateAlloca(addr, nullptr, kNextPCVariableName.data()));
+  ir.CreateStore(
+      pc_arg, ir.CreateAlloca(addr, nullptr, kIgnoreNextPCVariableName.data()));
+
 
   ir.CreateStore(pc_arg,
                  RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir),
