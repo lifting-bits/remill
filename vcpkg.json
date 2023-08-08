@@ -7,11 +7,11 @@
       "xed"
     ],
     "features": {
-      "cxx-common-llvm-14": {
-        "description": "Build with cxx-common llvm-14 port",
+      "cxx-common-llvm-16": {
+        "description": "Build with cxx-common llvm-16 port",
         "dependencies": [
           {
-            "name": "llvm-14",
+            "name": "llvm-16",
             "default-features": false,
             "features": [
               "utils",
