@@ -20,7 +20,6 @@ set(REMILL_LLVM_VERSION @REMILL_LLVM_VERSION@)
 include(CMakeFindDependencyMacro)
 find_dependency(XED)
 find_dependency(glog)
-find_dependency(Z3)
 find_dependency(LLVM)
 find_dependency(sleigh COMPONENTS Support Specs)
 
