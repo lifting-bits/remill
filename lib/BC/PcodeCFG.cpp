@@ -81,11 +81,15 @@ BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
   CHECK(index < linear_ops.size());
   const auto &curr_op = linear_ops[index];
 
-  auto build_direct_target_exit = [](VarnodeData target,
+  auto build_direct_target_exit = [&](VarnodeData target,
                                      size_t curr_ind) -> Exit {
     if (isVarnodeInConstantSpace(target)) {
       // need to treat as signed?
       return IntrainstructionIndex{curr_ind + target.offset};
+    }
+    // we cannot assume a call pcodeop is at the end of a basic block
+    if (curr_ind < linear_ops.size() - 1) {
+      return IntrainstructionIndex{curr_ind + 1};
     }
     return InstrExit{};
   };
@@ -110,7 +114,7 @@ BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
     }
     case CPUI_CALLIND:
     case CPUI_BRANCHIND: {
-      return Exit{InstrExit{}};
+      return Exit{build_direct_target_exit(curr_op.vars[0], index)};
     }
 
     default: {
