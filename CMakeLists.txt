@@ -299,7 +299,9 @@ InstallExternalTarget("ext_llvmlink" "${LLVMLINK_PATH}" "BIN" "${INSTALLED_LLVML
 add_custom_target(semantics)
 
 # shared JIT tools
-add_subdirectory(test_runner_lib)
+if (REMILL_ENABLE_TESTING)
+  add_subdirectory(test_runner_lib)
+endif()
 
 # tools
 add_subdirectory(bin)
