@@ -299,7 +299,9 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
     LOG(ERROR) << "Failed to compute category for inst at " << std::hex
                << inst.pc;
     inst.flows = Instruction::InvalidInsn();
-    inst.category = Instruction::Category::kCategoryInvalid;
+    // Do not mark the instruction category as "invalid". Even if we can't determine a control flow
+    // category, we still want to attempt to lift this instruction.
+    inst.category = Instruction::Category::kCategoryNormal;
     return std::make_pair(inst.flows, std::nullopt);
   }
 
