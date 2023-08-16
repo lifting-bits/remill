@@ -12,12 +12,15 @@ Remill focuses on accurately lifting instructions. It is meant to be used as a l
 
 [![Build Status](https://img.shields.io/github/workflow/status/lifting-bits/remill/CI/master)](https://github.com/lifting-bits/remill/actions?query=workflow%3ACI)
 
-## Additional Documentation
+## Documentation
 
- - [How to contribute](docs/CONTRIBUTING.md)
+To understand how Remill works you can take a look at the following resources:
+
+ - [Step-by-step guide on how Remill lifts an instruction](docs/LIFE_OF_AN_INSTRUCTION.md)
  - [How to implement the semantics of an instruction](docs/ADD_AN_INSTRUCTION.md)
- - [How instructions are lifted](docs/LIFE_OF_AN_INSTRUCTION.md)
  - [The design and architecture of Remill](docs/DESIGN.md)
+
+If you would like to contribute you can check out: [How to contribute](docs/CONTRIBUTING.md)
 
 ## Getting Help
 
