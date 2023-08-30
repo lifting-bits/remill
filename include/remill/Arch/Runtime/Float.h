@@ -18,7 +18,7 @@
 
 #include "Builtin.h"
 
-#if __has_include(<cfloat>)
+#if __has_include(<cfloat>) && !defined(__arm__)
 #  include <cfloat>
 #endif
 
@@ -37,7 +37,7 @@
 #  define _RC_CHOP 0x00000300  //     chop
 #endif
 
-#if __has_include(<cfenv>)
+#if __has_include(<cfenv>) && !defined(__arm__)
 #  include <cfenv>
 #endif
 

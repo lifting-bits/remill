@@ -18,10 +18,10 @@
 
 #include "Builtin.h"
 
-#if __has_include(<cstdint>)
+#if __has_include(<cstdint>) && !defined(__arm__)
 #  include <cstdint>
 #  include <cstddef>
-#elif __has_include(<cinttypes>)
+#elif __has_include(<cinttypes>) && !defined(__arm__)
 #  include <cinttypes>
 #else
 

@@ -157,7 +157,7 @@ union nan80_t {
 static_assert(sizeof(float80_t) == sizeof(nan80_t),
               "Invalid packing of `nan80_t`.");
 
-#if __has_include(<cmath>)
+#if __has_include(<cmath>) && !defined(__arm__)
 #  include <cmath>
 #else
 

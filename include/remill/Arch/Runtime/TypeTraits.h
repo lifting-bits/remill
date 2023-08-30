@@ -18,7 +18,7 @@
 
 #include "Builtin.h"
 
-#if __has_include(<type_traits>)
+#if __has_include(<type_traits>) && !defined(__arm__)
 #  include <type_traits>
 #else
 #  include "Int.h"
