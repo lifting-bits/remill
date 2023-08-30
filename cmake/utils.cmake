@@ -1,10 +1,8 @@
-cmake_minimum_required(VERSION 3.2)
-
 function(GetTargetTree output_variable)
   if(${ARGC} LESS 1)
     message(FATAL_ERROR "Usage: GetTargetTree output_var target1 target2 ...")
   endif()
-  
+
   foreach(target ${ARGN})
     list(APPEND queue "${target}")
   endforeach()
@@ -12,14 +10,14 @@ function(GetTargetTree output_variable)
   while(true)
     # Update the queue
     unset(new_queue)
-    
+
     foreach(target ${queue})
       list(APPEND visited_dependencies "${target}")
-      
+
       if (NOT TARGET "${target}")
         continue()
       endif()
-      
+
       # Always reset to empty value
       set(target_link_libs "target_link_libs-NOTFOUND")
       set(target_interface_link_libs "target_interface_link_libs-NOTFOUND")
@@ -57,7 +55,7 @@ function(GetTargetTree output_variable)
           list(APPEND new_queue_candidates "${target_imported_loc}")
         endif()
       endif()
-      
+
       foreach(queue_candidate ${new_queue_candidates})
         list(FIND visited_dependencies "${queue_candidate}" visited)
         if(visited EQUAL -1)
@@ -84,12 +82,12 @@ function(GetPublicIncludeFolders output_variable)
   if(${ARGC} LESS 1)
     message(FATAL_ERROR "Usage: GetPublicIncludeFolders output_var target1 target2 ...")
   endif()
-  
+
   foreach(target ${ARGN})
     if (NOT TARGET "${target}")
       continue()
     endif()
-    
+
     get_target_property(include_dir_list "${target}" INTERFACE_INCLUDE_DIRECTORIES)
     if(NOT "${include_dir_list}" STREQUAL "include_dir_list-NOTFOUND")
       list(APPEND collected_include_dirs "${include_dir_list}")

@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+cmake_minimum_required(VERSION 3.21)
+
 project(remill-lift)
-cmake_minimum_required(VERSION 3.2)
 
 #
 # target settings

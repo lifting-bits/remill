@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+cmake_minimum_required(VERSION 3.21)
+
 project(x86_tests ASM)
-cmake_minimum_required(VERSION 3.2)
 
 function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
   set(X86_TEST_FLAGS
