@@ -16,6 +16,8 @@
 
 #pragma once
 
+#ifdef REMILL_ENABLE_SLEIGH
+
 #include <glog/logging.h>
 #include <llvm/IR/IRBuilder.h>
 
@@ -124,3 +126,5 @@ class SleighLifterWithState final : public InstructionLifterIntf {
 };
 
 }  // namespace remill
+
+#endif // REMILL_ENABLE_SLEIGH

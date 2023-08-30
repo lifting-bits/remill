@@ -79,6 +79,8 @@ set(REMILL_BUILD_SEMANTICS_DIR_AARCH64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/AAr
 set(REMILL_BUILD_SEMANTICS_DIR_SPARC32 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC32/Runtime")
 set(REMILL_BUILD_SEMANTICS_DIR_SPARC64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPARC64/Runtime")
 set(REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/PPC/Runtime")
+
+set(REMILL_PROJECT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(REMILL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
@@ -94,24 +96,12 @@ find_package(glog CONFIG REQUIRED)
 set(GFLAGS_USE_TARGET_NAMESPACE ON)
 find_package(gflags CONFIG REQUIRED)
 
-set(sleigh_ENABLE_TESTS OFF)
-set(sleigh_RELEASE_TYPE "HEAD" CACHE STRING "" FORCE)
-
-file(GLOB sleigh_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/*.patch")
-
-set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
-
-# GHIDRA SLEIGH
-FetchContent_Declare(sleigh
-  GIT_REPOSITORY https://github.com/lifting-bits/sleigh.git
-  GIT_TAG 7c6b742
-)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 
-set(sleigh_BUILD_SUPPORT ON CACHE BOOL "" FORCE)
-set(sleigh_BUILD_SLEIGHSPECS ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(sleigh)
+if (REMILL_ENABLE_SLEIGH)
+  include( sleigh )
+endif()
 
 # For Linux builds, group LLVM libraries into a single group
 # that avoids frustrating library ordering issues.
@@ -221,55 +211,14 @@ target_compile_definitions(remill_settings INTERFACE
   "REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR=\"${REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR}\""
 )
 
-set(ghidra_patch_user "github-actions[bot]")
-set(ghidra_patch_email "41898282+github-actions[bot]@users.noreply.github.com")
-
-# pinned stable patches list
-set(ghidra_patches
-  PATCH_COMMAND "${GIT_EXECUTABLE}" config user.name "${ghidra_patch_user}" &&
-  "${GIT_EXECUTABLE}" config user.email "${ghidra_patch_email}" &&
-  "${GIT_EXECUTABLE}" am --ignore-space-change --ignore-whitespace --no-gpg-sign)
-list(APPEND ghidra_patches ${sleigh_ADDITIONAL_PATCHES})
-
-FetchContent_Declare(ghidra-fork
-  GIT_REPOSITORY https://github.com/trail-of-forks/ghidra.git
-  GIT_TAG e7196d8
-  ${ghidra_patches}
-)
-
-FetchContent_MakeAvailable(ghidra-fork)
-
-if(SLEIGH_EXECUTABLE)
-  set(sleigh_compiler "${SLEIGH_EXECUTABLE}")
-else()
-  set(sleigh_compiler "$<TARGET_FILE:sleigh::sleigh>")
-endif()
-
-sleigh_compile(
-  TARGET ppc_e200_spec
-  COMPILER "${sleigh_compiler}"
-  SLASPEC "${ghidra-fork_SOURCE_DIR}/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.slaspec"
-  LOG_FILE "${sleigh_BINARY_DIR}/sleighspecs/spec_build_logs/ppc_32_e200_be.sla.log"
-  OUT_FILE "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.sla"
-)
-
-add_custom_target(sleigh_custom_specs)
-add_dependencies(sleigh_custom_specs ppc_e200_spec)
-
 target_link_libraries(remill_settings INTERFACE
   ${llvm_libs}
   XED::XED
   glog::glog
   gflags::gflags
-  sleigh::sla
-  sleigh::decomp
-  sleigh::support
 )
 
-add_subdirectory(lib/Arch)
-add_subdirectory(lib/BC)
-add_subdirectory(lib/OS)
-add_subdirectory(lib/Version)
+add_subdirectory(lib)
 
 add_library(remill INTERFACE)
 target_link_libraries(remill INTERFACE
@@ -278,9 +227,6 @@ target_link_libraries(remill INTERFACE
   XED::XED
   glog::glog
   gflags::gflags
-  sleigh::sla
-  sleigh::decomp
-  sleigh::support
   remill_bc
   remill_os
   remill_arch
@@ -317,7 +263,14 @@ if(REMILL_ENABLE_INSTALL_TARGET)
     EXPORT remillTargets
   )
 
-  install(FILES "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.sla" DESTINATION "${CMAKE_INSTALL_DATADIR}/sleigh/specfiles/Ghidra/Processors/PowerPC/data/languages/")
+  if (REMILL_ENABLE_SLEIGH)
+    install(
+      FILES
+        "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.sla"
+      DESTINATION
+        "${CMAKE_INSTALL_DATADIR}/sleigh/specfiles/Ghidra/Processors/PowerPC/data/languages/"
+    )
+  endif()
 
   configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
@@ -346,12 +299,12 @@ if(REMILL_ENABLE_TESTING)
   find_package(Threads REQUIRED)
   add_custom_target(test_dependencies)
 
-  if(REMILL_ENABLE_TESTING_SLEIGH_THUMB)
+  if (REMILL_ENABLE_SLEIGH AND REMILL_ENABLE_TESTING_SLEIGH_THUMB)
     message(STATUS "thumb tests enabled")
     add_subdirectory(tests/Thumb)
   endif()
 
-  if(REMILL_ENABLE_TESTING_SLEIGH_PPC)
+  if(REMILL_ENABLE_SLEIGH AND REMILL_ENABLE_TESTING_SLEIGH_PPC)
     message(STATUS "ppc tests enabled")
     add_subdirectory(tests/PPC)
   endif()

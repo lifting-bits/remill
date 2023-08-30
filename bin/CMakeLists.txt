@@ -14,6 +14,6 @@
 
 add_subdirectory(lift)
 
-if(REMILL_ENABLE_DIFFERENTIAL_TESTING)
+if (REMILL_ENABLE_SLEIGH AND REMILL_ENABLE_DIFFERENTIAL_TESTING)
     add_subdirectory(differential_tester_x86)
 endif()

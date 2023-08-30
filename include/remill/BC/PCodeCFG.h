@@ -16,6 +16,8 @@
 
 #pragma once
 
+#ifdef REMILL_ENABLE_SLEIGH
+
 #include <glog/logging.h>
 
 #include <cstddef>
@@ -85,3 +87,5 @@ class PcodeCFGBuilder {
 
 
 }  // namespace remill::sleigh
+
+#enddif // REMILL_ENABLE_SLEIGH

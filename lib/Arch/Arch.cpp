@@ -162,6 +162,7 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
       LOG(FATAL) << "Unrecognized architecture.";
       return nullptr;
 
+#ifdef REMILL_ENABLE_SLEIGH
     case kArchAArch64LittleEndian_SLEIGH: {
       DLOG(INFO)
           << "Using architecture: AArch64 Sleigh, feature set: Little Endian";
@@ -183,12 +184,14 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
       DLOG(INFO) << "Using architecture: thumb2";
       return GetSleighThumb2(context_, os_name_, arch_name_);
     }
+#endif
 
     case kArchX86: {
       DLOG(INFO) << "Using architecture: X86";
       return GetX86(context_, os_name_, arch_name_);
     }
 
+#ifdef REMILL_ENABLE_SLEIGH
     case kArchX86_SLEIGH: {
       DLOG(INFO) << "Using architecture: X86_Sleigh";
       return GetSleighX86(context_, os_name_, arch_name_);
@@ -198,6 +201,7 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
       DLOG(INFO) << "Using architecture: X86_Sleigh";
       return GetSleighX86(context_, os_name_, arch_name_);
     }
+#endif
 
     case kArchX86_AVX: {
       DLOG(INFO) << "Using architecture: X86, feature set: AVX";
@@ -234,11 +238,12 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
       return GetSPARC64(context_, os_name_, arch_name_);
     }
 
+#ifdef REMILL_ENABLE_SLEIGH
     case kArchPPC: {
       DLOG(INFO) << "Using architecture: PowerPC";
       return GetSleighPPC(context_, os_name_, arch_name_);
     }
-
+#endif
     default: {
       return nullptr;
     }

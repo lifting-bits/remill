@@ -413,6 +413,7 @@ class Arch {
   static ArchPtr GetX86(llvm::LLVMContext *context, OSName os,
                         ArchName arch_name);
 
+  #ifdef REMILL_ENABLE_SLEIGH
   // Defined in `lib/Arch/AArch32/Arch.cpp`.
   static ArchPtr GetAArch32(llvm::LLVMContext *context, OSName os,
                             ArchName arch_name);
@@ -436,6 +437,7 @@ class Arch {
   // Defined in `lib/Arch/Sleigh/PPCArch.cpp`
   static ArchPtr GetSleighPPC(llvm::LLVMContext *context, OSName os,
                               ArchName arch_name);
+  #endif
 
   // Defined in `lib/Arch/SPARC32/Arch.cpp`.
   static ArchPtr GetSPARC(llvm::LLVMContext *context, OSName os,

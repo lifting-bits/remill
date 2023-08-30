@@ -31,3 +31,5 @@ cmake_dependent_option(REMILL_ENABLE_TESTING_AARCH64 "Build your tests" ON "REMI
 cmake_dependent_option(REMILL_ENABLE_TESTING_SLEIGH_THUMB "Build cross platform sleigh tests thumb" ON "REMILL_ENABLE_TESTING" OFF)
 cmake_dependent_option(REMILL_ENABLE_TESTING_SLEIGH_PPC "Build cross platform sliegh tests for ppc" ON "REMILL_ENABLE_TESTING" OFF)
 cmake_dependent_option(REMILL_ENABLE_DIFFERENTIAL_TESTING "Build cross platform differential testing of sleigh x86" ON "REMILL_ENABLE_TESTING" OFF)
+
+option(REMILL_ENABLE_SLEIGH "Build sleigh dependent components" OFF)
