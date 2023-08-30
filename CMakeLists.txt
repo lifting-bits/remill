@@ -14,16 +14,20 @@
 
 cmake_minimum_required(VERSION 3.21)
 
-# Setup to use ccache
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
 
 project(remill C CXX ASM)
+
 include(GNUInstallDirs)
 include(FetchContent)
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+
+list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" )
+list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules" )
+
+include( settings )
+include( utils )
+include( options )
+
+include( ccache )
 
 if(REMILL_ENABLE_TESTING)
   include(CTest)
@@ -78,7 +82,7 @@ set(REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR "${CMAKE_CURRENT_BINARY_DIR}/lib/Arc
 set(REMILL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
+include( BCCompiler )
 
 # Intel XED
 find_package(XED CONFIG REQUIRED)

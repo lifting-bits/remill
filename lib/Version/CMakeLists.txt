@@ -7,7 +7,7 @@
 # the source code for watching a git repository.
 set(PRE_CONFIGURE_FILE "Version.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/Version.cpp")
-include("${REMILL_SOURCE_DIR}/cmake/git_watcher.cmake")
+include( git_watcher )
 
 set(Version_PUBLIC_H
     "${REMILL_SOURCE_DIR}/include/remill/Version/Version.h"
