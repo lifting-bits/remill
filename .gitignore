@@ -27,6 +27,7 @@ cmake-build-release
 compile_commands.json
 .cache
 
+builds/*
 third_party/*
 build/*
 remill-build/*
