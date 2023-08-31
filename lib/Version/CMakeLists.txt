@@ -7,7 +7,8 @@
 # the source code for watching a git repository.
 set(PRE_CONFIGURE_FILE "Version.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/Version.cpp")
-include( git_watcher )
+
+configure_file(${PRE_CONFIGURE_FILE} ${POST_CONFIGURE_FILE} @ONLY)
 
 set(Version_PUBLIC_H
     "${REMILL_SOURCE_DIR}/include/remill/Version/Version.h"
@@ -18,7 +19,6 @@ add_library(remill_version STATIC
   ${Version_PUBLIC_H}
   )
 target_link_libraries(remill_version LINK_PRIVATE remill_settings)
-add_dependencies(remill_version check_git_${PROJECT_NAME})
 
 if(REMILL_ENABLE_INSTALL_TARGET)
   install(
