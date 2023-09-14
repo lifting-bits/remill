@@ -7,6 +7,7 @@
 # the source code for watching a git repository.
 set(PRE_CONFIGURE_FILE "Version.cpp.in")
 set(POST_CONFIGURE_FILE "${CMAKE_CURRENT_BINARY_DIR}/Version.cpp")
+include( git_watcher )
 
 configure_file(${PRE_CONFIGURE_FILE} ${POST_CONFIGURE_FILE} @ONLY)
 
