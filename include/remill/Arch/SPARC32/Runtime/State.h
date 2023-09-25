@@ -26,83 +26,54 @@ struct Reg final {
   uint32_t dword;
 } __attribute__((packed));
 
+struct DoubleReg final {
+  union {
+    struct {
+      Reg reg1;
+      Reg reg2;
+    };
+    uint64_t qword;
+  };
+};
 
-union PtrReg final {
-  uint32_t dword;
-} __attribute__((packed));
-
-static_assert(sizeof(PtrReg) == 4);
+static_assert(sizeof(uint32_t) * 2 == sizeof(DoubleReg), "Invalid packing of `DoubleReg`.");
 
 struct GPR {
+  DoubleReg i0_1;
+  volatile uint64_t _2;
+  DoubleReg i2_3;
+  volatile uint64_t _3;
+  DoubleReg i4_5;
+  volatile uint64_t _5;
+  DoubleReg i6_7;
+  volatile uint64_t _6;
 
-  // Prevents LLVM from casting a `GPR` into an `i64` to access `I0`.
-  volatile uint32_t _0;
-  Reg i0;
-  volatile uint32_t _1;
-  Reg i1;
-  volatile uint32_t _2;
-  Reg i2;
-  volatile uint32_t _3;
-  Reg i3;
-  volatile uint32_t _4;
-  Reg i4;
-  volatile uint32_t _5;
-  Reg i5;
-  volatile uint32_t _6;
-  PtrReg i6;
-  volatile uint32_t _7;
-  Reg i7;
+  volatile uint64_t _8;
+  DoubleReg l0_1;
+  volatile uint64_t _9;
+  DoubleReg l2_3;
+  volatile uint64_t _12;
+  DoubleReg l4_5;
+  volatile uint64_t _14;
+  DoubleReg l6_7;
 
-  volatile uint32_t _8;
-  Reg l0;
-  volatile uint32_t _9;
-  Reg l1;
-  volatile uint32_t _10;
-  Reg l2;
-  volatile uint32_t _11;
-  Reg l3;
-  volatile uint32_t _12;
-  Reg l4;
-  volatile uint32_t _13;
-  Reg l5;
-  volatile uint32_t _14;
-  Reg l6;
-  volatile uint32_t _15;
-  Reg l7;
+  volatile uint64_t _16;
+  DoubleReg o0_1;
+  volatile uint64_t _18;
+  DoubleReg o2_3;
+  volatile uint64_t _20;
+  DoubleReg o4_5;
+  volatile uint64_t _22;
+  DoubleReg o6_7;
 
-  volatile uint32_t _16;
-  Reg o0;
-  volatile uint32_t _17;
-  Reg o1;
-  volatile uint32_t _18;
-  Reg o2;
-  volatile uint32_t _19;
-  Reg o3;
-  volatile uint32_t _20;
-  Reg o4;
-  volatile uint32_t _21;
-  Reg o5;
-  volatile uint32_t _22;
-  PtrReg o6;
-  volatile uint32_t _23;
-  Reg o7;
-
-  volatile uint32_t _24;
-  Reg g0;
-  volatile uint32_t _25;
-  Reg g1;
-  volatile uint32_t _26;
-  Reg g2;
-  volatile uint32_t _27;
-  Reg g3;
-  volatile uint32_t _28;
-  Reg g4;
-  volatile uint32_t _29;
-  Reg g5;
-  volatile uint32_t _30;
-  Reg g6;
-  volatile uint32_t _31;
-  Reg g7;
+  volatile uint64_t _24;
+  DoubleReg g0_1;
+  volatile uint64_t _25;
+  DoubleReg g2_3;
+  volatile uint64_t _28;
+  DoubleReg g4_5;
+  volatile uint64_t _30;
+  DoubleReg g6_7;
 };
 
 enum AlternativeSpaceIdentifier : uint32_t {

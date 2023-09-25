@@ -104,43 +104,60 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
 
   REG(CWP, cwp.dword, u32);
 
-  REG(SP, gpr.o6.dword, u32);
+  SUB_REG(SP, gpr.o6_7.reg1.dword, u32, O6_7);
 
-  REG(FP, gpr.i6.dword, u32);
+  SUB_REG(FP, gpr.i6_7.reg1.dword, u32, I6_7);
 
-  REG(I0, gpr.i0.dword, u32);
-  REG(I1, gpr.i1.dword, u32);
-  REG(I2, gpr.i2.dword, u32);
-  REG(I3, gpr.i3.dword, u32);
-  REG(I4, gpr.i4.dword, u32);
-  REG(I5, gpr.i5.dword, u32);
-  SUB_REG(I6, gpr.i6.dword, u32, FP);
-  REG(I7, gpr.i7.dword, u32);
-  REG(L0, gpr.l0.dword, u32);
-  REG(L1, gpr.l1.dword, u32);
-  REG(L2, gpr.l2.dword, u32);
-  REG(L3, gpr.l3.dword, u32);
-  REG(L4, gpr.l4.dword, u32);
-  REG(L5, gpr.l5.dword, u32);
-  REG(L6, gpr.l6.dword, u32);
-  REG(L7, gpr.l7.dword, u32);
-  REG(O0, gpr.o0.dword, u32);
-  REG(O1, gpr.o1.dword, u32);
-  REG(O2, gpr.o2.dword, u32);
-  REG(O3, gpr.o3.dword, u32);
-  REG(O4, gpr.o4.dword, u32);
-  REG(O5, gpr.o5.dword, u32);
-  SUB_REG(O6, gpr.o6.dword, u32, SP);
-  REG(O7, gpr.o7.dword, u32);
+  REG(I0_1, gpr.i0_1.qword, u64);
+  REG(I2_3, gpr.i2_3.qword, u64);
+  REG(I4_5, gpr.i4_5.qword, u64);
+  REG(I6_7, gpr.i6_7.qword, u64);
+  REG(L0_1, gpr.l0_1.qword, u64);
+  REG(L2_3, gpr.l2_3.qword, u64);
+  REG(L4_5, gpr.l4_5.qword, u64);
+  REG(L6_7, gpr.l6_7.qword, u64);
+  REG(O0_1, gpr.o0_1.qword, u64);
+  REG(O2_3, gpr.o2_3.qword, u64);
+  REG(O4_5, gpr.o4_5.qword, u64);
+  REG(O6_7, gpr.o6_7.qword, u64);
+  REG(G0_1, gpr.g0_1.qword, u64);
+  REG(G2_3, gpr.g2_3.qword, u64);
+  REG(G4_5, gpr.g4_5.qword, u64);
+  REG(G6_7, gpr.g6_7.qword, u64);
 
-  REG(G0, gpr.g0.dword, u32);
-  REG(G1, gpr.g1.dword, u32);
-  REG(G2, gpr.g2.dword, u32);
-  REG(G3, gpr.g3.dword, u32);
-  REG(G4, gpr.g4.dword, u32);
-  REG(G5, gpr.g5.dword, u32);
-  REG(G6, gpr.g6.dword, u32);
-  REG(G7, gpr.g7.dword, u32);
+  SUB_REG(I0, gpr.i0_1.reg1.dword, u32, I0_1);
+  SUB_REG(I1, gpr.i0_1.reg2.dword, u32, I0_1);
+  SUB_REG(I2, gpr.i2_3.reg1.dword, u32, I2_3);
+  SUB_REG(I3, gpr.i2_3.reg2.dword, u32, I2_3);
+  SUB_REG(I4, gpr.i4_5.reg1.dword, u32, I4_5);
+  SUB_REG(I5, gpr.i4_5.reg2.dword, u32, I4_5);
+  SUB_REG(I6, gpr.i6_7.reg1.dword, u32, FP);
+  SUB_REG(I7, gpr.i6_7.reg2.dword, u32, I6_7);
+  SUB_REG(L0, gpr.l0_1.reg1.dword, u32, L0_1);
+  SUB_REG(L1, gpr.l0_1.reg2.dword, u32, L0_1);
+  SUB_REG(L2, gpr.l2_3.reg1.dword, u32, L2_3);
+  SUB_REG(L3, gpr.l2_3.reg2.dword, u32, L2_3);
+  SUB_REG(L4, gpr.l4_5.reg1.dword, u32, L4_5);
+  SUB_REG(L5, gpr.l4_5.reg2.dword, u32, L4_5);
+  SUB_REG(L6, gpr.l6_7.reg1.dword, u32, L6_7);
+  SUB_REG(L7, gpr.l6_7.reg2.dword, u32, L6_7);
+  SUB_REG(O0, gpr.o0_1.reg1.dword, u32, O0_1);
+  SUB_REG(O1, gpr.o0_1.reg2.dword, u32, O0_1);
+  SUB_REG(O2, gpr.o2_3.reg1.dword, u32, O2_3);
+  SUB_REG(O3, gpr.o2_3.reg2.dword, u32, O2_3);
+  SUB_REG(O4, gpr.o4_5.reg1.dword, u32, O4_5);
+  SUB_REG(O5, gpr.o4_5.reg2.dword, u32, O4_5);
+  SUB_REG(O6, gpr.o6_7.reg1.dword, u32, SP);
+  SUB_REG(O7, gpr.o6_7.reg2.dword, u32, O6_7);
+
+  SUB_REG(G0, gpr.g0_1.reg1.dword, u32, G0_1);
+  SUB_REG(G1, gpr.g0_1.reg2.dword, u32, G0_1);
+  SUB_REG(G2, gpr.g2_3.reg1.dword, u32, G2_3);
+  SUB_REG(G3, gpr.g2_3.reg2.dword, u32, G2_3);
+  SUB_REG(G4, gpr.g4_5.reg1.dword, u32, G4_5);
+  SUB_REG(G5, gpr.g4_5.reg2.dword, u32, G4_5);
+  SUB_REG(G6, gpr.g6_7.reg1.dword, u32, G6_7);
+  SUB_REG(G7, gpr.g6_7.reg2.dword, u32, G6_7);
 
   // Ancillary State Register
   REG(Y, asr.yreg.dword, u32);
