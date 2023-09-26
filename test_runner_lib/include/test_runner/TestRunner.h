@@ -117,7 +117,7 @@ void ExecuteLiftedFunction(
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmParser();
   llvm::InitializeNativeTargetAsmPrinter();
-  llvm::InitializeAllTargetMCs();
+
 
   auto res = remill::VerifyModuleMsg(tgt_mod.get());
   if (res.has_value()) {

@@ -93,8 +93,7 @@ void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
   pb.registerLoopAnalyses(lam);
   pb.registerCGSCCAnalyses(cam);
   pb.crossRegisterProxies(lam, fam, cam, mam);
-  auto mpm = pb.buildModuleOptimizationPipeline(llvm::OptimizationLevel::O3,
-                                                llvm::ThinOrFullLTOPhase::None);
+  auto mpm = pb.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
   mpm.run(*module, mam);
 
 
