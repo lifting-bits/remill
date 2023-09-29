@@ -27,7 +27,7 @@ LLVM_VERSION=llvm-16
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
-CXX_COMMON_VERSION="0.3.1"
+CXX_COMMON_VERSION="0.6.0"
 CREATE_PACKAGES=true
 
 # There are pre-build versions of various libraries for specific
