@@ -237,7 +237,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        llvm: ["15", "16"]
+        llvm: ["17"]
         ubuntu: ["22.04"]
     steps:
       - uses: actions/checkout@v2
