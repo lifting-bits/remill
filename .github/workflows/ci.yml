@@ -135,7 +135,7 @@ jobs:
         shell: bash
         run: |
           brew install ninja
-          export CMAKE_TOOLCHAIN_FILE=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-14.2_amd64/scripts/buildsystems/vcpkg.cmake
+          export CMAKE_TOOLCHAIN_FILE=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-15.0_amd64/scripts/buildsystems/vcpkg.cmake
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
       - name: Run tests
