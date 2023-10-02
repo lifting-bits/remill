@@ -23,7 +23,7 @@ DOWNLOAD_DIR="$( cd "$( dirname "${SRC_DIR}" )" && pwd )/lifting-bits-downloads"
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
-LLVM_VERSION=llvm-16
+LLVM_VERSION=llvm-17
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
@@ -164,7 +164,7 @@ function DownloadLibraries
 
     #BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
     # Min version supported
-    OS_VERSION="macos-12"
+    OS_VERSION="macos-13"
     # Hard-coded to match pre-built binaries in CI
     XCODE_VERSION="15.0"
     SYSTEM_VERSION=$(sw_vers -productVersion)

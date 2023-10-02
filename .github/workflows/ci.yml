@@ -108,10 +108,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-12"]
+        os: ["macos-13"]
         llvm: ["17"]
 
-    runs-on: macos-12
+    runs-on: macos-13
 
     steps:
       - uses: actions/checkout@v2
