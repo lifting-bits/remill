@@ -166,7 +166,7 @@ function DownloadLibraries
     # Min version supported
     OS_VERSION="macos-12"
     # Hard-coded to match pre-built binaries in CI
-    XCODE_VERSION="14.2"
+    XCODE_VERSION="15.0"
     SYSTEM_VERSION=$(sw_vers -productVersion)
     if [[ "${SYSTEM_VERSION}" == "13.*" ]]; then
       echo "Found MacOS Ventura"
