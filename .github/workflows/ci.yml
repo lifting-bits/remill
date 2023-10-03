@@ -43,7 +43,8 @@ jobs:
       - name: Install tree
         shell: bash
         run: |
-          apt install tree
+          apt-get update
+          apt-get install tree
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
