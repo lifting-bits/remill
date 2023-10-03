@@ -17,6 +17,7 @@
 #include "remill/BC/Optimizer.h"
 
 #include <glog/logging.h>
+#include <llvm/Analysis/CGSCCPassManager.h>
 #include <llvm/Analysis/InlineCost.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/IR/Constants.h>
@@ -52,34 +53,7 @@ namespace remill {
 void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
                     std::function<llvm::Function *(void)> generator,
                     OptimizationGuide guide) {
-
-
-  llvm::ModuleAnalysisManager mam;
-  llvm::FunctionAnalysisManager fam;
-  llvm::LoopAnalysisManager lam;
-  llvm::CGSCCAnalysisManager cam;
-
-  llvm::PipelineTuningOptions opts;
-  opts.InlinerThreshold = 250;
-  llvm::PassBuilder pb(nullptr, opts);
-
-  pb.registerModuleAnalyses(mam);
-  pb.registerFunctionAnalyses(fam);
-  pb.registerLoopAnalyses(lam);
-  pb.registerCGSCCAnalyses(cam);
-  pb.crossRegisterProxies(lam, fam, cam, mam);
-
-  llvm::FunctionPassManager fpm;
-  fpm.addPass(llvm::InlinerPass());
-  llvm::Function *func = nullptr;
-  while (nullptr != (func = generator())) {
-    fpm.run(*func, fam);
-  }
-
-  mam.clear();
-  fam.clear();
-  lam.clear();
-  cam.clear();
+  OptimizeBareModule(module, guide);
 }
 
 // Optimize a normal module. This might not contain special Remill-specific
