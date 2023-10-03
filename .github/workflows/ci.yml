@@ -71,7 +71,7 @@ jobs:
       - name: Tree size
         shell: bash
         run: |
-          tree -du -h -L 3 $(pwd)/../
+          du -h $(pwd)/../ | sort -h
       - name: Run tests
         shell: bash
         working-directory: remill-build
@@ -84,7 +84,7 @@ jobs:
         working-directory: remill-build
         if: always()
         run: |
-          tree -du -h -L 3
+          du -h
       - name: Smoketests with installed executable
         shell: bash
         run: |
