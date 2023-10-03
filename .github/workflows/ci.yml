@@ -71,7 +71,7 @@ jobs:
       - name: Tree size
         shell: bash
         run: |
-          tree -s -h -L 3
+          tree -s -h -L 3 $(pwd)/../
       - name: Run tests
         shell: bash
         working-directory: remill-build
