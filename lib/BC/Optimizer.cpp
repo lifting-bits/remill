@@ -55,8 +55,9 @@ void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
   llvm::LoopAnalysisManager lam;
   llvm::CGSCCAnalysisManager cam;
 
-
-  llvm::PassBuilder pb;
+  llvm::PipelineTuningOptions opts;
+  opts.InlinerThreshold = 250;
+  llvm::PassBuilder pb(nullptr, opts);
 
   pb.registerModuleAnalyses(mam);
   pb.registerFunctionAnalyses(fam);
@@ -64,7 +65,8 @@ void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
   pb.registerCGSCCAnalyses(cam);
   pb.crossRegisterProxies(lam, fam, cam, mam);
   auto fpm = pb.buildFunctionSimplificationPipeline(
-      llvm::OptimizationLevel::O3, llvm::ThinOrFullLTOPhase::None);
+      llvm::OptimizationLevel::O0, llvm::ThinOrFullLTOPhase::None);
+
   llvm::Function *func = nullptr;
   while (nullptr != (func = generator())) {
     fpm.run(*func, fam);
@@ -86,14 +88,16 @@ void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
   llvm::CGSCCAnalysisManager cam;
 
 
-  llvm::PassBuilder pb;
+  llvm::PipelineTuningOptions opts;
+  opts.InlinerThreshold = 250;
+  llvm::PassBuilder pb(nullptr, opts);
 
   pb.registerModuleAnalyses(mam);
   pb.registerFunctionAnalyses(fam);
   pb.registerLoopAnalyses(lam);
   pb.registerCGSCCAnalyses(cam);
   pb.crossRegisterProxies(lam, fam, cam, mam);
-  auto mpm = pb.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
+  auto mpm = pb.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O0);
   mpm.run(*module, mam);
 
 
