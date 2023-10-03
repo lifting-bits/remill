@@ -70,7 +70,6 @@ add_custom_command(
   -S -O1 -g0
   -c tests_aarch64.bc
   -o tests_aarch64.S
-  -mllvm
   DEPENDS tests_aarch64.bc
 )
 

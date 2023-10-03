@@ -52,7 +52,7 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
 
   add_custom_command(
     OUTPUT tests_${name}.S
-    COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O0 -g0 -c tests_${name}.bc -o tests_${name}.S -mllvm
+    COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O0 -g0 -c tests_${name}.bc -o tests_${name}.S
     DEPENDS tests_${name}.bc
   )
 
