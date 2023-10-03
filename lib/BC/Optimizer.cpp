@@ -17,6 +17,7 @@
 #include "remill/BC/Optimizer.h"
 
 #include <glog/logging.h>
+#include <llvm/Analysis/InlineCost.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
@@ -28,12 +29,15 @@
 #include <llvm/IR/MDBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/IR/Type.h>
 #include <llvm/Pass.h>
 #include <llvm/Passes/OptimizationLevel.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/TargetParser/Triple.h>
 #include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/IPO/Inliner.h>
+#include <llvm/Transforms/IPO/ModuleInliner.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/Local.h>
@@ -64,9 +68,9 @@ void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
   pb.registerLoopAnalyses(lam);
   pb.registerCGSCCAnalyses(cam);
   pb.crossRegisterProxies(lam, fam, cam, mam);
-  auto fpm = pb.buildFunctionSimplificationPipeline(
-      llvm::OptimizationLevel::O0, llvm::ThinOrFullLTOPhase::None);
 
+  llvm::FunctionPassManager fpm;
+  fpm.addPass(llvm::InlinerPass());
   llvm::Function *func = nullptr;
   while (nullptr != (func = generator())) {
     fpm.run(*func, fam);
@@ -97,7 +101,10 @@ void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
   pb.registerLoopAnalyses(lam);
   pb.registerCGSCCAnalyses(cam);
   pb.crossRegisterProxies(lam, fam, cam, mam);
-  auto mpm = pb.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O0);
+
+  llvm::ModulePassManager mpm;
+  mpm.addPass(llvm::ModuleInlinerPass(llvm::getInlineParams(250)));
+
   mpm.run(*module, mam);
 
 
