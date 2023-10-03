@@ -40,6 +40,10 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - name: Install tree
+        shell: bash
+        run: |
+          sudo apt install tree
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
