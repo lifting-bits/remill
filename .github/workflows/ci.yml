@@ -79,6 +79,11 @@ jobs:
           cmake --build . --target install -- -j "$(nproc)"
           cmake --build . --target test_dependencies -- -j "$(nproc)"
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(nproc)"
+      - name: Tree size after
+        shell: bash
+        if: always()
+        run: |
+          tree -s -h -L 3
       - name: Smoketests with installed executable
         shell: bash
         run: |
