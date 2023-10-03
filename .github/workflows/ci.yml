@@ -63,6 +63,10 @@ jobs:
         shell: bash
         run: |
           pip3 install --user ./scripts/diff_tester_export_insns
+      - name: Tree size
+        shell: bash
+        run: |
+          tree -s -h -L 3
       - name: Run tests
         shell: bash
         working-directory: remill-build
