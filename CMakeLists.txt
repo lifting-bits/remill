@@ -36,7 +36,7 @@ message(STATUS "Compiler ID is ${CMAKE_C_COMPILER_ID}")
 #
 
 # Z3
-find_package(Z3 CONFIG REQUIRED)
+find_package(Z3 REQUIRED)
 
 # LLVM
 find_package(LLVM CONFIG REQUIRED)
@@ -84,14 +84,14 @@ set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 
 # Intel XED
-find_package(XED CONFIG REQUIRED)
+find_package(XED REQUIRED)
 
 # Google glog module
-find_package(glog CONFIG REQUIRED)
+find_package(glog REQUIRED)
 
 # Google gflags
 set(GFLAGS_USE_TARGET_NAMESPACE ON)
-find_package(gflags CONFIG REQUIRED)
+find_package(gflags REQUIRED)
 
 set(sleigh_ENABLE_TESTS OFF)
 set(sleigh_RELEASE_TYPE "HEAD" CACHE STRING "" FORCE)
@@ -104,6 +104,7 @@ set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
 FetchContent_Declare(sleigh
   GIT_REPOSITORY https://github.com/lifting-bits/sleigh.git
   GIT_TAG 7c6b742
+  FIND_PACKAGE_ARGS COMPONENTS Support
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
@@ -248,8 +249,8 @@ sleigh_compile(
   TARGET ppc_e200_spec
   COMPILER "${sleigh_compiler}"
   SLASPEC "${ghidra-fork_SOURCE_DIR}/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.slaspec"
-  LOG_FILE "${sleigh_BINARY_DIR}/sleighspecs/spec_build_logs/ppc_32_e200_be.sla.log"
-  OUT_FILE "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.sla"
+  LOG_FILE "${CMAKE_CURRENT_BINARY_DIR}/specfiles/ppc_32_e200_be.sla.log"
+  OUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/specfiles/ppc_32_e200_be.sla"
 )
 
 add_custom_target(sleigh_custom_specs)
@@ -314,7 +315,7 @@ if(REMILL_ENABLE_INSTALL_TARGET)
     EXPORT remillTargets
   )
 
-  install(FILES "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.sla" DESTINATION "${CMAKE_INSTALL_DATADIR}/sleigh/specfiles/Ghidra/Processors/PowerPC/data/languages/")
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/specfiles/ppc_32_e200_be.sla" DESTINATION "${CMAKE_INSTALL_DATADIR}/sleigh/specfiles/Ghidra/Processors/PowerPC/data/languages/")
 
   configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/remillConfig.cmake.in"
