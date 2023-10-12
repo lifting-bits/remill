@@ -13,8 +13,6 @@ on:
       - "*"
 
   pull_request:
-    branches:
-      - "*"
 
 jobs:
   build_linux:
@@ -35,6 +33,8 @@ jobs:
     runs-on: ubuntu-22.04
     container:
       image: ghcr.io/lifting-bits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
+      volumes:
+        - /:/gha-runner
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -44,6 +44,15 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare_git_user
+
+      - name: Clear space
+        shell: bash
+        run: |
+          df -h
+          rm -rf /gha-runner/usr/local/lib/android
+          rm -rf /gha-runner/usr/local/share/boost
+          df -h
+
       - name: Build with build script
         shell: bash
         run: |
@@ -67,7 +76,8 @@ jobs:
       - name: Tree size
         shell: bash
         run: |
-          du -h $(pwd)/../ | sort -h
+          du -hs
+          df -h
       - name: Run tests
         shell: bash
         working-directory: remill-build
@@ -77,9 +87,11 @@ jobs:
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(nproc)"
       - name: Tree size after
         shell: bash
-        if: always()
+        if: failure()
         run: |
+          df -h
           du -h $(pwd)/../ | sort -h
+          df -h
       - name: Smoketests with installed executable
         shell: bash
         run: |
