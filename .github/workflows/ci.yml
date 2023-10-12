@@ -52,31 +52,28 @@ jobs:
         shell: bash
         run: |
           # Copied from cxx-common Dockerfile
-          sudo su
           export LLVM_VERSION=16
           export DEBIAN_FRONTEND=noninteractive && \
-          if [ "$(uname -m)" = "aarch64" ]; then dpkg --add-architecture armhf; fi && \
-          apt-get update && apt-get install --yes apt-utils && apt-get upgrade --yes && \
-          apt-get install --yes --no-install-recommends apt-transport-https software-properties-common gnupg ca-certificates wget && \
-          apt-add-repository ppa:git-core/ppa --yes && \
-          wget "https://github.com/Kitware/CMake/releases/download/v3.22.1/cmake-3.22.1-linux-$(uname -m).sh" && \
-          /bin/bash cmake-*.sh --skip-license --prefix=/usr/local && rm cmake-*.sh && \
+          if [ "$(uname -m)" = "aarch64" ]; then sudo dpkg --add-architecture armhf; fi && \
+          sudo apt-get update && sudo apt-get install --yes apt-utils && sudo apt-get upgrade --yes && \
+          sudo apt-get install --yes --no-install-recommends apt-transport-https software-properties-common gnupg ca-certificates wget && \
+          sudo apt-add-repository ppa:git-core/ppa --yes && \
           \
           wget https://apt.llvm.org/llvm.sh && \
           chmod +x llvm.sh && \
           ./llvm.sh ${LLVM_VERSION} clang lld && \
           \
-          apt-get update && apt-get upgrade --yes && \
-          apt-get install --yes --no-install-recommends \
+          sudo apt-get update && sudo apt-get upgrade --yes && \
+          sudo apt-get install --yes --no-install-recommends \
             libtinfo-dev libzstd-dev python3-pip python3-setuptools python-setuptools \
             build-essential binutils-multiarch g++ gcc clang lld clang-${LLVM_VERSION} lld-${LLVM_VERSION} ninja-build \
             pixz xz-utils make rpm curl unzip tar git zip python3 pkg-config && \
-            apt-get install --yes --no-install-recommends \
+            sudo apt-get install --yes --no-install-recommends \
             $( [ "$(uname -m)" = "x86_64" ] && echo crossbuild-essential-i386 crossbuild-essential-arm64 linux-libc-dev-amd64-cross) \
             "$( [ "$(uname -m)" = "aarch64" ] && echo "libstdc++-$(gcc -dumpversion | cut -f1 -d.)-dev:armhf")" && \
           \
-          apt-get clean --yes && \
-          rm -rf /var/lib/apt/lists/*
+          sudo apt-get clean --yes && \
+          sudo rm -rf /var/lib/apt/lists/*
 
       - name: Build with build script
         shell: bash
