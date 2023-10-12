@@ -44,10 +44,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare_git_user
-      - name: Get Poetry
-        shell: bash
-        run: |
-          python3 -m pip install poetry
       - name: Build with build script
         shell: bash
         run: |
@@ -57,7 +53,6 @@ jobs:
           mv remill-build/*.deb ./remill-rel
           mv remill-build/*.rpm ./remill-rel
           mv remill-build/*.tar.gz ./remill-rel
-          rm -r remill-build/
       - name: Build with build-presets script
         shell: bash
         run: |
