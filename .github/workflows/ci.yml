@@ -53,6 +53,9 @@ jobs:
           mv remill-build/*.deb ./remill-rel
           mv remill-build/*.rpm ./remill-rel
           mv remill-build/*.tar.gz ./remill-rel
+          rm -rf remill-build/_CPack_Packages
+          rm -rf remill-preset-install/build/remill/_deps
+          rm -rf remill-build/_deps
       - name: Build with build-presets script
         shell: bash
         run: |
