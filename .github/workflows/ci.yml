@@ -53,7 +53,11 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
-          rm -r remill-build/_CPack_Packages
+          mkdir remill-rel/
+          mv remill-build/*.deb ./remill-rel
+          mv remill-build/*.rpm ./remill-rel
+          mv remill-build/*.tar.gz ./remill-rel
+          rm -r remill-build/
       - name: Build with build-presets script
         shell: bash
         run: |
@@ -91,11 +95,11 @@ jobs:
       - name: Locate the packages
         id: package_names
         shell: bash
-        working-directory: remill-build
+        working-directory: remill-rel
         run: |
-          echo ::set-output name=DEB_PACKAGE_PATH::remill-build/$(ls *.deb)
-          echo ::set-output name=RPM_PACKAGE_PATH::remill-build/$(ls *.rpm)
-          echo ::set-output name=TGZ_PACKAGE_PATH::remill-build/$(ls *.tar.gz)
+          echo ::set-output name=DEB_PACKAGE_PATH::remill-rel/$(ls *.deb)
+          echo ::set-output name=RPM_PACKAGE_PATH::remill-rel/$(ls *.rpm)
+          echo ::set-output name=TGZ_PACKAGE_PATH::remill-rel/$(ls *.tar.gz)
 
       - name: Store the DEB package
         uses: actions/upload-artifact@v1
