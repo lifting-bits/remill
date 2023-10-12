@@ -16,7 +16,7 @@
 
 #include "remill/Arch/Name.h"
 
-#include <llvm/ADT/Triple.h>
+#include <llvm/TargetParser/Triple.h>
 
 namespace remill {
 

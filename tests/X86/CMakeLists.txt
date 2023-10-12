@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,7 +52,7 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
 
   add_custom_command(
     OUTPUT tests_${name}.S
-    COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O0 -g0 -c tests_${name}.bc -o tests_${name}.S -mllvm -opaque-pointers
+    COMMAND ${CMAKE_BC_COMPILER} -Wno-override-module -S -O0 -g0 -c tests_${name}.bc -o tests_${name}.S
     DEPENDS tests_${name}.bc
   )
 
@@ -75,7 +75,7 @@ find_package(GTest CONFIG REQUIRED)
 
 enable_testing()
 
-if (NOT APPLE)
+if(NOT APPLE)
   COMPILE_X86_TESTS(x86 32 0 0)
   COMPILE_X86_TESTS(x86_avx 32 1 0)
 endif()

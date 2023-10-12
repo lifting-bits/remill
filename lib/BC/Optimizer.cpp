@@ -17,7 +17,8 @@
 #include "remill/BC/Optimizer.h"
 
 #include <glog/logging.h>
-#include <llvm/ADT/Triple.h>
+#include <llvm/Analysis/CGSCCPassManager.h>
+#include <llvm/Analysis/InlineCost.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
@@ -29,9 +30,15 @@
 #include <llvm/IR/MDBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/IR/Type.h>
+#include <llvm/Pass.h>
+#include <llvm/Passes/OptimizationLevel.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/TargetParser/Triple.h>
 #include <llvm/Transforms/IPO.h>
-#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <llvm/Transforms/IPO/Inliner.h>
+#include <llvm/Transforms/IPO/ModuleInliner.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/Local.h>
@@ -46,81 +53,39 @@ namespace remill {
 void OptimizeModule(const remill::Arch *arch, llvm::Module *module,
                     std::function<llvm::Function *(void)> generator,
                     OptimizationGuide guide) {
-
-  llvm::legacy::FunctionPassManager func_manager(module);
-  llvm::legacy::PassManager module_manager;
-
-  auto TLI =
-      new llvm::TargetLibraryInfoImpl(llvm::Triple(module->getTargetTriple()));
-
-  TLI->disableAllFunctions();  // `-fno-builtin`.
-
-  llvm::PassManagerBuilder builder;
-  // TODO(alex): Some of the optimization passes that the builder adds still rely on typed pointers
-  // so we cannot use them. We should switch to using the new pass manager and choose which passes
-  // we want.
-  builder.OptLevel = 0;
-  builder.SizeLevel = 0;
-  builder.Inliner = llvm::createFunctionInliningPass(250);
-  builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
-  builder.DisableUnrollLoops = false;  // Unroll loops!
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
-  builder.RerollLoops = false;
-#endif
-  builder.SLPVectorize = guide.slp_vectorize;
-  builder.LoopVectorize = guide.loop_vectorize;
-  builder.VerifyInput = guide.verify_input;
-  builder.VerifyOutput = guide.verify_output;
-  builder.MergeFunctions = false;
-
-  builder.populateFunctionPassManager(func_manager);
-  builder.populateModulePassManager(module_manager);
-  func_manager.doInitialization();
-  llvm::Function *func = nullptr;
-  while (nullptr != (func = generator())) {
-    func_manager.run(*func);
-  }
-  func_manager.doFinalization();
-  module_manager.run(*module);
+  OptimizeBareModule(module, guide);
 }
 
 // Optimize a normal module. This might not contain special Remill-specific
 // intrinsics functions like `__remill_jump`, etc.
 void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
-  llvm::legacy::FunctionPassManager func_manager(module);
-  llvm::legacy::PassManager module_manager;
 
-  auto TLI =
-      new llvm::TargetLibraryInfoImpl(llvm::Triple(module->getTargetTriple()));
+  llvm::ModuleAnalysisManager mam;
+  llvm::FunctionAnalysisManager fam;
+  llvm::LoopAnalysisManager lam;
+  llvm::CGSCCAnalysisManager cam;
 
-  TLI->disableAllFunctions();  // `-fno-builtin`.
 
-  llvm::PassManagerBuilder builder;
-  // TODO(alex): Some of the optimization passes that the builder adds still rely on typed pointers
-  // so we cannot use them. We should switch to using the new pass manager and choose which passes
-  // we want.
-  builder.OptLevel = 0;
-  builder.SizeLevel = 0;
-  builder.Inliner = llvm::createFunctionInliningPass(250);
-  builder.LibraryInfo = TLI;  // Deleted by `llvm::~PassManagerBuilder`.
-  builder.DisableUnrollLoops = false;  // Unroll loops!
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
-  builder.RerollLoops = false;
-#endif
-  builder.SLPVectorize = guide.slp_vectorize;
-  builder.LoopVectorize = guide.loop_vectorize;
-  builder.VerifyInput = guide.verify_input;
-  builder.VerifyOutput = guide.verify_output;
-  builder.MergeFunctions = false;
+  llvm::PipelineTuningOptions opts;
+  opts.InlinerThreshold = 250;
+  llvm::PassBuilder pb(nullptr, opts);
 
-  builder.populateFunctionPassManager(func_manager);
-  builder.populateModulePassManager(module_manager);
-  func_manager.doInitialization();
-  for (auto &func : *module) {
-    func_manager.run(func);
-  }
-  func_manager.doFinalization();
-  module_manager.run(*module);
+  pb.registerModuleAnalyses(mam);
+  pb.registerFunctionAnalyses(fam);
+  pb.registerLoopAnalyses(lam);
+  pb.registerCGSCCAnalyses(cam);
+  pb.crossRegisterProxies(lam, fam, cam, mam);
+
+  llvm::ModulePassManager mpm;
+  mpm.addPass(llvm::ModuleInlinerPass(llvm::getInlineParams(250)));
+
+  mpm.run(*module, mam);
+
+
+  mam.clear();
+  fam.clear();
+  lam.clear();
+  cam.clear();
 }
 
 }  // namespace remill
