@@ -54,8 +54,6 @@ jobs:
           mv remill-build/*.rpm ./remill-rel
           mv remill-build/*.tar.gz ./remill-rel
           rm -rf remill-build/_CPack_Packages
-          rm -rf remill-preset-install/build/remill/_deps
-          rm -rf remill-build/_deps
       - name: Build with build-presets script
         shell: bash
         run: |
@@ -79,7 +77,6 @@ jobs:
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(nproc)"
       - name: Tree size after
         shell: bash
-        working-directory: remill-build
         if: always()
         run: |
           du -h $(pwd)/../ | sort -h
