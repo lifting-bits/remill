@@ -31,6 +31,13 @@ jobs:
       CXX: ${{ matrix.compiler.CXX }}
 
     runs-on: ubuntu-22.04
+    container:
+      image: ghcr.io/lifting-bits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
+      volumes:
+        - /:/gha-runner
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v2
@@ -42,37 +49,9 @@ jobs:
         shell: bash
         run: |
           df -h
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          rm -rf /gha-runner/usr/local/lib/android
+          rm -rf /gha-runner/usr/local/share/boost
           df -h
-
-      - name: Install dependencies
-        shell: bash
-        run: |
-          # Copied from cxx-common Dockerfile
-          export LLVM_VERSION=16
-          export DEBIAN_FRONTEND=noninteractive && \
-          if [ "$(uname -m)" = "aarch64" ]; then sudo dpkg --add-architecture armhf; fi && \
-          sudo apt-get update && sudo apt-get install --yes apt-utils && \
-          sudo apt-get install --yes --no-install-recommends apt-transport-https software-properties-common gnupg ca-certificates wget && \
-          \
-          wget https://apt.llvm.org/llvm.sh && \
-          chmod +x llvm.sh && \
-          sudo ./llvm.sh ${LLVM_VERSION} clang lld && \
-          \
-          sudo apt-get update && \
-          sudo apt-get install --yes --no-install-recommends \
-            libtinfo-dev libzstd-dev python3-pip python3-setuptools python-setuptools \
-            build-essential binutils-multiarch g++ gcc clang lld clang-${LLVM_VERSION} lld-${LLVM_VERSION} ninja-build \
-            pixz xz-utils make rpm curl unzip tar git zip python3 pkg-config && \
-            sudo apt-get install --yes --no-install-recommends \
-            $( [ "$(uname -m)" = "x86_64" ] && echo crossbuild-essential-i386 crossbuild-essential-arm64 linux-libc-dev-amd64-cross) \
-            "$( [ "$(uname -m)" = "aarch64" ] && echo "libstdc++-$(gcc -dumpversion | cut -f1 -d.)-dev:armhf")" && \
-          \
-          sudo apt-get clean --yes && \
-          sudo rm -rf /var/lib/apt/lists/*
 
       - name: Build with build script
         shell: bash
@@ -103,7 +82,7 @@ jobs:
         shell: bash
         working-directory: remill-build
         run: |
-          sudo cmake --build . --target install -- -j "$(nproc)"
+          cmake --build . --target install -- -j "$(nproc)"
           cmake --build . --target test_dependencies -- -j "$(nproc)"
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(nproc)"
       - name: Tree size after
