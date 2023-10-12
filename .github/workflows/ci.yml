@@ -60,7 +60,7 @@ jobs:
           \
           wget https://apt.llvm.org/llvm.sh && \
           chmod +x llvm.sh && \
-          ./llvm.sh ${LLVM_VERSION} clang lld && \
+          sudo ./llvm.sh ${LLVM_VERSION} clang lld && \
           \
           sudo apt-get update && \
           sudo apt-get install --yes --no-install-recommends \
