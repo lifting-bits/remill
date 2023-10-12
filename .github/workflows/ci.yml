@@ -98,10 +98,12 @@ jobs:
         shell: bash
         run: |
           du -h $(pwd)/../ | sort -h
+          df -h
       - name: Run tests
         shell: bash
         working-directory: remill-build
         run: |
+          cmake --build . -- -j "$(nproc)"
           cmake --build . --target install -- -j "$(nproc)"
           cmake --build . --target test_dependencies -- -j "$(nproc)"
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(nproc)"
@@ -110,6 +112,7 @@ jobs:
         if: always()
         run: |
           du -h $(pwd)/../ | sort -h
+          df -h
       - name: Smoketests with installed executable
         shell: bash
         run: |
