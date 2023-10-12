@@ -55,15 +55,14 @@ jobs:
           export LLVM_VERSION=16
           export DEBIAN_FRONTEND=noninteractive && \
           if [ "$(uname -m)" = "aarch64" ]; then sudo dpkg --add-architecture armhf; fi && \
-          sudo apt-get update && sudo apt-get install --yes apt-utils && sudo apt-get upgrade --yes && \
+          sudo apt-get update && sudo apt-get install --yes apt-utils && \
           sudo apt-get install --yes --no-install-recommends apt-transport-https software-properties-common gnupg ca-certificates wget && \
-          sudo apt-add-repository ppa:git-core/ppa --yes && \
           \
           wget https://apt.llvm.org/llvm.sh && \
           chmod +x llvm.sh && \
           ./llvm.sh ${LLVM_VERSION} clang lld && \
           \
-          sudo apt-get update && sudo apt-get upgrade --yes && \
+          sudo apt-get update && \
           sudo apt-get install --yes --no-install-recommends \
             libtinfo-dev libzstd-dev python3-pip python3-setuptools python-setuptools \
             build-essential binutils-multiarch g++ gcc clang lld clang-${LLVM_VERSION} lld-${LLVM_VERSION} ninja-build \
