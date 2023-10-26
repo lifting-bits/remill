@@ -104,14 +104,10 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
 
   REG(CWP, cwp.dword, u32);
 
-  SUB_REG(SP, gpr.o6_7.reg1.dword, u32, O6_7);
-
-  SUB_REG(FP, gpr.i6_7.reg1.dword, u32, I6_7);
-
   REG(I0_1, gpr.i0_1.qword, u64);
   REG(I2_3, gpr.i2_3.qword, u64);
   REG(I4_5, gpr.i4_5.qword, u64);
-  REG(I6_7, gpr.i6_7.qword, u64);
+  REG(FP_7, gpr.fp_7.qword, u64);
   REG(L0_1, gpr.l0_1.qword, u64);
   REG(L2_3, gpr.l2_3.qword, u64);
   REG(L4_5, gpr.l4_5.qword, u64);
@@ -119,7 +115,7 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   REG(O0_1, gpr.o0_1.qword, u64);
   REG(O2_3, gpr.o2_3.qword, u64);
   REG(O4_5, gpr.o4_5.qword, u64);
-  REG(O6_7, gpr.o6_7.qword, u64);
+  REG(SP_7, gpr.sp_7.qword, u64);
   REG(G0_1, gpr.g0_1.qword, u64);
   REG(G2_3, gpr.g2_3.qword, u64);
   REG(G4_5, gpr.g4_5.qword, u64);
@@ -131,8 +127,8 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   SUB_REG(I3, gpr.i2_3.reg2.dword, u32, I2_3);
   SUB_REG(I4, gpr.i4_5.reg1.dword, u32, I4_5);
   SUB_REG(I5, gpr.i4_5.reg2.dword, u32, I4_5);
-  SUB_REG(I6, gpr.i6_7.reg1.dword, u32, FP);
-  SUB_REG(I7, gpr.i6_7.reg2.dword, u32, I6_7);
+  SUB_REG(FP, gpr.fp_7.reg1.dword, u32, FP_7);
+  SUB_REG(I7, gpr.fp_7.reg2.dword, u32, FP_7);
   SUB_REG(L0, gpr.l0_1.reg1.dword, u32, L0_1);
   SUB_REG(L1, gpr.l0_1.reg2.dword, u32, L0_1);
   SUB_REG(L2, gpr.l2_3.reg1.dword, u32, L2_3);
@@ -147,8 +143,8 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   SUB_REG(O3, gpr.o2_3.reg2.dword, u32, O2_3);
   SUB_REG(O4, gpr.o4_5.reg1.dword, u32, O4_5);
   SUB_REG(O5, gpr.o4_5.reg2.dword, u32, O4_5);
-  SUB_REG(O6, gpr.o6_7.reg1.dword, u32, SP);
-  SUB_REG(O7, gpr.o6_7.reg2.dword, u32, O6_7);
+  SUB_REG(SP, gpr.sp_7.reg1.dword, u32, SP_7);
+  SUB_REG(O7, gpr.sp_7.reg2.dword, u32, SP_7);
 
   SUB_REG(G0, gpr.g0_1.reg1.dword, u32, G0_1);
   SUB_REG(G1, gpr.g0_1.reg2.dword, u32, G0_1);

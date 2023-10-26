@@ -45,7 +45,7 @@ struct GPR {
   volatile uint64_t _3;
   DoubleReg i4_5;
   volatile uint64_t _5;
-  DoubleReg i6_7;
+  DoubleReg fp_7;
   volatile uint64_t _6;
 
   volatile uint64_t _8;
@@ -64,7 +64,7 @@ struct GPR {
   volatile uint64_t _20;
   DoubleReg o4_5;
   volatile uint64_t _22;
-  DoubleReg o6_7;
+  DoubleReg sp_7;
 
   volatile uint64_t _24;
   DoubleReg g0_1;
