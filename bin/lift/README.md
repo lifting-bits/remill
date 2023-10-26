@@ -1,4 +1,4 @@
-# remill-lift [![Slack Chat](http://empireslacking.herokuapp.com/badge.svg)](https://empireslacking.herokuapp.com/)
+# remill-lift [![Slack Chat](http://slack.empirehacking.nyc/badge.svg)](https://slack.empirehacking.nyc/)
 
 `remill-lift` is an example program that shows how to use some of the Remill
 APIs, specifically, the `TraceLifter` API.

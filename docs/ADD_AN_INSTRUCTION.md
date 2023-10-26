@@ -32,14 +32,14 @@ To start off, here are two entries from the tables document:
 These entries contain a lot of information and are quite dense. Below are descriptions of the salient parts.
 
 - `AND`: The name of the instruction. This is typically the opcode, though sometimes it will be more specific. In general, there is a one-to-one correspondence between an instruction name and its *SEM*: a generic function that you will define to implement the multiple variants of this instruction.
-- `LOGICAL`: This is the category of the instruction. This will generally tell you where to put your instruction code. In this case, we would implement the instruction in the [LOGICAL.cpp](/remill/Arch/X86/Semantics/LOGICAL.cpp) file.
+- `LOGICAL`: This is the category of the instruction. This will generally tell you where to put your instruction code. In this case, we would implement the instruction in the [LOGICAL.cpp](/lib/Arch/X86/Semantics/LOGICAL.cpp) file.
 - `AND_GPRv_MEMv`: This is the *ISEL*: an instantiation of your instruction's semantic function.
 - `SCALABLE`: This tells you that a particular *ISEL* can actually relate to a number of different operand sizes. We have short forms and naming conventions for writing one *ISEL* for all the operand sizes; however, this can be done manually as well. One XED convention is that if you see a `z` or `v` within the *ISEL*, then the instruction is probably scalable.
 - `EXPLICIT`: This is an explicit operand. If you were to try to type out this instruction as assembly code and assemble it, then an explicit operand is one that you must specify after the opcode mnemonic. In Remill, your semantic functions will have _at least one argument for each explicit operand_.
 - `IMPLICIT`: This is an implicit operand. You can think of this as being an operand that you _might_ write out in assembly. Alternatively, you can see it as an operand that is explicit in at least one *ISEL*. Not to be confused with SUPPRESSED.
 - `SUPPRESSED`: This is an operand that is never written out in assembly, but is operated on internally by the semantics of an instruction. In Remill, you *do not* associate any arguments in your semantic functions with suppressed operands.
 - `R`, `RW`, `W`, `CR`, `CW`, `RCW`: These per-operand markers indicate how the semantics of the instruction operate on a particular operand, or in other words, they describe the mutability of the operand. `R` stands for read, `W` stands for write, and `C` stands for condition. Therefore, `RCW` states that the semantics will read and conditionally write to the associated operand.
-- `REG`, `MEM`, `IMM`: These identify the type of the operand within a particular instruction selection (ISEL). Remill has C++ type names associated with each operand type and size, defined in [Types.h](https://github.com/lifting-bits/remill/blob/master/remill/Arch/Runtime/Types.h)
+- `REG`, `MEM`, `IMM`: These identify the type of the operand within a particular instruction selection (ISEL). Remill has C++ type names associated with each operand type and size, defined in [Types.h](/include/remill/Arch/Runtime/Types.h)
 
 In the following code examples we will ignore condition code computation. Most instructions that manipulate condition codes have already been implemented.
 
@@ -123,7 +123,7 @@ We see the use of the following Remill operators:
 - `UAndV32`: Performs a logical AND operation on a vector if unsigned, 32-bit integers.
 - `UWriteV32` writes to `dst` a vector of unsigned, 32-bit integers.
 
-The "types" of the operators must always match. If you intend to implement support for new vector instructions, then start by looking at some existing, more complicated [examples](/remill/Arch/X86/Semantics/CONVERT.cpp).
+The "types" of the operators must always match. If you intend to implement support for new vector instructions, then start by looking at some existing, more complicated [examples](/lib/Arch/X86/Semantics/CONVERT.cpp).
 
 ## Testing instructions
 
@@ -131,7 +131,7 @@ After implementing an instruction semantic, you must implement the associated in
 
 ### Writing your first tests
 
-We will revisit the above example of the `AND` instruction. Start by creating [`AND.S`](/tests/X86/LOGICAL/AND.S) within the category- and architecture-specific sub-directory of the [tests](/tests) directory. Then, add that file as an `#include` statement to the appropriate place in `remill/tests/X86/Tests.S`.
+We will revisit the above example of the `AND` instruction. Start by creating [`AND.S`](/tests/X86/LOGICAL/AND.S) within the category- and architecture-specific sub-directory of the [`tests/X86`](/tests/X86/) directory. Then, add that file as an `#include` statement to the appropriate place in [`tests/X86/Tests.S`](/tests/X86/Tests.S).
 
 Each *ISEL* should be tested separately. For example, a test for the `AND_GPRv_GPRv_32` *ISEL* would be:
 
@@ -181,18 +181,18 @@ Much of the process is as described for x86 above, but here we will document wha
 
 Currently, instructions that alias to another instruction (`MOV`, `CMP`, etc) are extracted as the instruction that they alias, and are not their own separate class.
 
-All of the `ISEL` function-extracting-and-decoding shells are auto-generated by the tool at `remill/Arch/AArch64/Etc/GenOpMap.py`, which literally parses the [architecture documentation reference](https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/A64_v82A_ISA_xml_00bet3.2.tar.gz), to produce the following files:
+All of the `ISEL` function-extracting-and-decoding shells are auto-generated by [`GenOpMap.py`](/lib/Arch/AArch64/Etc/GenOpMap.py), which literally parses the [architecture documentation reference](https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/A64_v82A_ISA_xml_00bet3.2.tar.gz), to produce the following files:
 
-- `remill/Arch/AArch64/Extract.cpp` is responsible for parsing the bit sequence of an instruction and assigning it to a corresponding selector. It also populates the `InstData` structure with the correct fields, which can be located at `remill/Arch/AArch64/Decode.h`.
+- `lib/Arch/AArch64/Extract.cpp` is responsible for parsing the bit sequence of an instruction and assigning it to a corresponding selector. It also populates the `InstData` structure with the correct fields, which can be located at `lib/Arch/AArch64/Decode.h`.
 - Any logical processing other than passing down the raw bit values should be done in the semantic definition, not here or in the decoding pipeline.
 
-- `remill/Arch/AArch64/Decode.cpp` is filled with function skeletons that will receive the populated `InstData` struct and use it to push `Operand` objects into our `Instruction` class that will be later used in the semantic definition. Cut and paste the skeleton into `./Arch.cpp` and fill it out accordingly, using other functions in the file as a reference.
+- `lib/Arch/AArch64/Decode.cpp` is filled with function skeletons that will receive the populated `InstData` struct and use it to push `Operand` objects into our `Instruction` class that will be later used in the semantic definition. Cut and paste the skeleton into `./Arch.cpp` and fill it out accordingly, using other functions in the file as a reference.
 - The order in which operands (immediates, registers, memory displacements, etc.) is important and will be reflected in the semantic definition parameters.
 - `inst.function` of type `Instruction` contains the semantic name of the target. You can manipulate this to give you a greater granularity at the semantic level later on by, for example, appending a conditional qualifier like `_EQ` or `_GE` to the semantic.
 
 ### Defining the semantic
 
-Under `remill/Arch/AArch64/Semantics/`, figure out which class of functions your instruction fits under. If creating a new semantic class file, make sure it is included in `../Instructions.cpp`.
+Under [`lib/Arch/AArch64/Semantics/`](/lib/Arch/AArch64/Semantics/), figure out which class of functions your instruction fits under. If creating a new semantic class file, make sure it is included in `../Instructions.cpp`.
 
 Similar to `X86` semantics, you will use the `DEF_ISEL` and `DEF_COND_ISEL` to implement the semantic. Below are some interesting gotchas:
 
@@ -203,14 +203,14 @@ Similar to `X86` semantics, you will use the `DEF_ISEL` and `DEF_COND_ISEL` to i
 
 ### Writing and running the test
 
-Mirroring `X86`, the tests can be found under `remill/tests/AArch64/*`. When adding a test, make sure it is included in the `./Tests.S` file. Below is a useful set of steps to partially recompile/build for quickly fixing tests (from the `remill-build` directory):
+Mirroring `X86`, the tests can be found under [`tests/AArch64/*`](/tests/AArch64/). When adding a test, make sure it is included in the `./Tests.S` file. Below is a useful set of steps to partially recompile/build for quickly fixing tests (from the `remill-build` directory):
 
 ```bash
 #!/bin/sh
 
 set -e
-touch ../remill/Arch/AArch64/Runtime/BasicBlock.cpp
-touch ../remill/Arch/AArch64/Runtime/Instructions.cpp
+touch ../lib/Arch/AArch64/Runtime/BasicBlock.cpp
+touch ../lib/Arch/AArch64/Runtime/Instructions.cpp
 rm -f tests/AArch64/lift-*
 rm -f tests/AArch64/run-*
 make
@@ -221,7 +221,7 @@ If you come across errors in the build process that "an instruction matching the
 
 ## Tips for Debugging a Failing Test Case
 
-Debugging with `gdb` can be helpful in narrowing down where exactly a mismatch between "native" and "lifted" code occurs. For the structs we will discuss here, refer to the `State` struct located at `remill/Arch/AArch64/Runtime/State.h` (for AArch64) or `remill/Arch/X86/Runtime/State.h` (for X86).
+Debugging with `gdb` can be helpful in narrowing down where exactly a mismatch between "native" and "lifted" code occurs. For the structs we will discuss here, refer to the `State` struct located at `lib/Arch/AArch64/Runtime/State.h` (for AArch64) or `lib/Arch/X86/Runtime/State.h` (for X86).
 
 In the following example, the AArch64 test case we are debugging is:
 
@@ -260,8 +260,8 @@ Afterwards, we can set breakpoints at `udiv_w3_w0_w1_2` for the native and (nami
 *Pro-tip*: eliminate the tedium of typing and re-typing `gdb` commands by passing them all in from the shell. For example on X86, to break at the point where you can examine the differences between the resulting lifted and native states in a failing test case:
 
 ```shell
-set $bp_line = `grep -n "Lifted and native states did not match." /remill/tests/X86/Run.cpp | cut -f1 -d:`
-gdb ./tests/X86/run-x86-tests -ex "b /remill/tests/X86/Run.cpp:$bp_line" -ex "set \$native = (State *)&gNativeState" -ex "set \$lifted = (State *)&gLiftedState" -ex run
+set $bp_line = `grep -n "Lifted and native states did not match." tests/X86/Run.cpp | cut -f1 -d:`
+gdb ./tests/X86/run-x86-tests -ex "b tests/X86/Run.cpp:$bp_line" -ex "set \$native = (State *)&gNativeState" -ex "set \$lifted = (State *)&gLiftedState" -ex run
 ```
 
 Usually it is sufficient to narrow down the differences between the particular registers/status fields involved, but a complete diff of the entire `State` struct is also helpful. In the lifter, some state fields are intentionally zeroed out to avoid being compared, so make sure to account for those). A contrived debugging example:

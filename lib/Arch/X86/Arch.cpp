@@ -15,12 +15,12 @@
  */
 
 #include <glog/logging.h>
-#include <llvm/ADT/Triple.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <llvm/TargetParser/Triple.h>
 #include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchImpl`.
 #include <remill/Arch/X86/X86Base.h>
 

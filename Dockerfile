@@ -1,5 +1,5 @@
 # Choose your LLVM version
-ARG LLVM_VERSION=16
+ARG LLVM_VERSION=17
 ARG ARCH=amd64
 ARG UBUNTU_VERSION=22.04
 ARG DISTRO_BASE=ubuntu${UBUNTU_VERSION}
@@ -36,7 +36,8 @@ RUN git config --global user.email "41898282+github-actions[bot]@users.noreply.g
 RUN ./scripts/build.sh \
     --llvm-version ${LLVM_VERSION} \
     --prefix /opt/trailofbits \
-    --extra-cmake-args "-DCMAKE_BUILD_TYPE=Release"
+    --extra-cmake-args "-DCMAKE_BUILD_TYPE=Release" \
+    --disable-package
 
 RUN pip3 install ./scripts/diff_tester_export_insns
 

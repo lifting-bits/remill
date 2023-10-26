@@ -3,18 +3,16 @@ name: VCPKG Continuous Integration
 on:
   # Run this workflow once every 6 hours against the master branch
   schedule:
-   - cron: "0 */6 * * *"
+    - cron: "0 */6 * * *"
 
   push:
     branches:
-      - 'master'
+      - "master"
 
     tags:
       - "*"
 
   pull_request:
-    branches:
-      - "*"
 
 jobs:
   build_linux:
@@ -22,13 +20,11 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: 'ubuntu', tag: '22.04' }
-        llvm: ['15', '16']
+          - { name: "ubuntu", tag: "22.04" }
+        llvm: ["17"]
         compiler:
-          - { CC: 'clang', CXX: 'clang++' }
-          - { CC: 'gcc', CXX: 'g++' }
-        exclude:
-          - { llvm: '15', compiler: { CC: 'gcc', CXX: 'g++' } }
+          - { CC: "clang", CXX: "clang++" }
+          - { CC: "gcc", CXX: "g++" }
 
     env:
       CC: ${{ matrix.compiler.CC }}
@@ -37,6 +33,8 @@ jobs:
     runs-on: ubuntu-22.04
     container:
       image: ghcr.io/lifting-bits/cxx-common/vcpkg-builder-${{ matrix.image.name }}:${{ matrix.image.tag }}
+      volumes:
+        - /:/gha-runner
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -46,15 +44,25 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare_git_user
-      - name: Get Poetry
+
+      - name: Clear space
         shell: bash
         run: |
-          python3 -m pip install poetry
+          df -h
+          rm -rf /gha-runner/usr/local/lib/android
+          rm -rf /gha-runner/usr/local/share/boost
+          df -h
+
       - name: Build with build script
         shell: bash
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           ./scripts/build.sh --llvm-version ${{ matrix.llvm }}
+          mkdir remill-rel/
+          mv remill-build/*.deb ./remill-rel
+          mv remill-build/*.rpm ./remill-rel
+          mv remill-build/*.tar.gz ./remill-rel
+          rm -rf remill-build/_CPack_Packages
       - name: Build with build-presets script
         shell: bash
         run: |
@@ -65,6 +73,11 @@ jobs:
         shell: bash
         run: |
           pip3 install --user ./scripts/diff_tester_export_insns
+      - name: Tree size
+        shell: bash
+        run: |
+          du -hs
+          df -h
       - name: Run tests
         shell: bash
         working-directory: remill-build
@@ -72,6 +85,13 @@ jobs:
           cmake --build . --target install -- -j "$(nproc)"
           cmake --build . --target test_dependencies -- -j "$(nproc)"
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --target test -- -j "$(nproc)"
+      - name: Tree size after
+        shell: bash
+        if: failure()
+        run: |
+          df -h
+          du -h $(pwd)/../ | sort -h
+          df -h
       - name: Smoketests with installed executable
         shell: bash
         run: |
@@ -82,11 +102,11 @@ jobs:
       - name: Locate the packages
         id: package_names
         shell: bash
-        working-directory: remill-build
+        working-directory: remill-rel
         run: |
-          echo ::set-output name=DEB_PACKAGE_PATH::remill-build/$(ls *.deb)
-          echo ::set-output name=RPM_PACKAGE_PATH::remill-build/$(ls *.rpm)
-          echo ::set-output name=TGZ_PACKAGE_PATH::remill-build/$(ls *.tar.gz)
+          echo ::set-output name=DEB_PACKAGE_PATH::remill-rel/$(ls *.deb)
+          echo ::set-output name=RPM_PACKAGE_PATH::remill-rel/$(ls *.rpm)
+          echo ::set-output name=TGZ_PACKAGE_PATH::remill-rel/$(ls *.tar.gz)
 
       - name: Store the DEB package
         uses: actions/upload-artifact@v1
@@ -110,10 +130,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['macos-12']
-        llvm: ['15', '16']
+        os: ["macos-13"]
+        llvm: ["17"]
 
-    runs-on: macos-12
+    runs-on: macos-13
 
     steps:
       - uses: actions/checkout@v2
@@ -137,7 +157,7 @@ jobs:
         shell: bash
         run: |
           brew install ninja
-          export CMAKE_TOOLCHAIN_FILE=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-14.2_amd64/scripts/buildsystems/vcpkg.cmake
+          export CMAKE_TOOLCHAIN_FILE=$(pwd)/../lifting-bits-downloads/vcpkg_${{ matrix.os}}_llvm-${{ matrix.llvm }}_xcode-15.0_amd64/scripts/buildsystems/vcpkg.cmake
           export INSTALL_DIR=$(pwd)/remill-preset-install
           ./scripts/build-preset.sh release
       - name: Run tests
@@ -167,12 +187,9 @@ jobs:
           name: ${{ matrix.os }}_llvm${{ matrix.llvm }}_tgz_package
           path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
 
-
-
-
   release_packages:
     # Do not run the release procedure if any of the builds has failed
-    needs: [ build_linux, build_mac ]
+    needs: [build_linux, build_mac]
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
 
@@ -238,20 +255,19 @@ jobs:
           asset_name: remill_macos-12_packages.zip
           asset_content_type: application/gzip
 
-
   Docker_Linux:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        llvm: ["15", "16"]
+        llvm: ["17"]
         ubuntu: ["22.04"]
     steps:
-    - uses: actions/checkout@v2
-    - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
-      run: |
-        docker build . -t ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg ARCH=amd64 --build-arg LLVM_VERSION=${{ matrix.llvm }}
-    - name: Test Docker image
-      run: |
-        docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
-        docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
-        docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch32 -ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
+      - uses: actions/checkout@v2
+      - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
+        run: |
+          docker build . -t ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg ARCH=amd64 --build-arg LLVM_VERSION=${{ matrix.llvm }}
+      - name: Test Docker image
+        run: |
+          docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+          docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+          docker run --rm ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64:latest --arch aarch32 -ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000

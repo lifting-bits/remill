@@ -352,7 +352,7 @@ int main(int argc, char *argv[]) {
       arg_types.push_back(llvm::PointerType::get(context, 0));
     }
 
-    const auto state_type = llvm::PointerType::get(context, 0);
+    const auto state_type = arch->StateStructType();
     const auto func_type =
         llvm::FunctionType::get(mem_ptr_type, arg_types, false);
     const auto func = llvm::Function::Create(

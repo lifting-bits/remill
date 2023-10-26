@@ -40,21 +40,28 @@ find_package(Z3 CONFIG REQUIRED)
 
 # LLVM
 find_package(LLVM CONFIG REQUIRED)
-llvm_map_components_to_libnames(llvm_libs
-  support core irreader
-  bitreader bitwriter
-  passes asmprinter
-  aarch64info aarch64desc aarch64codegen aarch64asmparser
-  armcodegen armasmparser
-  interpreter mcjit
-  nvptxdesc
-  x86info x86codegen x86asmparser
-  sparccodegen sparcasmparser
-  webassemblydesc)
+# https://github.com/JonathanSalwan/Triton/issues/1082#issuecomment-1030826696
+if(LLVM_LINK_LLVM_DYLIB)
+  set(llvm_libs LLVM)
+else()
+  llvm_map_components_to_libnames(llvm_libs
+    support core irreader
+    bitreader bitwriter
+    passes asmprinter
+    aarch64info aarch64desc aarch64codegen aarch64asmparser
+    armcodegen armasmparser
+    interpreter mcjit
+    nvptxdesc
+    x86info x86codegen x86asmparser
+    sparccodegen sparcasmparser
+    webassemblydesc)
+endif()
 message(STATUS "LLVM Libraries: ${llvm_libs}")
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
 
 string(REPLACE "." ";" LLVM_VERSION_LIST ${LLVM_PACKAGE_VERSION})
 list(GET LLVM_VERSION_LIST 0 LLVM_MAJOR_VERSION)
@@ -85,6 +92,7 @@ find_package(XED CONFIG REQUIRED)
 find_package(glog CONFIG REQUIRED)
 
 # Google gflags
+set(GFLAGS_USE_TARGET_NAMESPACE ON)
 find_package(gflags CONFIG REQUIRED)
 
 set(sleigh_ENABLE_TESTS OFF)
@@ -131,7 +139,9 @@ add_library(remill_settings INTERFACE)
 
 target_include_directories(remill_settings INTERFACE
   $<BUILD_INTERFACE:${REMILL_INCLUDE_DIR}>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include>
+  $<BUILD_INTERFACE:${LLVM_INCLUDE_DIR}>
+)
 
 if(WIN32)
   # warnings and compiler settings

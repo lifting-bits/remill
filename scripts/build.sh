@@ -23,11 +23,12 @@ DOWNLOAD_DIR="$( cd "$( dirname "${SRC_DIR}" )" && pwd )/lifting-bits-downloads"
 CURR_DIR=$( pwd )
 BUILD_DIR="${CURR_DIR}/remill-build"
 INSTALL_DIR=/usr/local
-LLVM_VERSION=llvm-16
+LLVM_VERSION=llvm-17
 OS_VERSION=
 ARCH_VERSION=
 BUILD_FLAGS=
-CXX_COMMON_VERSION="0.3.1"
+CXX_COMMON_VERSION="0.6.0"
+CREATE_PACKAGES=true
 
 # There are pre-build versions of various libraries for specific
 # Ubuntu releases.
@@ -163,9 +164,9 @@ function DownloadLibraries
 
     #BUILD_FLAGS="${BUILD_FLAGS} -DCMAKE_OSX_SYSROOT=${sdk_root}"
     # Min version supported
-    OS_VERSION="macos-12"
+    OS_VERSION="macos-13"
     # Hard-coded to match pre-built binaries in CI
-    XCODE_VERSION="14.2"
+    XCODE_VERSION="15.0"
     SYSTEM_VERSION=$(sw_vers -productVersion)
     if [[ "${SYSTEM_VERSION}" == "13.*" ]]; then
       echo "Found MacOS Ventura"
@@ -288,9 +289,12 @@ function Package
     cmake --build . \
       --target install
 
-    cpack -D REMILL_DATA_PATH="${DESTDIR}" \
-      -R ${remill_version} \
-      --config "${SRC_DIR}/packaging/main.cmake"
+
+    if [ "$CREATE_PACKAGES" = true ]; then
+      cpack -D REMILL_DATA_PATH="${DESTDIR}" \
+        -R ${remill_version} \
+        --config "${SRC_DIR}/packaging/main.cmake"
+    fi
   ) || return $?
 
   return $?
@@ -307,6 +311,10 @@ function GetLLVMVersion
     ;;
     16)
       LLVM_VERSION=llvm-16
+      return 0
+    ;;
+    17)
+      LLVM_VERSION=llvm-17
       return 0
     ;;
     *)
@@ -379,6 +387,14 @@ function main
         echo "[+] New download directory is ${BUILD_DIR}"
         shift # past argument
       ;;
+
+      # Disable packages
+      --disable-package)
+        CREATE_PACKAGES=false
+        echo "[+] Disabled building packages"
+        shift # past argument
+      ;;
+
 
       # Make the build type to be a debug build.
       --debug)
