@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/AttributeMask.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
