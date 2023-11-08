@@ -1205,17 +1205,6 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-      case llvm::Instruction::Select: {
-        auto ret = llvm::ConstantExpr::getSelect(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(2), dest_module, value_map,
-                                   type_map));
-        moved_c = ret;
-        return ret;
-      }
       case llvm::Instruction::Shl: {
         const auto b = llvm::dyn_cast<llvm::ShlOperator>(ce);
         auto ret = llvm::ConstantExpr::getShl(

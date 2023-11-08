@@ -18,7 +18,7 @@
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <llvm/ADT/Triple.h>
+#include <llvm/TargetParser/Triple.h>
 
 namespace remill {
 

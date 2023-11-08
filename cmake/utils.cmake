@@ -161,7 +161,7 @@ function(InstallExternalTarget target_name target_path install_type installed_fi
 
   install(FILES "${output_file_path}"
     TYPE ${install_type}
-    PERMISSIONS OWNER_READ OWNER_EXECUTE
+    PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE
                 GROUP_READ GROUP_EXECUTE
                 WORLD_READ WORLD_EXECUTE
   )

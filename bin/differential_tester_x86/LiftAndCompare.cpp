@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <llvm/ADT/StringExtras.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/Interpreter.h>

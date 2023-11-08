@@ -4,11 +4,8 @@
 
 V=""
 case ${LLVM_VERSION} in
-  llvm15*)
-    V=15
-  ;;
-  llvm16*)
-    V=16
+  llvm17*)
+    V=17
   ;;
   *)
     echo "Unknown LLVM version: ${LLVM_VERSION}"
