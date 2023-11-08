@@ -30,7 +30,7 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
 
   # Visual C++ requires C++14
   if(WIN32)
-    set(required_cpp_standard "c++14")
+    set(required_cpp_standard "c++17")
   else()
     set(required_cpp_standard "c++11")
   endif()

@@ -25,7 +25,7 @@ set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 
 # Visual C++ requires C++14
 if(WIN32)
-  set(required_cpp_standard "c++14")
+  set(required_cpp_standard "c++17")
 else()
   set(required_cpp_standard "c++17")
 endif()

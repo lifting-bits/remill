@@ -37,22 +37,24 @@
             "name": "x86_64",
             "hidden": true,
             "environment": {
-                "VCPKG_ARCH": "x64"
+                "VCPKG_ARCH": "x86_64"
             },
             "architecture": {
-                "value": "x64",
+                "value": "x86_64",
                 "strategy": "external"
             }
         },
         {
           "name": "vcpkg-common",
           "hidden": true,
-          "binaryDir": "$env{INSTALL_DIR}/build/remill",
-          "generator": "Ninja",
+          "binaryDir": "${sourceDir}/build",
+          "generator": "Visual Studio 17 2022",
+          "toolset":"LLVM_v143",
           "cacheVariables": {
-              "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}",
-              "CMAKE_TOOLCHAIN_FILE": "$env{CMAKE_TOOLCHAIN_FILE}",
-              "CMAKE_INSTALL_PREFIX": "$env{INSTALL_DIR}/install"
+              "CMAKE_TOOLCHAIN_FILE": "D:/cxx-common/Deps/scripts/buildsystems/vcpkg.cmake",
+              "CMAKE_PREFIX_PATH":    "D:/cxx-common/Deps/installed/x64-windows-static-md-rel/share",
+              "VCPKG_TARGET_TRIPLET": "x64-windows-static-md-rel",
+              "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}"
           }
         },
         {

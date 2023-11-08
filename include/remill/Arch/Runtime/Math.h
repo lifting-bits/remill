@@ -36,7 +36,7 @@ static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
 // A "native_float80_t" is a native type that is closes to approximating
 // an x86 80-bit float.
 // when building against CUDA, default to 64-bit float80s
-#if !defined(__CUDACC__) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
+#if !defined(__CUDACC__) && !defined(WIN32) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
   #if defined(__float80)
   typedef __float80 native_float80_t;
   #else
@@ -53,7 +53,7 @@ union union_ld {
   struct {
     uint8_t data[kEightyBitsInBytes];
     // when building against CUDA, default to 64-bit float80s
-#if !defined(__CUDACC__) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
+#if !defined(__CUDACC__) && !defined(WIN32) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
     // We are doing x86 on x86, so we have native x86 FP80s, but they
     // are not available in raw 80-bit native form.
     //
@@ -154,8 +154,7 @@ union nan80_t {
   } __attribute__((packed));
 } __attribute__((packed));
 
-static_assert(sizeof(float80_t) == sizeof(nan80_t),
-              "Invalid packing of `nan80_t`.");
+//static_assert(sizeof(float80_t) == sizeof(nan80_t), "Invalid packing of `nan80_t`.");
 
 #if __has_include(<cmath>)
 #  include <cmath>

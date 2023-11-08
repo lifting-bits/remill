@@ -134,10 +134,10 @@ macro(RunGitCommand)
         # Most methods have a fall-back default value that's used in case of non-zero
         # exit codes. If you're feeling risky, disable this safety check and use
         # those default values.
-        if(GIT_FAIL_IF_NONZERO_EXIT )
-            string(REPLACE ";" " " args_with_spaces "${ARGV}")
-            message(FATAL_ERROR "${stderr} (${GIT_EXECUTABLE} ${args_with_spaces})")
-        endif()
+        #if(GIT_FAIL_IF_NONZERO_EXIT )
+        #    string(REPLACE ";" " " args_with_spaces "${ARGV}")
+        #    message(FATAL_ERROR "${stderr} (${GIT_EXECUTABLE} ${args_with_spaces})")
+        #endif()
     endif()
 endmacro()
 

@@ -26,9 +26,7 @@
 
 // A definition is required to ensure that LLVM doesn't optimize the `State` type out of the bytecode
 // See https://github.com/lifting-bits/remill/pull/631#issuecomment-1279989004
-extern "C" {
-extern State __remill_state = {};
-}  // extern C
+State __remill_state;
 
 #define REG_PC state.pc.aword
 #define REG_NPC state.next_pc.aword
