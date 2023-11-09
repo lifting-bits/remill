@@ -65,7 +65,6 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchAMD64_SLEIGH:
     case kArchAArch64LittleEndian:
     case kArchAArch64LittleEndian_SLEIGH:
-    case kArchSparc64_SLEIGH:
     case kArchSparc64: return 64;
   }
   return 0;

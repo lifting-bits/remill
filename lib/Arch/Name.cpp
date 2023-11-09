@@ -73,9 +73,6 @@ ArchName GetArchName(std::string_view arch_name) {
   } else if (arch_name == "sparc64") {
     return kArchSparc64;
 
-  } else if (arch_name == "sparc64_sleigh") {
-    return kArchSparc64_SLEIGH;
-
   } else if (arch_name == "sparc32_sleigh") {
     return kArchSparc32_SLEIGH;
 
