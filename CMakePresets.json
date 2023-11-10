@@ -54,7 +54,7 @@
               "CMAKE_TOOLCHAIN_FILE": "D:/cxx-common/Deps/scripts/buildsystems/vcpkg.cmake",
               "CMAKE_PREFIX_PATH":    "D:/cxx-common/Deps/installed/x64-windows-static-md-rel/share",
               "VCPKG_TARGET_TRIPLET": "x64-windows-static-md-rel",
-              "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/${presetName}"
+              "CMAKE_INSTALL_PREFIX": "${sourceDir}/install"
           }
         },
         {

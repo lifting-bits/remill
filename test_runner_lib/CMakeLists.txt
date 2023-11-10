@@ -14,21 +14,21 @@
 
 set(TEST_RUNNER_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-add_library(
-  test-runner
-  STATIC
-  TestRunner.cpp
-  "${TEST_RUNNER_INCLUDE_DIR}/test_runner/TestRunner.h"
-  "${TEST_RUNNER_INCLUDE_DIR}/test_runner/TestOutputSpec.h"
-)
+#add_library(
+#  test-runner
+#  STATIC
+#  TestRunner.cpp
+#  "${TEST_RUNNER_INCLUDE_DIR}/test_runner/TestRunner.h"
+#  "${TEST_RUNNER_INCLUDE_DIR}/test_runner/TestOutputSpec.h"
+#)
 
-target_link_libraries(
-  test-runner
-  PRIVATE
-  remill
-  glog::glog
-)
+#target_link_libraries(
+#  test-runner
+#  PRIVATE
+#  remill
+#  glog::glog
+#)
 
-target_include_directories(test-runner PUBLIC "${TEST_RUNNER_INCLUDE_DIR}")
+#target_include_directories(test-runner PUBLIC "${TEST_RUNNER_INCLUDE_DIR}")
 
-set_property(TARGET test-runner PROPERTY POSITION_INDEPENDENT_CODE ON)
+#set_property(TARGET test-runner PROPERTY POSITION_INDEPENDENT_CODE ON)

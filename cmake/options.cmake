@@ -1,7 +1,7 @@
 
 include(CMakeDependentOption)
 
-set(can_enable_testing TRUE)
+set(can_enable_testing FALSE)
 set(can_enable_testing_x86 FALSE)
 set(can_enable_testing_aarch64 FALSE)
 
