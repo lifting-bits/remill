@@ -54,32 +54,8 @@ function(add_runtime_helper target_name little_endian)
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
     ARCH sparc
-
-    DEPENDENCIES
-    "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"
-    "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/State.h"
-    "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Types.h"
-    "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Operators.h"
-    "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Intrinsics.h"
-    "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/HyperCall.h"
-    "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Definitions.h"
-
-    "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC32/Runtime/State.h"
-    "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC32/Runtime/Types.h"
-
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/COND.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/BINARY.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/BRANCH.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/DATAXFER.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/FLAGS.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/FOP.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/LOGICAL.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/MISC.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/TRAP.cpp"
-    "${REMILL_LIB_DIR}/Arch/SPARC32/Semantics/WINDOW.cpp"
-
-    "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
   )
 endfunction()
 
 add_runtime_helper(sparc32 0)
+add_runtime_helper(sparc32_sleigh 0)

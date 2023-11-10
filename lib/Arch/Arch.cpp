@@ -57,6 +57,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchAArch32LittleEndian:
     case kArchThumb2LittleEndian:
     case kArchSparc32:
+    case kArchSparc32_SLEIGH:
     case kArchPPC: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
@@ -114,6 +115,7 @@ ArchLocker Arch::Lock(ArchName arch_name_) {
     case ArchName::kArchAArch64LittleEndian_SLEIGH:
     case ArchName::kArchAMD64_SLEIGH:
     case ArchName::kArchX86_SLEIGH:
+    case ArchName::kArchSparc32_SLEIGH:
     case ArchName::kArchPPC: return &gSleighArchLock;
     default: return ArchLocker();
   }
@@ -227,12 +229,17 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
 
     case kArchSparc32: {
       DLOG(INFO) << "Using architecture: 32-bit SPARC";
-      return GetSPARC(context_, os_name_, arch_name_);
+      return GetSPARC32(context_, os_name_, arch_name_);
     }
 
     case kArchSparc64: {
       DLOG(INFO) << "Using architecture: 64-bit SPARC";
       return GetSPARC64(context_, os_name_, arch_name_);
+    }
+
+    case kArchSparc32_SLEIGH: {
+      DLOG(INFO) << "Using architecture: 32-bit SPARC32_Sleigh";
+      return GetSPARC32Sleigh(context_, os_name_, arch_name_);
     }
 
     case kArchPPC: {
@@ -790,6 +797,8 @@ const Register *ArchBase::AddRegister(const char *reg_name_,
   if (parent_reg_name) {
     parent_reg = reg_by_name[parent_reg_name];
   }
+
+  DLOG(INFO) << "Adding register " << reg_name << " with type " << val_type;
 
   auto reg_impl = new Register(reg_name, offset, val_type, parent_reg, this);
 

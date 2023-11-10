@@ -116,6 +116,7 @@ enum ArchName : uint32_t {
 
   kArchSparc32,
   kArchSparc64,
+  kArchSparc32_SLEIGH,
 
   kArchThumb2LittleEndian,
 

@@ -76,6 +76,7 @@ class PcodeCFGBuilder {
 
  private:
   PcodeBlock BuildBlock(size_t start_ind, size_t next_start) const;
+  std::optional<BlockExit> GetControlFlowExitsForIndex(size_t index) const;
   BlockExit GetBlockExitsForIndex(size_t index) const;
   std::vector<size_t> GetIntraProcTargets(size_t index) const;
   std::vector<size_t> GetBlockStarts() const;

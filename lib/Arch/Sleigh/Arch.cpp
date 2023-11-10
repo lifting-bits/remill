@@ -166,7 +166,7 @@ void CustomLoadImage::loadFill(unsigned char *ptr, int size,
       continue;
     }
 
-    ptr[i] = this->current_bytes[i];
+    ptr[i] = this->current_bytes[index];
   }
 }
 
@@ -208,17 +208,21 @@ bool SleighDecoder::DecodeInstruction(uint64_t address,
   auto res_cat = const_cast<SleighDecoder *>(this)->DecodeInstructionImpl(
       address, instr_bytes, inst, std::move(context));
 
-  if (!res_cat->second &&
-      std::holds_alternative<remill::Instruction::ConditionalInstruction>(
-          res_cat->first)) {
-    LOG(FATAL)
-        << "Should always emit branch taken var for conditional instruction";
-  }
+  if (res_cat.has_value()) {
+    if (!res_cat->second &&
+        std::holds_alternative<remill::Instruction::ConditionalInstruction>(
+            res_cat->first)) {
+      LOG(FATAL)
+          << "Should always emit branch taken var for conditional instruction";
+    }
 
-  inst.SetLifter(std::make_shared<SleighLifterWithState>(
-      res_cat->second, std::move(context_values), this->GetLifter()));
-  CHECK(inst.GetLifter() != nullptr);
-  return res_cat.has_value();
+    inst.SetLifter(std::make_shared<SleighLifterWithState>(
+        res_cat->second, std::move(context_values), this->GetLifter()));
+    CHECK(inst.GetLifter() != nullptr);
+    return true;
+  } else {
+    return false;
+  }
 }
 
 
@@ -244,8 +248,7 @@ SleighDecoder::GetStateRegRemappings() const {
   return this->state_reg_remappings;
 }
 
-std::optional<
-    std::pair<Instruction::InstructionFlowCategory, MaybeBranchTakenVar>>
+ControlFlowStructureAnalysis::SleighDecodingResult
 SleighDecoder::DecodeInstructionImpl(uint64_t address,
                                      std::string_view instr_bytes,
                                      Instruction &inst,
@@ -296,8 +299,10 @@ SleighDecoder::DecodeInstructionImpl(uint64_t address,
     LOG(ERROR) << "Failed to compute category for inst at " << std::hex
                << inst.pc;
     inst.flows = Instruction::InvalidInsn();
-    inst.category = Instruction::Category::kCategoryInvalid;
-    return std::nullopt;
+    // Do not mark the instruction category as "invalid". Even if we can't determine a control flow
+    // category, we still want to attempt to lift this instruction.
+    inst.category = Instruction::Category::kCategoryNormal;
+    return std::make_pair(inst.flows, std::nullopt);
   }
 
   inst.flows = cat->first;

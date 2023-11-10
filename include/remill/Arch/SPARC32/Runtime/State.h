@@ -23,86 +23,57 @@
 #include "remill/Arch/Runtime/Types.h"
 
 struct Reg final {
-  addr_t dword;
+  uint32_t dword;
 } __attribute__((packed));
 
+struct DoubleReg final {
+  union {
+    struct {
+      Reg reg1;
+      Reg reg2;
+    };
+    uint64_t qword;
+  };
+};
 
-union PtrReg final {
-  addr_t dword;
-} __attribute__((packed));
-
-static_assert(sizeof(PtrReg) == 4);
+static_assert(sizeof(uint32_t) * 2 == sizeof(DoubleReg), "Invalid packing of `DoubleReg`.");
 
 struct GPR {
+  DoubleReg i0_1;
+  volatile uint64_t _2;
+  DoubleReg i2_3;
+  volatile uint64_t _3;
+  DoubleReg i4_5;
+  volatile uint64_t _5;
+  DoubleReg fp_7;
+  volatile uint64_t _6;
 
-  // Prevents LLVM from casting a `GPR` into an `i64` to access `I0`.
-  volatile addr_t _0;
-  Reg i0;
-  volatile addr_t _1;
-  Reg i1;
-  volatile addr_t _2;
-  Reg i2;
-  volatile addr_t _3;
-  Reg i3;
-  volatile addr_t _4;
-  Reg i4;
-  volatile addr_t _5;
-  Reg i5;
-  volatile addr_t _6;
-  PtrReg i6;
-  volatile addr_t _7;
-  Reg i7;
+  volatile uint64_t _8;
+  DoubleReg l0_1;
+  volatile uint64_t _9;
+  DoubleReg l2_3;
+  volatile uint64_t _12;
+  DoubleReg l4_5;
+  volatile uint64_t _14;
+  DoubleReg l6_7;
 
-  volatile addr_t _8;
-  Reg l0;
-  volatile addr_t _9;
-  Reg l1;
-  volatile addr_t _10;
-  Reg l2;
-  volatile addr_t _11;
-  Reg l3;
-  volatile addr_t _12;
-  Reg l4;
-  volatile addr_t _13;
-  Reg l5;
-  volatile addr_t _14;
-  Reg l6;
-  volatile addr_t _15;
-  Reg l7;
+  volatile uint64_t _16;
+  DoubleReg o0_1;
+  volatile uint64_t _18;
+  DoubleReg o2_3;
+  volatile uint64_t _20;
+  DoubleReg o4_5;
+  volatile uint64_t _22;
+  DoubleReg sp_7;
 
-  volatile addr_t _16;
-  Reg o0;
-  volatile addr_t _17;
-  Reg o1;
-  volatile addr_t _18;
-  Reg o2;
-  volatile addr_t _19;
-  Reg o3;
-  volatile addr_t _20;
-  Reg o4;
-  volatile addr_t _21;
-  Reg o5;
-  volatile addr_t _22;
-  PtrReg o6;
-  volatile addr_t _23;
-  Reg o7;
-
-  volatile addr_t _24;
-  Reg g0;
-  volatile addr_t _25;
-  Reg g1;
-  volatile addr_t _26;
-  Reg g2;
-  volatile addr_t _27;
-  Reg g3;
-  volatile addr_t _28;
-  Reg g4;
-  volatile addr_t _29;
-  Reg g5;
-  volatile addr_t _30;
-  Reg g6;
-  volatile addr_t _31;
-  Reg g7;
+  volatile uint64_t _24;
+  DoubleReg g0_1;
+  volatile uint64_t _25;
+  DoubleReg g2_3;
+  volatile uint64_t _28;
+  DoubleReg g4_5;
+  volatile uint64_t _30;
+  DoubleReg g6_7;
 };
 
 enum AlternativeSpaceIdentifier : uint32_t {
@@ -160,18 +131,28 @@ struct FSRReg final {
 static_assert(24 == sizeof(struct FSRReg),
               "Invalid packing of `struct FSRReg`.");
 
-// Integer condition code register flags
-struct ICCRFlags final {
+// Condition Codes register flags
+struct CCRFlags final {
   struct {
     volatile uint8_t _0;
-    bool c;
+    bool i_cf;
     volatile uint8_t _1;
-    bool v;
+    bool i_vf;
     volatile uint8_t _2;
-    bool z;
+    bool i_zf;
     volatile uint8_t _3;
-    bool n;
-  } __attribute__((packed)) icc, xcc;
+    bool i_nf;
+  } __attribute__((packed)) icc;
+  struct {
+    volatile uint8_t _0;
+    bool x_cf;
+    volatile uint8_t _1;
+    bool x_vf;
+    volatile uint8_t _2;
+    bool x_zf;
+    volatile uint8_t _3;
+    bool x_nf;
+  } __attribute__((packed)) xcc;
 } __attribute__((packed));
 
 union GSRFlags final {
@@ -188,41 +169,31 @@ union GSRFlags final {
 } __attribute__((packed));
 
 struct ASR final {
-  Reg yreg;  // ASR 0
   volatile uint32_t _0;
-  ICCRFlags ccr;  // ASR 2
-  volatile addr_t _1;
-  union {
-    uint32_t asi_flat;
-    struct {
-      uint32_t asi : 8;  // ASR 3
-      uint32_t padding_1 : 24;
-    } __attribute__((packed));
-  } __attribute__((packed));
-  volatile uint64_t _2;
-  uint64_t tick;  // ASR 4
-  volatile uint64_t _3;
-  union {
-    uint32_t fprs_flat;
-    struct {
-      uint32_t fprs : 3;  // ASR 6
-      uint32_t padding_2 : 29;
-    } __attribute__((packed));
-  } __attribute__((packed));
+  Reg yreg;  // asr 0
+  volatile uint32_t _1;
+  Reg ccr;   // asr 2
+  volatile uint32_t _2;
+  Reg tick;  // asr 4
+  volatile uint32_t _3;
+  Reg pcr;   // asr16
   volatile uint32_t _4;
-  GSRFlags gsr;
-  volatile uint64_t _5;
-  addr64_t softint;  // ASR 20
-  volatile uint64_t _6;
-  addr64_t stick;  // ASR 24
-  volatile uint64_t _7;
-  addr64_t stick_cmpr;  // ASR 25
-  volatile uint64_t _8;
-  addr64_t cfr;  // ASR 26
-  volatile uint64_t _9;
-  addr64_t pause;  // ASR 27
-  volatile uint64_t _10;
-  addr64_t mwait;  // ASR 28
+  Reg pic;   // asr 17
+  volatile uint32_t _5;
+  Reg gsr;   // asr 19
+  volatile uint32_t _6;
+  Reg softint_set; // asr 20
+  volatile uint32_t _7;
+  Reg softint_clr; // asr 21
+  volatile uint32_t _8;
+  Reg softint;     // asr 22
+  volatile uint32_t _9;
+  Reg tick_cmpr;   // asr 23
+  volatile uint32_t _10;
+  Reg stick;       // asr 24
+  volatile uint32_t _11;
+  Reg stick_cmpr;  // asr 25
+  volatile uint32_t _12;
 } __attribute__((packed));
 
 struct CSR {
@@ -281,72 +252,29 @@ struct PSR {
   uint8_t gl;
 } __attribute__((packed));
 
-struct RegisterWindow {
-  volatile addr_t _0;
-  addr_t l0;
-  volatile addr_t _1;
-  addr_t l1;
-  volatile addr_t _2;
-  addr_t l2;
-  volatile addr_t _3;
-  addr_t l3;
-  volatile addr_t _4;
-  addr_t l4;
-  volatile addr_t _5;
-  addr_t l5;
-  volatile addr_t _6;
-  addr_t l6;
-  volatile addr_t _7;
-  addr_t l7;
-
-  volatile addr_t _8;
-  addr_t i0;
-  volatile addr_t _9;
-  addr_t i1;
-  volatile addr_t _10;
-  addr_t i2;
-  volatile addr_t _11;
-  addr_t i3;
-  volatile addr_t _12;
-  addr_t i4;
-  volatile addr_t _13;
-  addr_t i5;
-  volatile addr_t _14;
-  addr_t i6;
-  volatile addr_t _15;
-  addr_t i7;
-  volatile addr_t _16;
-  RegisterWindow *prev_window;
-};
-
 struct alignas(16) SPARC32State : public ArchState {
-  FPURegs fpreg;  // 512 bytes
   volatile uint64_t _0;
-  GPR gpr;  // 256 bytes
+  FPURegs fpreg;  // 128 bytes
   volatile uint64_t _1;
-  ASR asr;  // 176 bytes
+  GPR gpr;  // 256 bytes
   volatile uint64_t _2;
-  PSR psr;  // 56 bytes
-  volatile uint64_t _3;
   FSRReg fsr;  // 24 bytes
-  volatile uint64_t _4;
-  CSR csr;  // 8 bytes
+  volatile uint64_t _3;
+  ASR asr;  // 168 bytes
+  volatile uint32_t _4;
+  CCRFlags ccr;
   volatile uint32_t _5;
-  Reg pc;  // 4 bytes
+  PSR psr;  // 56 bytes
   volatile uint32_t _6;
-  Reg next_pc;  // 4 bytes
+  Reg pc;  // 4 bytes
   volatile uint32_t _7;
-
-  // NOTE(pag): This *must* go at the end, as if we change the target arch/data
-  //            layout, then we want to make sure that the offset of this
-  //            remains the same and doesn't shift other things around.
-#if defined(INCLUDED_FROM_REMILL)
-  uint32_t window;
-#else
-  RegisterWindow *window;  // smuggled.
-  static_assert(sizeof(RegisterWindow *) == 4,
-                "Invalid size of `RegisterWindow`");
-#endif
+  Reg cwp;
+  // fake register for sleigh
+  uint8_t decompile_mode;
+  volatile uint8_t _8;
+  // fake register for sleigh
+  uint8_t didrestore;
+  volatile uint8_t _9;
 };
 
 struct State : public SPARC32State {};

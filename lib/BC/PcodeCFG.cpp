@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <map>
+#include <optional>
 #include <sleigh/op.hh>
 #include <sleigh/opcodes.hh>
 #include <sleigh/pcoderaw.hh>
@@ -25,6 +26,12 @@ std::vector<size_t> PcodeCFGBuilder::GetBlockStarts() const {
   for (size_t curr_index = 0; curr_index < linear_ops.size(); curr_index += 1) {
     auto interproc = GetIntraProcTargets(curr_index);
     res.insert(res.end(), interproc.begin(), interproc.end());
+    if (GetControlFlowExitsForIndex(curr_index) &&
+        curr_index + 1 < linear_ops.size()) {
+      res.push_back(
+          curr_index +
+          1);  // make sure we start a new block after control flow regardless
+    }
   }
   return res;
 }
@@ -77,16 +84,19 @@ std::vector<size_t> PcodeCFGBuilder::GetIntraProcTargets(size_t index) const {
   return IntraProcTransferCollector::CollectIntraProcTransfers(ex);
 }
 
-BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
+
+std::optional<BlockExit>
+PcodeCFGBuilder::GetControlFlowExitsForIndex(size_t index) const {
   CHECK(index < linear_ops.size());
   const auto &curr_op = linear_ops[index];
 
-  auto build_direct_target_exit = [](VarnodeData target,
-                                     size_t curr_ind) -> Exit {
+  auto build_direct_target_exit = [&](VarnodeData target,
+                                      size_t curr_ind) -> Exit {
     if (isVarnodeInConstantSpace(target)) {
       // need to treat as signed?
       return IntrainstructionIndex{curr_ind + target.offset};
     }
+
     return InstrExit{};
   };
   switch (curr_op.op) {
@@ -110,13 +120,22 @@ BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
     }
     case CPUI_CALLIND:
     case CPUI_BRANCHIND: {
-      return Exit{InstrExit{}};
+      return Exit{build_direct_target_exit(curr_op.vars[0], index)};
     }
 
     default: {
-      return Exit{InstrExit{}};
+      return std::nullopt;
     }
   }
+}
+
+BlockExit PcodeCFGBuilder::GetBlockExitsForIndex(size_t index) const {
+  auto res = this->GetControlFlowExitsForIndex(index);
+  if (res) {
+    return *res;
+  }
+
+  return Exit{InstrExit{}};
 }
 
 
