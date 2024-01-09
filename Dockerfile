@@ -13,7 +13,7 @@ FROM ${BUILD_BASE} as base
 # Build-time dependencies go here
 # See here for full list of those dependencies
 # https://github.com/lifting-bits/cxx-common/blob/master/docker/Dockerfile.ubuntu.vcpkg
-FROM ghcr.io/lifting-bits/cxx-common/vcpkg-builder-ubuntu:test-ekilmer_multi-arch-docker-base-${UBUNTU_VERSION} as deps
+FROM ghcr.io/lifting-bits/cxx-common/vcpkg-builder-ubuntu-v2:test-ekilmer_multi-arch-docker-base-${UBUNTU_VERSION} as deps
 ARG UBUNTU_VERSION
 ARG ARCH
 ARG LLVM_VERSION
