@@ -1,6 +1,5 @@
 # Choose your LLVM version
 ARG LLVM_VERSION=17
-ARG ARCH=amd64
 ARG UBUNTU_VERSION=22.04
 ARG DISTRO_BASE=ubuntu${UBUNTU_VERSION}
 ARG BUILD_BASE=ubuntu:${UBUNTU_VERSION}
@@ -15,7 +14,6 @@ FROM ${BUILD_BASE} as base
 # https://github.com/lifting-bits/cxx-common/blob/master/docker/Dockerfile.ubuntu.vcpkg
 FROM ghcr.io/lifting-bits/cxx-common/vcpkg-builder-ubuntu-v2:${UBUNTU_VERSION} as deps
 ARG UBUNTU_VERSION
-ARG ARCH
 ARG LLVM_VERSION
 ARG LIBRARIES
 
