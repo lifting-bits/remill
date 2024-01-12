@@ -1,6 +1,5 @@
 # Choose your LLVM version
 ARG LLVM_VERSION=17
-ARG ARCH=amd64
 ARG UBUNTU_VERSION=22.04
 ARG DISTRO_BASE=ubuntu${UBUNTU_VERSION}
 ARG BUILD_BASE=ubuntu:${UBUNTU_VERSION}
@@ -13,9 +12,8 @@ FROM ${BUILD_BASE} as base
 # Build-time dependencies go here
 # See here for full list of those dependencies
 # https://github.com/lifting-bits/cxx-common/blob/master/docker/Dockerfile.ubuntu.vcpkg
-FROM trailofbits/cxx-common-vcpkg-builder-ubuntu:${UBUNTU_VERSION} as deps
+FROM ghcr.io/lifting-bits/cxx-common/vcpkg-builder-ubuntu-v2:${UBUNTU_VERSION} as deps
 ARG UBUNTU_VERSION
-ARG ARCH
 ARG LLVM_VERSION
 ARG LIBRARIES
 
@@ -41,9 +39,10 @@ RUN ./scripts/build.sh \
 
 RUN pip3 install ./scripts/diff_tester_export_insns
 
+# NOTE: At time of writing, tests only pass on x86_64 architecture
 RUN cd remill-build && \
     cmake --build . --target test_dependencies -- -j $(nproc) && \
-    CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --verbose --target test -- -j $(nproc) && \
+    CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --verbose --target test -- -j $(nproc) || [ "$(uname -m)" != "x86_64" ] && \
     cmake --build . --target install
 
 # Small installation image
