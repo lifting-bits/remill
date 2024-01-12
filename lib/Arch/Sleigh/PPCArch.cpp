@@ -106,7 +106,7 @@ class SleighPPCArch : public ArchBase {
   }
 
   llvm::DataLayout DataLayout(void) const override {
-    return llvm::DataLayout("e-m:e-p:32:32-i32:32-i64:64-f64:64-n32:64-S128");
+    return llvm::DataLayout("E-m:e-p:32:32-Fn32-i64:64-n32");
   }
 
   void PopulateRegisterTable(void) const override {
