@@ -410,8 +410,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
   llvm::BasicBlock *entry_block;
   llvm::BasicBlock *exit_block;
 
-  size_t curr_id;
-
   const sleigh::MaybeBranchTakenVar &to_lift_btaken;
 
   std::unordered_map<size_t, llvm::BasicBlock *> start_index_to_block;
@@ -466,7 +464,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         user_op_names(user_op_names_),
         entry_block(target_block),
         exit_block(exit_block_),
-        curr_id(0),
         to_lift_btaken(to_lift_btaken_),
         context_reg_lifter(std::move(context_reg_lifter)) {}
 
@@ -1393,9 +1390,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
   }
 
 
-  void LiftBtakenIfReached(llvm::IRBuilder<> &bldr, OpCode opc) {
+  void LiftBtakenIfReached(llvm::IRBuilder<> &bldr, OpCode opc, size_t index) {
 
-    if (this->to_lift_btaken && curr_id == this->to_lift_btaken->index) {
+    if (this->to_lift_btaken && index == this->to_lift_btaken->index) {
       this->UpdateStatus(this->LiftBranchTaken(bldr, *this->to_lift_btaken),
                          opc);
     }
@@ -1448,8 +1445,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     // we have a problem with block terminators where a cbranch <relative> -> fallthrough, need to either exit to the exit block
     // or transfer to a block. So really our cfg needs to tell us how to terminate a block
     // either exit (means real control flow), to block (fake control flow)
+    size_t index = 0;
     for (auto pc : blk.ops) {
+      this->LiftBtakenIfReached(bldr, pc.op, index);
       this->LiftPcodeOp(bldr, pc.op, pc.outvar, pc.vars.data(), pc.vars.size());
+      index += 1;
     }
 
     this->TerminateBlock();
