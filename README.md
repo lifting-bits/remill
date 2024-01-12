@@ -56,34 +56,41 @@ Most of Remill's dependencies can be provided by the [cxx-common](https://github
 
 Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/lifting-bits/cxx-common) container to have all pre-requisite libraries available.
 
-The Dockerfile allows for quick builds of multiple supported LLVM, architecture, and Linux configurations.
+The Dockerfile allows for quick builds of multiple supported LLVM, and Ubuntu configurations.
 
-Quickstart (builds Remill against LLVM 16 on Ubuntu 22.04 for AMD64):
+> [!IMPORTANT]
+> Not all LLVM and Ubuntu configurations are supported---Please refer to the CI results to get an idea about configurations that are tested and supported. The Docker image should build on both x86_64 and ARM64, but we only test x86_64 in CI. ARM64 _should build_, but if it doesn't, please open an issue.
+
+Quickstart (builds Remill against LLVM 17 on Ubuntu 22.04).
 
 Clone Remill:
+
 ```shell
-#Clone the repository.
 git clone https://github.com/lifting-bits/remill.git
 cd remill
 ```
 
 Build Remill Docker container:
+
 ```shell
-# do the build
 docker build . -t remill \
      -f Dockerfile \
      --build-arg UBUNTU_VERSION=22.04 \
-     --build-arg ARCH=amd64 \
-     --build-arg LLVM_VERSION=16
+     --build-arg LLVM_VERSION=17
 ```
 
 Ensure remill works:
+
+Decode some AMD64 instructions to LLVM:
+
 ```shell
-# Decode some AMD64 instructions to LLVM
 docker run --rm -it remill \
      --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+```
 
-# Decode some AArch64 instructions to LLVM
+Decode some AArch64 instructions to LLVM:
+
+```shell
 docker run --rm -it remill \
      --arch aarch64 --address 0x400544 --ir_out /dev/stdout \
      --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
