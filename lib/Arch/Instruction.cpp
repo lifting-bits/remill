@@ -673,6 +673,7 @@ std::string Instruction::Serialize(void) const {
       case kArchSparc32: ss << "SPARC32"; break;
       case kArchSparc64: ss << "SPARC64"; break;
       case kArchPPC: ss << "PowerPC"; break;
+      case kArchMIPS: ss << "MIPS"; break;
     }
   };
 

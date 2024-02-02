@@ -425,4 +425,8 @@ __remill_ppc_emulate_instruction(Memory *);
 
 [[gnu::used, gnu::const]] extern Memory *__remill_ppc_syscall(Memory *);
 
+[[gnu::used, gnu::const]] extern Memory *__remill_mips_emulate_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_mips_syscall(Memory *);
+
 }  // extern C
