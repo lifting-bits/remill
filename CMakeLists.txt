@@ -256,17 +256,8 @@ sleigh_compile(
   OUT_FILE "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.sla"
 )
 
-sleigh_compile(
-  TARGET mips_be_vr4300_spec
-  COMPILER "${sleigh_compiler}"
-  SLASPEC "${ghidra-fork_SOURCE_DIR}/Ghidra/Processors/MIPS/data/languages/mips64be.slaspec"
-  LOG_FILE "${sleigh_BINARY_DIR}/sleighspecs/spec_build_logs/mips64be.sla.log"
-  OUT_FILE "${sleigh_BINARY_DIR}/specfiles/Ghidra/Processors/MIPS/data/languages/mips64be.sla"
-)
-
 add_custom_target(sleigh_custom_specs)
 add_dependencies(sleigh_custom_specs ppc_e200_spec)
-add_dependencies(sleigh_custom_specs mips_be_vr4300_spec)
 
 target_link_libraries(remill_settings INTERFACE
   ${llvm_libs}
