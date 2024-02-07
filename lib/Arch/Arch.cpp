@@ -730,8 +730,14 @@ llvm::Function *Arch::DeclareLiftedFunction(std::string_view name_,
   auto func_type = llvm::dyn_cast<llvm::FunctionType>(
       RecontextualizeType(LiftedFunctionType(), context));
   llvm::StringRef name(name_.data(), name_.size());
-  auto func = llvm::Function::Create(
+  auto func = module->getFunction(name.str());
+  
+  if (!func || func->getFunctionType() != func_type) {
+    func = llvm::Function::Create(
       func_type, llvm::GlobalValue::ExternalLinkage, 0u, name, module);
+  } else if (func->isDeclaration()) {
+    func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+  }
 
   auto memory = remill::NthArgument(func, kMemoryPointerArgNum);
   auto state = remill::NthArgument(func, kStatePointerArgNum);
