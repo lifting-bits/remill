@@ -141,7 +141,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                                                        llvm::Type *ty) {
       auto mayberes = this->LiftAsInParamNoConvert(bldr, vnode_type);
       if (!mayberes) {
-        return mayberes;
+        return std::nullopt;
       }
 
       auto res = *mayberes;
