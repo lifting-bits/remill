@@ -1633,8 +1633,14 @@ SleighLifter::DefineInstructionFunction(Instruction &inst,
                                         ptr_ty};
   auto ty =
       llvm::FunctionType::get(inst.arch->MemoryPointerType(), params, false);
-  auto func = llvm::Function::Create(ty, llvm::GlobalValue::ExternalLinkage, 0,
+  auto func = target_mod->getFunction(nm.str());
+  
+  if (!func || func->getFunctionType() != ty) {
+    func = llvm::Function::Create(ty, llvm::GlobalValue::ExternalLinkage, 0,
                                      nm.str(), target_mod);
+  } else if (func->isDeclaration()) {
+    func->setLinkage(llvm::GlobalValue::WeakAnyLinkage);
+  }
 
   auto memory = remill::NthArgument(func, 1);
   auto state = remill::NthArgument(func, 0);

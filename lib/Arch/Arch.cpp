@@ -736,7 +736,7 @@ llvm::Function *Arch::DeclareLiftedFunction(std::string_view name_,
     func = llvm::Function::Create(
       func_type, llvm::GlobalValue::ExternalLinkage, 0u, name, module);
   } else if (func->isDeclaration()) {
-    func->setLinkage(llvm::GlobalValue::ExternalLinkage);
+    func->setLinkage(llvm::GlobalValue::WeakAnyLinkage);
   }
 
   auto memory = remill::NthArgument(func, kMemoryPointerArgNum);
