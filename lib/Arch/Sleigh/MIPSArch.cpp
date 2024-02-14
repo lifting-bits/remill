@@ -24,29 +24,27 @@ namespace remill {
 
 namespace sleighmips {
 SleighMIPSDecoder::SleighMIPSDecoder(const remill::Arch &arch)
-    : SleighDecoder(
-          arch, "mips64be.sla", "mips64.pspec",
-                    sleigh::ContextRegMappings(
-                        {}, {}), {}) {}
+    : SleighDecoder(arch, "mips64be.sla", "mips64.pspec",
+                    sleigh::ContextRegMappings({}, {}), {}) {}
 
-llvm::Value *SleighMIPSDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
-                                                llvm::Value *curr_pc,
-                                                size_t curr_insn_size,
-                                                const DecodingContext &) const {
+llvm::Value *
+SleighMIPSDecoder::LiftPcFromCurrPc(llvm::IRBuilder<> &bldr,
+                                    llvm::Value *curr_pc, size_t curr_insn_size,
+                                    const DecodingContext &) const {
   return bldr.CreateAdd(curr_pc, llvm::ConstantInt::get(curr_pc->getType(), 4));
 }
 
 void SleighMIPSDecoder::InitializeSleighContext(
     uint64_t addr, remill::sleigh::SingleInstructionSleighContext &ctxt,
     const ContextValues &values) const {
-    //sleigh::SetContextRegisterValueInSleigh(
-    //  addr, std::string("ZERO").c_str(), "zero", 0, ctxt, values);
+  //sleigh::SetContextRegisterValueInSleigh(
+  //  addr, std::string("ZERO").c_str(), "zero", 0, ctxt, values);
 }
 
 class SleighMIPSArch : public ArchBase {
  public:
   SleighMIPSArch(llvm::LLVMContext *context_, OSName os_name_,
-                ArchName arch_name_)
+                 ArchName arch_name_)
       : ArchBase(context_, os_name_, arch_name_),
         decoder(*this) {}
   virtual ~SleighMIPSArch() = default;
@@ -85,7 +83,7 @@ class SleighMIPSArch : public ArchBase {
     inst.operands.clear();
     inst.flows = Instruction::InvalidInsn();
 
-    context.UpdateContextReg(std::string("ZERO"), 0); // What to do here?
+    context.UpdateContextReg(std::string("ZERO"), 0);  // What to do here?
 
     return this->decoder.DecodeInstruction(address, instr_bytes, inst, context);
   }
@@ -100,35 +98,7 @@ class SleighMIPSArch : public ArchBase {
 
   uint64_t MaxInstructionSize(const DecodingContext &,
                               bool permit_fuse_idioms) const {
-    return permit_fuse_idioms ? 8 : 4;  // To handle delayslots, apparently
-  }
-
-  // Returns `true` if we should lift the semantics of `next_inst` as a delay
-  // slot of `inst`. The `branch_taken_path` tells us whether we are in the
-  // context of the taken path of a branch or the not-taken path of a branch.
-  bool NextInstructionIsDelayed(const Instruction &inst,
-                                            const Instruction &next_inst,
-                                            bool branch_taken_path) const {
-    if (inst.delayed_pc != next_inst.pc) {
-      return false;
-    }
-
-    if (branch_taken_path) {
-      return inst.has_branch_taken_delay_slot;
-    } else {
-      return inst.has_branch_not_taken_delay_slot;
-    }
-  }
-
-  // Returns `true` if a given instruction might have a delay slot.
-  bool MayHaveDelaySlot(const Instruction &inst) const {
-    return inst.has_branch_taken_delay_slot ||
-          inst.has_branch_not_taken_delay_slot;
-  }
-
-  // Returns `true` if memory access are little endian byte ordered.
-  bool MemoryAccessIsLittleEndian(void) const {
-    return false;
+    return 8;  // Note: Technically 4 but due to delay slots we need pass 8 bytes to sleigh
   }
 
   llvm::CallingConv::ID DefaultCallingConv(void) const override {
@@ -142,6 +112,7 @@ class SleighMIPSArch : public ArchBase {
   }
 
   llvm::DataLayout DataLayout(void) const override {
+    // M4xw: TODO: Confirm this is correct
     return llvm::DataLayout("E-m:e-p:32:32-i64:64-f128:64-n32-S64");
   }
 
@@ -233,7 +204,7 @@ class SleighMIPSArch : public ArchBase {
     SUB_REG(RA_LO, gpr.ra.dword, u32, RA);
     REG(PC, gpr.pc.qword, u64);
     SUB_REG(PC_LO, gpr.pc.dword, u32, PC);
-    
+
     // Flags
     REG(ISAMODESWITCH, flags.ISAModeSwitch.qword, u8);
 
@@ -359,7 +330,7 @@ class SleighMIPSArch : public ArchBase {
     /*auto u8 = llvm::Type::getInt8Ty(context);
     auto zero_c = ir.CreateAlloca(u8, nullptr, "ZERO");
     ir.CreateStore(llvm::Constant::getNullValue(u8), zero_c);*/
-    
+
     std::ignore = RegisterByName(kPCVariableName)->AddressOf(state_ptr_arg, ir);
   }
 
@@ -370,10 +341,10 @@ class SleighMIPSArch : public ArchBase {
 }  // namespace sleighmips
 
 Arch::ArchPtr Arch::GetSleighMIPS(llvm::LLVMContext *context_,
-                                 remill::OSName os_name_,
-                                 remill::ArchName arch_name_) {
+                                  remill::OSName os_name_,
+                                  remill::ArchName arch_name_) {
   return std::make_unique<sleighmips::SleighMIPSArch>(context_, os_name_,
-                                                    arch_name_);
+                                                      arch_name_);
 }
 
 }  // namespace remill
