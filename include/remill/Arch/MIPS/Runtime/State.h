@@ -186,6 +186,11 @@ static_assert(512 == sizeof(FPR), "Invalid structure packing of `FPR`.");
 struct alignas(8) FlagRegisters final {
   volatile uint64_t _0;
   Reg ISAModeSwitch;
+  // TODO: Move them elsewhere
+  volatile uint64_t _1;
+  Reg HI;
+  volatile uint64_t _2;
+  Reg LO;
 } __attribute__((packed));
 
 struct alignas(8) COP0Registers final {

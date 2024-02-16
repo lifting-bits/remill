@@ -207,6 +207,8 @@ class SleighMIPSArch : public ArchBase {
 
     // Flags
     REG(ISAMODESWITCH, flags.ISAModeSwitch.qword, u8);
+    REG(HI, flags.HI.qword, u64);
+    REG(LO, flags.LO.qword, u64);
 
     // FPR
     REG(F0, fpr.f0.qword, f64);
