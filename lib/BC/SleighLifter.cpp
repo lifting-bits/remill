@@ -124,6 +124,8 @@ llvm::Value *CreatePcodeBitShift(llvm::Value *lhs, llvm::Value *rhs,
 
 class SleighLifter::PcodeToLLVMEmitIntoBlock {
  private:
+  bool flip_bool_negate;
+
   class Parameter {
    public:
     virtual ~Parameter(void) = default;
@@ -453,7 +455,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       std::vector<std::string> user_op_names_, llvm::BasicBlock *exit_block_,
       const sleigh::MaybeBranchTakenVar &to_lift_btaken_,
       PcodeToLLVMEmitIntoBlock::DecodingContextConstants context_reg_lifter)
-      : target_block(target_block),
+      : flip_bool_negate(false),
+        target_block(target_block),
         state_pointer(state_pointer),
         context(target_block->getContext()),
         insn(insn),
@@ -523,7 +526,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         target_vnode.offset, target_vnode.size, entry_bldr);
     print_vardata(this->insn_lifter_parent.GetEngine(), ss, target_vnode);
     DLOG(ERROR) << "Creating unique for unknown register: " << ss.str() << " "
-                << reg_ptr->getName().str();
+              << reg_ptr->getName().str();
 
     return RegisterValue::CreateRegister(reg_ptr);
   }
@@ -547,7 +550,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           vnode.space, vnode.offset, vnode.size);
 
       DLOG(INFO) << "Looking for reg name " << reg_name << " from offset "
-                 << vnode.offset;
+                << vnode.offset;
       return this->LiftNormalRegisterOrCreateUnique(bldr, reg_name, vnode);
     } else if (space_name == "const") {
 
@@ -748,8 +751,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           return this->LiftStoreIntoOutParam(
               bldr,
               bldr.CreateZExt(
-                  bldr.CreateICmpEQ(*bneg_inval,
-                                    llvm::ConstantInt::get(byte_type, 0)),
+                  bldr.CreateICmpEQ(
+                      *bneg_inval,
+                      llvm::ConstantInt::get(byte_type,
+                                             this->flip_bool_negate ? 1 : 0)),
                   byte_type),
               outvar);
         }
@@ -1447,6 +1452,18 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     // either exit (means real control flow), to block (fake control flow)
     size_t index = 0;
     for (auto pc : blk.ops) {
+      // BUG(M4xw): Branch likelies seem to trigger a bug that causes wrong BranchTaken conditions
+      // This is always a CBRANCH preceded by a BOOL_NEGATE, so this is a workaround for now
+      // The logic operation is technically the same, the CBranch Target flip occurs in PcodeCFG
+      if (this->insn_lifter_parent.arch.arch_name ==
+          remill::ArchName::kArchMIPS) {
+        if (pc.op == OpCode::CPUI_BOOL_NEGATE &&
+            blk.ops[index + 1].op == OpCode::CPUI_CBRANCH) {
+          this->flip_bool_negate = true;
+        } else {
+          this->flip_bool_negate = false;
+        }
+      }
       this->LiftBtakenIfReached(bldr, pc.op, index);
       this->LiftPcodeOp(bldr, pc.op, pc.outvar, pc.vars.data(), pc.vars.size());
       index += 1;
@@ -1606,7 +1623,8 @@ SleighLifter::SleighLifter(const remill::Arch &arch_,
     : InstructionLifter(&arch_, intrinsics_),
       sleigh_context(new sleigh::SingleInstructionSleighContext(
           dec_.GetSLAName(), dec_.GetPSpec())),
-      decoder(dec_) {}
+      decoder(dec_),
+      arch(arch_) {}
 
 
 const std::string_view SleighLifter::kInstructionFunctionPrefix =
@@ -1634,10 +1652,10 @@ SleighLifter::DefineInstructionFunction(Instruction &inst,
   auto ty =
       llvm::FunctionType::get(inst.arch->MemoryPointerType(), params, false);
   auto func = target_mod->getFunction(nm.str());
-  
+
   if (!func || func->getFunctionType() != ty) {
     func = llvm::Function::Create(ty, llvm::GlobalValue::ExternalLinkage, 0,
-                                     nm.str(), target_mod);
+                                  nm.str(), target_mod);
   } else if (func->isDeclaration()) {
     func->setLinkage(llvm::GlobalValue::WeakAnyLinkage);
   }
@@ -1694,7 +1712,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
   //TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
 
 
-  auto cfg = sleigh::CreateCFG(pcode_record.ops);
+  auto cfg = sleigh::CreateCFG(pcode_record.ops, this->arch);
 
 
   SleighLifter::PcodeToLLVMEmitIntoBlock::DecodingContextConstants
@@ -1772,6 +1790,26 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
           next_pc,
           llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size())),
       next_pc_ref);
+
+  ///////////////////////////////////////////////////////////////////////////////////////////
+  // Handle COUNT Reg approximation
+  // May be prefered here over patches to sleigh definitions for now
+  // TODO(M4xw): Implement exact cycle count per opcode according to the optimization manual
+  if (inst.arch->IsMIPS()) {
+    const auto [count_ref, count_ref_type] =
+        LoadRegAddress(block, state_ptr, "COUNT");
+
+    const auto count =
+        intoblock_builer.CreateLoad(this->GetWordType(), count_ref);
+
+    intoblock_builer.CreateStore(
+        intoblock_builer.CreateAdd(
+            count, llvm::ConstantInt::get(
+                       this->GetWordType(),
+                       4)),  // Historically approximated Count per Opcode
+        count_ref);
+  }
+  //////////////////////////////////////////////////////////////////////////////////////////
 
   // TODO(Ian): THIS IS AN UNSOUND ASSUMPTION THAT RETURNS ALWAYS RETURN TO THE FALLTHROUGH, this is just to make things work
   intoblock_builer.CreateStore(

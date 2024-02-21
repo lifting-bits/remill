@@ -1,3 +1,5 @@
+#include <remill/Arch/Arch.h>
+#include <remill/Arch/Name.h>
 #include <remill/BC/PCodeCFG.h>
 
 #include <algorithm>
@@ -15,8 +17,9 @@
 namespace remill {
 namespace sleigh {
 
-PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops) {
-  return PcodeCFGBuilder(linear_ops).Build();
+PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops,
+                   const remill::Arch &arch) {
+  return PcodeCFGBuilder(linear_ops, arch).Build();
 }
 
 
@@ -116,6 +119,16 @@ PcodeCFGBuilder::GetControlFlowExitsForIndex(size_t index) const {
 
       auto taken_exit = build_direct_target_exit(curr_op.vars[0], index);
 
+      // BUG(M4xw): Branch likelies seem to trigger a bug that causes wrong BranchTaken conditions
+      // This is always a CBRANCH preceded by a BOOL_NEGATE, so this is a workaround for now
+      // The logic operation is technically the same, the BOOL_NEGATE flip happens in SleighLifter
+      if (this->arch.arch_name == remill::ArchName::kArchMIPS) {
+        if (linear_ops[index - 1].op == CPUI_BOOL_NEGATE) {
+          DLOG(INFO) << "Flipping CBRANCH Targets";
+          std::swap(taken_exit, fallthrough_exit);
+        }
+      }
+
       return ConditionalExit{taken_exit, fallthrough_exit};
     }
     case CPUI_CALLIND:
@@ -171,8 +184,10 @@ PcodeCFG PcodeCFGBuilder::Build() const {
 }
 
 
-PcodeCFGBuilder::PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops)
-    : linear_ops(linear_ops) {}
+PcodeCFGBuilder::PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops,
+                                 const remill::Arch &arch)
+    : linear_ops(linear_ops),
+      arch(arch) {}
 
 PcodeCFG::PcodeCFG(std::map<size_t, PcodeBlock> blocks)
     : blocks(std::move(blocks)) {}
