@@ -120,6 +120,7 @@ extern "C" [[gnu::used]] void __remill_intrinsics(void) {
 
   USED(__remill_async_hyper_call);
   USED(__remill_sync_hyper_call);
+  USED(__remill_set_coprocessor_reg);
 
   USED(__remill_undefined_8);
   USED(__remill_undefined_16);

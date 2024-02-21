@@ -137,6 +137,10 @@ __remill_flag_computation_carry(bool result, ...);
 [[gnu::used]] extern Memory *__remill_async_hyper_call(State &, addr_t ret_addr,
                                                        Memory *);
 
+[[gnu::used]] extern void
+__remill_set_coprocessor_reg(State &, uint8_t cop_num, uint64_t reg_num,
+                             uint64_t value, uint8_t sel);
+
 // This intrinsic must be tagged with the `always_inline` function attribute
 // since it has an implementation we want to use in Anvill's lifted IR.
 //

@@ -84,6 +84,7 @@ static size_t kNextPcArgNum = 3;
 
 static const std::string kEqualityClaimName = "claim_eq";
 static const std::string kSysCallName = "syscall";
+static const std::string kSetCopRegName = "setCopReg";
 
 static bool isVarnodeInConstantSpace(VarnodeData vnode) {
   auto spc = vnode.getAddr().getSpace();
@@ -526,7 +527,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         target_vnode.offset, target_vnode.size, entry_bldr);
     print_vardata(this->insn_lifter_parent.GetEngine(), ss, target_vnode);
     DLOG(ERROR) << "Creating unique for unknown register: " << ss.str() << " "
-              << reg_ptr->getName().str();
+                << reg_ptr->getName().str();
 
     return RegisterValue::CreateRegister(reg_ptr);
   }
@@ -550,7 +551,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           vnode.space, vnode.offset, vnode.size);
 
       DLOG(INFO) << "Looking for reg name " << reg_name << " from offset "
-                << vnode.offset;
+                 << vnode.offset;
       return this->LiftNormalRegisterOrCreateUnique(bldr, reg_name, vnode);
     } else if (space_name == "const") {
 
@@ -1356,6 +1357,37 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         bldr.CreateCall(insn_lifter_parent.GetIntrinsicTable()->sync_hyper_call,
                         args);
 
+        return kLiftedInstruction;
+      } else if (other_func_name == kSetCopRegName &&
+                 insn.arch_name == ArchName::kArchMIPS) {
+        DLOG(INFO) << "Invoking setCopReg";
+
+        if (isize == 5) {
+          VarnodeData &cop_num = vars[1];
+          VarnodeData &reg_num = vars[2];
+          VarnodeData &value = vars[3];
+          VarnodeData &sel = vars[4];
+
+          auto inval_cop_num = this->LiftIntegerInParam(bldr, cop_num);
+          auto inval_reg_num = ConstantValue::CreatConstant(
+              this->replacement_cont.LiftOffsetOrReplace(
+                  bldr, reg_num,
+                  llvm::IntegerType::get(this->context, reg_num.size * 8)));
+          auto inval_value = LiftIntegerInParam(bldr, value);
+          auto inval_sel = this->LiftIntegerInParam(bldr, sel);
+
+          std::array<llvm::Value *, 5> args = {
+              state_pointer, inval_cop_num.value(),
+              inval_reg_num.get()
+                  ->LiftAsInParam(bldr, llvm::IntegerType::get(
+                                            this->context, reg_num.size * 8))
+                  .value(),
+              inval_value.value(), inval_sel.value()};
+
+          bldr.CreateCall(
+              insn_lifter_parent.GetIntrinsicTable()->set_coprocessor_reg,
+              args);
+        }
         return kLiftedInstruction;
       }
       DLOG(ERROR) << "Unsupported pcode intrinsic: " << *other_func_name;
