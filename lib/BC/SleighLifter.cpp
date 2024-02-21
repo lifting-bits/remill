@@ -1455,8 +1455,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       // BUG(M4xw): Branch likelies seem to trigger a bug that causes wrong BranchTaken conditions
       // This is always a CBRANCH preceded by a BOOL_NEGATE, so this is a workaround for now
       // The logic operation is technically the same, the CBranch Target flip occurs in PcodeCFG
-      if (this->insn_lifter_parent.arch.arch_name ==
-          remill::ArchName::kArchMIPS) {
+      if (this->insn_lifter_parent.arch.IsMIPS()) {
         if (pc.op == OpCode::CPUI_BOOL_NEGATE &&
             blk.ops[index + 1].op == OpCode::CPUI_CBRANCH) {
           this->flip_bool_negate = true;

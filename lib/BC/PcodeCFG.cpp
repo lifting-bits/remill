@@ -122,7 +122,7 @@ PcodeCFGBuilder::GetControlFlowExitsForIndex(size_t index) const {
       // BUG(M4xw): Branch likelies seem to trigger a bug that causes wrong BranchTaken conditions
       // This is always a CBRANCH preceded by a BOOL_NEGATE, so this is a workaround for now
       // The logic operation is technically the same, the BOOL_NEGATE flip happens in SleighLifter
-      if (this->arch.arch_name == remill::ArchName::kArchMIPS) {
+      if (this->arch.IsMIPS()) {
         if (linear_ops[index - 1].op == CPUI_BOOL_NEGATE) {
           DLOG(INFO) << "Flipping CBRANCH Targets";
           std::swap(taken_exit, fallthrough_exit);
