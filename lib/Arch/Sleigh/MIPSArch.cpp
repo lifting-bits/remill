@@ -309,6 +309,10 @@ class SleighMIPSArch : public ArchBase {
     REG(TAGHI, cop0.TagHi.qword, u64);
     REG(ERRORPC, cop0.ErrorEPC.qword, u64);
     REG(DESAVE, cop0.DESAVE.qword, u64);
+
+    // COP1
+    // TODO: Maybe move fpr here?
+    REG(FCSR, cop1.FCSR.dword, u32);
   }
 
   void

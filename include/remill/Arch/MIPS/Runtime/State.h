@@ -260,6 +260,11 @@ struct alignas(8) COP0Registers final {
   Reg DESAVE;
 } __attribute__((packed));
 
+struct alignas(8) COP1Registers final {
+  volatile uint64_t _0;
+  Reg FCSR;
+} __attribute__((packed));
+
 struct alignas(8) MIPSState : public ArchState {
   GPR gpr;  // 528 bytes.
 
@@ -276,6 +281,10 @@ struct alignas(8) MIPSState : public ArchState {
   COP0Registers cop0;
 
   uint64_t _3;
+
+  COP1Registers cop1;
+
+  uint64_t _4;
 } __attribute__((packed));
 
 struct State : public MIPSState {};
