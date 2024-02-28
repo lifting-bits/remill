@@ -27,13 +27,18 @@
 
 struct Reg final {
   union {
-    alignas(4) uint32_t dword;
+    struct {
+      alignas(4) uint32_t dword1;
+      alignas(4) uint32_t dword2;
+    };
     alignas(8) uint64_t qword;
   } __attribute__((packed));
 } __attribute__((packed));
 
 static_assert(sizeof(uint64_t) == sizeof(Reg), "Invalid packing of `Reg`.");
-static_assert(0 == __builtin_offsetof(Reg, dword),
+static_assert(0 == __builtin_offsetof(Reg, dword1),
+              "Invalid packing of `Reg::dword`.");
+static_assert(4 == __builtin_offsetof(Reg, dword2),
               "Invalid packing of `Reg::dword`.");
 
 static_assert(0 == __builtin_offsetof(Reg, qword),
