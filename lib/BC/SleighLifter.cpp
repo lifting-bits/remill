@@ -963,15 +963,16 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
-
+    auto i1 = llvm::IntegerType::get(this->context, 1);
     // TODO(Ian): this should probably technically be != 0
     auto trunc_should_branch = bldr.CreateTrunc(
-        *should_branch, llvm::IntegerType::get(this->context, 1));
+        *should_branch, i1 );
     if (!isVarnodeInConstantSpace(lhs)) {
       // directs dont read the address of the variable, the offset is the jump
       // TODO(Ian): handle other address spaces
       auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
           bldr, lhs, this->insn_lifter_parent.GetWordType());
+
 
       auto orig_pc_value = this->GetNextPc(bldr);
       //CHECK(pc_reg_param.has_value());
@@ -1802,10 +1803,11 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
       intoblock_builer.CreateLoad(this->GetWordType(), next_pc_ref);
 
 
-  intoblock_builer.CreateStore(this->decoder.LiftPcFromCurrPc(
+  intoblock_builer.CreateStore(intoblock_builer.CreateZExtOrTrunc( this->decoder.LiftPcFromCurrPc(
                                    intoblock_builer, next_pc, inst.bytes.size(),
-                                   DecodingContext(context_values)),
+                                   DecodingContext(context_values)), pc_ref_type),
                                pc_ref);
+                               
   intoblock_builer.CreateStore(
       intoblock_builer.CreateAdd(
           next_pc,

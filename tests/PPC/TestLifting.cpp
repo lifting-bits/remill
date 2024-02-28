@@ -53,6 +53,9 @@ const static std::unordered_map<
          [](PPCState &st) -> test_runner::RegisterValueRef {
            return &st.gpr.r3.qword;
          }},
+        {"_r3", [](PPCState &st) -> uint32_t * { return &st.gpr.r3.lo_bits; }},
+        {"_r4", [](PPCState &st) -> uint32_t * { return &st.gpr.r4.lo_bits; }},
+        {"_r5", [](PPCState &st) -> uint32_t * { return &st.gpr.r5.lo_bits; }},
         {"r4",
          [](PPCState &st) -> test_runner::RegisterValueRef {
            return &st.gpr.r4.qword;
@@ -263,9 +266,12 @@ TEST(PPCVLELifts, PPCVLEDiv) {
   std::string insn_data("\x7c\xa4\x1b\x96", 4);
   TestOutputSpec<PPCState> spec(
       0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
-      {{"r4", uint64_t(0xcc)}, {"r3", uint64_t(0x7)}, {"pc", uint64_t(0x12)}},
-      {{"r5", uint64_t(0x1d)}, {"r4", uint64_t(0xcc)}, {"r3", uint64_t(0x7)}, {"pc", uint64_t(0x16)}},
-    reg_to_accessor);
+      {{"_r4", uint32_t(0xcc)}, {"_r3", uint32_t(0x7)}, {"pc", uint64_t(0x12)}},
+      {{"r5", uint64_t(0x1d)},
+       {"_r4", uint32_t(0xcc)},
+       {"_r3", uint32_t(0x7)},
+       {"pc", uint64_t(0x16)}},
+      reg_to_accessor);
   TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec, kVLEContext);
 }
@@ -471,10 +477,10 @@ TEST(PPCVLELifts, PPCVLEStoreWord) {
   TestOutputSpec<PPCState> spec(0x12, insn_data,
                                 remill::Instruction::Category::kCategoryNormal,
                                 {{"pc", uint64_t(0x12)},
-                                 {"r5", uint64_t(0x13371337)},
+                                 {"_r5", uint32_t(0x13371337)},
                                  {"r4", uint64_t(0xdeadbee0)}},
                                 {{"pc", uint64_t(0x12 + 4)},
-                                 {"r5", uint64_t(0x13371337)},
+                                 {"_r5", uint32_t(0x13371337)},
                                  {"r4", uint64_t(0xdeadbee0)}},
                                 reg_to_accessor);
   spec.AddPrecWrite<uint32_t>(0xdeadbee0 + 0x10, 0x0);
@@ -489,12 +495,10 @@ TEST(PPCVLELifts, PPCVLELoadImmediate) {
   llvm::LLVMContext curr_context;
   // se_li r7, 0x7
   std::string insn_data("\x48\x77", 2);
-  TestOutputSpec<PPCState> spec(0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
-                                {{"pc", uint64_t(0x12)},
-                                 {"r7", uint64_t(0x0)}},
-                                {{"pc", uint64_t(0x14)},
-                                 {"r7", uint64_t(0x7)}},
-                              reg_to_accessor);
+  TestOutputSpec<PPCState> spec(
+      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(0x12)}, {"r7", uint64_t(0x0)}},
+      {{"pc", uint64_t(0x14)}, {"r7", uint64_t(0x7)}}, reg_to_accessor);
 
   TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec, kVLEContext);
@@ -724,13 +728,15 @@ TEST(PPCVLELifts, PPCVLERotateLeftWordImmediateAndMask) {
   // n >> 2 & 7
   // (n & 31) >> 2
   std::string insn_data("\x74\xa6\xf7\x7f", 4);
-  TestOutputSpec<PPCState> spec(
-      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
-      {{"pc", uint64_t(0x12)}, {"r5", uint64_t(0x1337)}, {"r6", uint64_t(0x0)}},
-      {{"pc", uint64_t(0x12 + 4)},
-       {"r5", uint64_t(0x1337)},
-       {"r6", uint64_t(0x5)}},
-      reg_to_accessor);
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"_r5", uint32_t(0x1337)},
+                                 {"r6", uint64_t(0x0)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"_r5", uint32_t(0x1337)},
+                                 {"r6", uint64_t(0x5)}},
+                                reg_to_accessor);
 
   TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec, kVLEContext);
@@ -741,13 +747,15 @@ TEST(PPCVLELifts, PPCVLEConvertDoubleFromSignedInteger) {
   llvm::LLVMContext curr_context;
   // efdcfsi r5, r4
   std::string insn_data("\x10\xa0\x22\xf1", 4);
-  TestOutputSpec<PPCState> spec(
-      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
-      {{"pc", uint64_t(0x12)}, {"r4", uint64_t(0x1337)}, {"r5", uint64_t(0x0)}},
-      {{"pc", uint64_t(0x12 + 4)},
-       {"r4", uint64_t(0x1337)},
-       {"r5", uint64_t(0x40b3370000000000)}},
-      reg_to_accessor);
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"_r4", uint32_t(0x1337)},
+                                 {"r5", uint64_t(0x0)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"_r4", uint32_t(0x1337)},
+                                 {"r5", uint64_t(0x40b3370000000000)}},
+                                reg_to_accessor);
 
   TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec, kVLEContext);
@@ -758,13 +766,15 @@ TEST(PPCVLELifts, PPCVLEConvertFloatFromSignedInteger) {
   llvm::LLVMContext curr_context;
   // efscfsi r5, r4
   std::string insn_data("\x10\xa0\x22\xd1", 4);
-  TestOutputSpec<PPCState> spec(
-      0x12, insn_data, remill::Instruction::Category::kCategoryNormal,
-      {{"pc", uint64_t(0x12)}, {"r4", uint64_t(0x1337)}, {"r5", uint64_t(0x0)}},
-      {{"pc", uint64_t(0x12 + 4)},
-       {"r4", uint64_t(0x1337)},
-       {"r5", uint64_t(0x4599b800)}},
-      reg_to_accessor);
+  TestOutputSpec<PPCState> spec(0x12, insn_data,
+                                remill::Instruction::Category::kCategoryNormal,
+                                {{"pc", uint64_t(0x12)},
+                                 {"_r4", uint32_t(0x1337)},
+                                 {"r5", uint64_t(0x0)}},
+                                {{"pc", uint64_t(0x12 + 4)},
+                                 {"_r4", uint32_t(0x1337)},
+                                 {"r5", uint64_t(0x4599b800)}},
+                                reg_to_accessor);
 
   TestSpecRunner<PPCState> runner(curr_context);
   runner.RunTestSpec(spec, kVLEContext);
@@ -778,10 +788,10 @@ TEST(PPCVLELifts, PPCVLEConvertFloatToSignedInteger) {
   TestOutputSpec<PPCState> spec(0x12, insn_data,
                                 remill::Instruction::Category::kCategoryNormal,
                                 {{"pc", uint64_t(0x12)},
-                                 {"r4", uint64_t(0x4599b800)},
+                                 {"_r4", uint32_t(0x4599b800)},
                                  {"r5", uint64_t(0x0)}},
                                 {{"pc", uint64_t(0x12 + 4)},
-                                 {"r4", uint64_t(0x4599b800)},
+                                 {"_r4", uint32_t(0x4599b800)},
                                  {"r5", uint64_t(0x1337)}},
                                 reg_to_accessor);
 
