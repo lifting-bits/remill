@@ -26,6 +26,7 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Constants.h>
 #pragma clang diagnostic pop
 
 // clang-format on
@@ -57,6 +58,7 @@ class PointerType;
 class Type;
 class Value;
 class LLVMContext;
+class ConstantExpr;
 }  // namespace llvm
 
 namespace remill {
