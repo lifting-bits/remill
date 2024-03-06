@@ -51,10 +51,6 @@
 #include "remill/BC/Util.h"
 #include "remill/OS/OS.h"
 
-namespace llvm{
-  class Type;
-}
-
 namespace remill {
 
 class InstructionLifter::Impl {

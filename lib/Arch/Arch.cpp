@@ -30,7 +30,6 @@
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchBase`.
-#include <llvm/IR/AttributeMask.h>
 
 #include <algorithm>
 #include <memory>

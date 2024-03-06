@@ -24,7 +24,6 @@
 #pragma clang diagnostic ignored "-Wdocumentation"
 #pragma clang diagnostic ignored "-Wswitch-enum"
 
-#include <llvm/IR/AttributeMask.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/TargetParser/Triple.h>
 #include <llvm/IR/DataLayout.h>
@@ -50,6 +49,7 @@
 struct ArchState;
 
 namespace llvm {
+class AttributeMask;
 class BasicBlock;
 class Constant;
 class Function;
@@ -60,7 +60,6 @@ class IntegerType;
 class LLVMContext;
 class Module;
 class PointerType;
-class AttributeMask;
 }  // namespace llvm.
 namespace remill {
 
