@@ -49,6 +49,7 @@
 struct ArchState;
 
 namespace llvm {
+class AttributeMask;
 class BasicBlock;
 class Constant;
 class Function;
