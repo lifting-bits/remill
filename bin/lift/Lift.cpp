@@ -125,7 +125,10 @@ class SimpleTraceManager : public remill::TraceManager {
  public:
   virtual ~SimpleTraceManager(void) = default;
 
-  explicit SimpleTraceManager(Memory &memory_) : memory(memory_) {}
+  explicit SimpleTraceManager(Memory &memory_,
+                              const remill::IntrinsicTable &intrinsics_)
+      : memory(memory_),
+        intrinsics(intrinsics_) {}
 
  protected:
   // Called when we have lifted, i.e. defined the contents, of a new trace.
@@ -147,7 +150,13 @@ class SimpleTraceManager : public remill::TraceManager {
     if (trace_it != traces.end()) {
       return trace_it->second;
     } else {
-      return nullptr;
+      // Use function_call if we can't have the target addr in scope
+      auto byte_it = memory.find(addr);
+      if (byte_it == memory.end()) {
+        return intrinsics.function_call;
+      } else {
+        return nullptr;
+      }
     }
   }
 
@@ -174,6 +183,7 @@ class SimpleTraceManager : public remill::TraceManager {
  public:
   Memory &memory;
   std::unordered_map<uint64_t, llvm::Function *> traces;
+  const remill::IntrinsicTable &intrinsics;
 };
 
 // Looks for calls to a function like `__remill_function_return`, and
@@ -266,8 +276,8 @@ int main(int argc, char *argv[]) {
   const auto mem_ptr_type = arch->MemoryPointerType();
 
   Memory memory = UnhexlifyInputBytes(addr_mask);
-  SimpleTraceManager manager(memory);
   remill::IntrinsicTable intrinsics(module.get());
+  SimpleTraceManager manager(memory, intrinsics);
 
 
   auto inst_lifter = arch->DefaultLifter(intrinsics);

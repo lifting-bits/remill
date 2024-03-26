@@ -26,6 +26,9 @@
 #elif defined(__aarch64__)
 #  include "remill/Arch/AArch64/Runtime/State.h"
 #  define REMILL_HYPERCALL_AARCH64 1
+#elif defined(__mips__)
+#  include "remill/Arch/MIPS/Runtime/State.h"
+#  define REMILL_HYPERCALL_MIPS 1
 #elif defined(__sparc__)
 #  if ADDRESS_SIZE_BITS == 32
 #    include "remill/Arch/SPARC32/Runtime/State.h"
@@ -379,9 +382,15 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       break;
 
 #  endif
+#elif defined(REMILL_HYPERCALL_MIPS)
+    case SyncHyperCall::kMIPSEmulateInstruction:
+      mem = __remill_mips_emulate_instruction(mem);
+      break;
 
+  case SyncHyperCall::kMIPSSysCall:
+      mem = __remill_mips_syscall(mem);
+      break;
 #elif defined(REMILL_HYPERCALL_PPC)
-
     case SyncHyperCall::kPPCEmulateInstruction:
       mem = __remill_ppc_emulate_instruction(mem);
       break;
