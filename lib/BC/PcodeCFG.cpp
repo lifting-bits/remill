@@ -119,16 +119,6 @@ PcodeCFGBuilder::GetControlFlowExitsForIndex(size_t index) const {
 
       auto taken_exit = build_direct_target_exit(curr_op.vars[0], index);
 
-      // BUG(M4xw): Branch likelies seem to trigger a bug that causes wrong BranchTaken conditions
-      // This is always a CBRANCH preceded by a BOOL_NEGATE, so this is a workaround for now
-      // The logic operation is technically the same, the BOOL_NEGATE flip happens in SleighLifter
-      if (this->arch.IsMIPS()) {
-        if (linear_ops[index - 1].op == CPUI_BOOL_NEGATE) {
-          DLOG(INFO) << "Flipping CBRANCH Targets";
-          std::swap(taken_exit, fallthrough_exit);
-        }
-      }
-
       return ConditionalExit{taken_exit, fallthrough_exit};
     }
     case CPUI_CALLIND:

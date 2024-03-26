@@ -125,8 +125,6 @@ llvm::Value *CreatePcodeBitShift(llvm::Value *lhs, llvm::Value *rhs,
 
 class SleighLifter::PcodeToLLVMEmitIntoBlock {
  private:
-  bool flip_bool_negate;
-
   class Parameter {
    public:
     virtual ~Parameter(void) = default;
@@ -456,8 +454,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       std::vector<std::string> user_op_names_, llvm::BasicBlock *exit_block_,
       const sleigh::MaybeBranchTakenVar &to_lift_btaken_,
       PcodeToLLVMEmitIntoBlock::DecodingContextConstants context_reg_lifter)
-      : flip_bool_negate(false),
-        target_block(target_block),
+      : target_block(target_block),
         state_pointer(state_pointer),
         context(target_block->getContext()),
         insn(insn),
@@ -752,10 +749,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           return this->LiftStoreIntoOutParam(
               bldr,
               bldr.CreateZExt(
-                  bldr.CreateICmpEQ(
-                      *bneg_inval,
-                      llvm::ConstantInt::get(byte_type,
-                                             this->flip_bool_negate ? 1 : 0)),
+                  bldr.CreateICmpEQ(*bneg_inval,
+                                    llvm::ConstantInt::get(byte_type, 0)),
                   byte_type),
               outvar);
         }
@@ -1419,6 +1414,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return LiftStatus::kLiftedLifterError;
     }
 
+    if (btaken_var.invert) {
+      // Branch taken evaluation is inverted
+      *maybe_should_branch = bldr.CreateICmpEQ(
+          *maybe_should_branch,
+          llvm::ConstantInt::get(llvm::IntegerType::get(this->context, 8), 0));
+    }
+
     auto should_branch = bldr.CreateZExtOrTrunc(
         *maybe_should_branch, llvm::IntegerType::get(this->context, 8));
     auto branch_taken_ref = this->GetBranchTakenRef();
@@ -1484,17 +1486,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     // either exit (means real control flow), to block (fake control flow)
     size_t index = 0;
     for (auto pc : blk.ops) {
-      // BUG(M4xw): Branch likelies seem to trigger a bug that causes wrong BranchTaken conditions
-      // This is always a CBRANCH preceded by a BOOL_NEGATE, so this is a workaround for now
-      // The logic operation is technically the same, the CBranch Target flip occurs in PcodeCFG
-      if (this->insn_lifter_parent.arch.IsMIPS()) {
-        if (pc.op == OpCode::CPUI_BOOL_NEGATE &&
-            blk.ops[index + 1].op == OpCode::CPUI_CBRANCH) {
-          this->flip_bool_negate = true;
-        } else {
-          this->flip_bool_negate = false;
-        }
-      }
       this->LiftBtakenIfReached(bldr, pc.op, index);
       this->LiftPcodeOp(bldr, pc.op, pc.outvar, pc.vars.data(), pc.vars.size());
       index += 1;
@@ -1840,6 +1831,7 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
                        4)),  // Historically approximated Count per Opcode
         count_ref);
   }
+  LOG(INFO) << inst.Serialize();
   //////////////////////////////////////////////////////////////////////////////////////////
 
   // TODO(Ian): THIS IS AN UNSOUND ASSUMPTION THAT RETURNS ALWAYS RETURN TO THE FALLTHROUGH, this is just to make things work
