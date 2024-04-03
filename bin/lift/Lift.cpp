@@ -241,6 +241,18 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
+  if (FLAGS_bytes[0] == '@') {
+    std::ifstream file(FLAGS_bytes.substr(1));
+    if (!file.is_open()) {
+      std::cerr << "Could not open file " << FLAGS_bytes.substr(1)
+                << " specified to --bytes." << std::endl;
+      return EXIT_FAILURE;
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    FLAGS_bytes = buffer.str();
+  }
+
   if (FLAGS_bytes.size() % 2) {
     std::cerr << "Please specify an even number of nibbles to --bytes."
               << std::endl;
