@@ -27,8 +27,8 @@
 
 struct Reg final {
   union {
-    alignas(4) uint32_t dword;
     alignas(8) uint64_t qword;
+    alignas(4) uint32_t dword;
   } __attribute__((packed));
 } __attribute__((packed));
 
