@@ -2034,7 +2034,7 @@ static bool TryDecodeLDUR_Vn_LDST_UNSCALED(const InstData &data,
   auto num_bits = ReadRegSize(val_class);
   AddRegOperand(inst, kActionWrite, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionRead, num_bits, data.Rn,
-                         static_cast<uint64_t>(data.imm12.uimm));
+                         static_cast<uint64_t>(data.imm9.simm9));
   return true;
 }
 
@@ -2117,7 +2117,7 @@ static bool TryDecodeSTUR_Vn_LDST_UNSCALED(const InstData &data,
   auto num_bits = ReadRegSize(val_class);
   AddRegOperand(inst, kActionRead, val_class, kUseAsValue, data.Rt);
   AddBasePlusOffsetMemOp(inst, kActionWrite, num_bits, data.Rn,
-                         static_cast<uint64_t>(data.imm12.uimm));
+                         static_cast<uint64_t>(data.imm9.simm9));
   return true;
 }
 
