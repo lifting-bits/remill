@@ -115,7 +115,8 @@ sudo apt-get install \
      ccache \
      libc6-dev:i386 \
      'libstdc++-*-dev:i386' \
-     g++-multilib
+     g++-multilib \
+     rpm
 ```
 
 Next, clone the repository. This will clone the code into the `remill` directory.
