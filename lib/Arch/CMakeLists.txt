@@ -29,6 +29,7 @@ add_library(remill_arch STATIC
 add_subdirectory(AArch32)
 add_subdirectory(AArch64)
 add_subdirectory(PPC)
+add_subdirectory(MIPS)
 add_subdirectory(SPARC32)
 add_subdirectory(SPARC64)
 add_subdirectory(Sleigh)

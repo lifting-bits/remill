@@ -1,3 +1,5 @@
+#include <remill/Arch/Arch.h>
+#include <remill/Arch/Name.h>
 #include <remill/BC/PCodeCFG.h>
 
 #include <algorithm>
@@ -15,8 +17,9 @@
 namespace remill {
 namespace sleigh {
 
-PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops) {
-  return PcodeCFGBuilder(linear_ops).Build();
+PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops,
+                   const remill::Arch &arch) {
+  return PcodeCFGBuilder(linear_ops, arch).Build();
 }
 
 
@@ -171,8 +174,10 @@ PcodeCFG PcodeCFGBuilder::Build() const {
 }
 
 
-PcodeCFGBuilder::PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops)
-    : linear_ops(linear_ops) {}
+PcodeCFGBuilder::PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops,
+                                 const remill::Arch &arch)
+    : linear_ops(linear_ops),
+      arch(arch) {}
 
 PcodeCFG::PcodeCFG(std::map<size_t, PcodeBlock> blocks)
     : blocks(std::move(blocks)) {}

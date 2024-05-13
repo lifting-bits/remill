@@ -121,6 +121,7 @@ enum ArchName : uint32_t {
   kArchThumb2LittleEndian,
 
   kArchPPC,
+  kArchMIPS,
 };
 
 ArchName GetArchName(const llvm::Triple &triple);
