@@ -15,10 +15,10 @@
  */
 
 #include "remill/OS/OS.h"
+#include "remill/Arch/Arch.h"
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <llvm/TargetParser/Triple.h>
 
 namespace remill {
 

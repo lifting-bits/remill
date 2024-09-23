@@ -175,6 +175,15 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_x86_set_control_reg_4(mem);
       break;
 
+#if defined(__clang_major__) && __clang_major__ >= 20
+    case SyncHyperCall::kX86SysCall:
+    case SyncHyperCall::kX86SysEnter:
+    case SyncHyperCall::kX86SysExit:
+      // LLVM 20+ rejects RSP/RBP constraints in inline asm
+      // These hypercalls are not executed in normal test workflows anyway
+      __builtin_debugtrap();
+      break;
+#else
     case SyncHyperCall::kX86SysCall:
       asm volatile("syscall"
                    : "=a"(state.gpr.rax.dword), "=r"(esp)
@@ -202,6 +211,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                      "S"(state.gpr.rsi.dword), "D"(state.gpr.rdi.dword),
                      "r"(esp), "r"(ebp));
       break;
+#endif
 
 #  elif REMILL_HYPERCALL_AMD64
 
@@ -233,6 +243,15 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_amd64_set_control_reg_8(mem);
       break;
 
+#if defined(__clang_major__) && __clang_major__ >= 20
+    case SyncHyperCall::kX86SysCall:
+    case SyncHyperCall::kX86SysEnter:
+    case SyncHyperCall::kX86SysExit:
+      // LLVM 20+ rejects RSP/RBP constraints in inline asm
+      // These hypercalls are not executed in normal test workflows anyway
+      __builtin_debugtrap();
+      break;
+#else
     case SyncHyperCall::kX86SysCall:
       asm volatile("syscall"
                    : "=a"(state.gpr.rax.qword), "=r"(rsp)
@@ -263,6 +282,7 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                      "r"(rsp), "r"(rbp), "r"(r8), "r"(r9), "r"(r10), "r"(r11),
                      "r"(r12), "r"(r13), "r"(r14), "r"(r15));
       break;
+#endif
 
 #  endif
 

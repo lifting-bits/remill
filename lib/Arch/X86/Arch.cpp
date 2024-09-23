@@ -20,7 +20,6 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
-#include <llvm/TargetParser/Triple.h>
 #include <remill/Arch/ArchBase.h>  // For `Arch` and `ArchImpl`.
 #include <remill/Arch/X86/X86Base.h>
 

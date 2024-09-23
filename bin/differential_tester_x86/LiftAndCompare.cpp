@@ -186,11 +186,11 @@ struct DiffTestResult {
 class ComparisonRunner {
  private:
   random_bytes_engine rbe;
-  llvm::support::endianness endian;
+  llvm::endianness endian;
 
 
  public:
-  ComparisonRunner(llvm::support::endianness endian_) : endian(endian_) {}
+  ComparisonRunner(llvm::endianness endian_) : endian(endian_) {}
 
  private:
   template <class T>
@@ -348,8 +348,8 @@ bool runTestCase(const TestCase &tc, DifferentialModuleBuilder &diffbuilder,
   }
 
   auto end = diff_mod->GetModule()->getDataLayout().isBigEndian()
-                 ? llvm::support::endianness::big
-                 : llvm::support::endianness::little;
+                 ? llvm::endianness::big
+                 : llvm::endianness::little;
   ComparisonRunner comp_runner(end);
 
   if (FLAGS_should_dump_functions) {

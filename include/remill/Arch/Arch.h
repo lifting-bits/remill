@@ -25,7 +25,11 @@
 #pragma clang diagnostic ignored "-Wswitch-enum"
 
 #include <llvm/ADT/SmallVector.h>
+#if LLVM_VERSION_MAJOR < 16
+#include <llvm/ADT/Triple.h>
+#else
 #include <llvm/TargetParser/Triple.h>
+#endif // LLVM_VERSION_MAJOR
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
 #include <remill/BC/InstructionLifter.h>

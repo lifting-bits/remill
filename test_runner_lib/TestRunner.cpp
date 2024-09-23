@@ -46,7 +46,7 @@ namespace test_runner {
 namespace {
 static bool FuncIsIntrinsicPrefixedBy(const llvm::Function *func,
                                       const char *prefix) {
-  return func->isDeclaration() && func->getName().startswith(prefix);
+  return func->isDeclaration() && func->getName().find(prefix) == 0;
 }
 }  // namespace
 
@@ -73,11 +73,10 @@ void *MissingFunctionStub(const std::string &name) {
   return nullptr;
 }
 
-MemoryHandler::MemoryHandler(llvm::support::endianness endian_)
-    : endian(endian_) {}
+MemoryHandler::MemoryHandler(llvm::endianness endian_) : endian(endian_) {}
 
 MemoryHandler::MemoryHandler(
-    llvm::support::endianness endian_,
+    llvm::endianness endian_,
     std::unordered_map<uint64_t, uint8_t> initial_state)
     : state(std::move(initial_state)),
       endian(endian_) {}

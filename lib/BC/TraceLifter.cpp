@@ -254,7 +254,7 @@ bool TraceLifter::Impl::Lift(
 
   // Get a trace head that the manager knows about, or that we
   // will eventually tell the trace manager about.
-  auto get_trace_decl = [=](uint64_t trace_addr) -> llvm::Function * {
+  auto get_trace_decl = [this](uint64_t trace_addr) -> llvm::Function * {
     if (auto trace = GetLiftedTraceDeclaration(trace_addr)) {
       return trace;
     } else if (trace_work_list.count(trace_addr)) {

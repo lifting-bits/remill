@@ -35,7 +35,6 @@
 #include <llvm/Pass.h>
 #include <llvm/Passes/OptimizationLevel.h>
 #include <llvm/Passes/PassBuilder.h>
-#include <llvm/TargetParser/Triple.h>
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/IPO/Inliner.h>
 #include <llvm/Transforms/IPO/ModuleInliner.h>
@@ -67,7 +66,9 @@ void OptimizeBareModule(llvm::Module *module, OptimizationGuide guide) {
 
 
   llvm::PipelineTuningOptions opts;
+#if LLVM_VERSION_MAJOR >= 16
   opts.InlinerThreshold = 250;
+#endif // LLVM_VERSION_MAJOR
   llvm::PassBuilder pb(nullptr, opts);
 
   pb.registerModuleAnalyses(mam);
