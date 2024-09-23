@@ -20,7 +20,6 @@
 #include <glog/logging.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallVector.h>
-#include <llvm/IR/AttributeMask.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -686,7 +685,11 @@ llvm::Value *Register::AddressOf(llvm::Value *state_ptr,
 //
 void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   mod->setDataLayout(DataLayout().getStringRepresentation());
+#if LLVM_VERSION_MAJOR >= 21
+  mod->setTargetTriple(Triple());
+#else
   mod->setTargetTriple(Triple().str());
+#endif // LLVM_VERSION_MAJOR
 
   // Go and remove compile-time attributes added into the semantics. These
   // can screw up later compilation. We purposefully compile semantics with
@@ -695,18 +698,10 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
   // compile this bitcode back into machine code, we may want to use those
   // features, and clang will complain if we try to do so if these metadata
   // remain present.
-  auto &context = mod->getContext();
-
-  llvm::AttributeSet target_attribs;
-
-  target_attribs = target_attribs.addAttribute(context, "target-features");
-  target_attribs = target_attribs.addAttribute(context, "target-cpu");
 
   for (llvm::Function &func : *mod) {
-    auto attribs = func.getAttributes();
-    attribs = attribs.removeFnAttributes(context,
-                                         llvm::AttributeMask(target_attribs));
-    func.setAttributes(attribs);
+    func.removeFnAttr("target-features");
+    func.removeFnAttr("target-cpu");
   }
 }
 

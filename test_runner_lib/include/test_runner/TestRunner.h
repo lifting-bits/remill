@@ -35,6 +35,12 @@
 #include <string>
 #include <unordered_map>
 
+#if LLVM_VERSION_MAJOR < 18
+namespace llvm {
+  using endianness = support::endianness;
+}
+#endif // LLVM_VERSION_MAJOR
+
 namespace test_runner {
 
 
@@ -48,12 +54,12 @@ class MemoryHandler {
   std::unordered_map<uint64_t, uint8_t> state;
 
   random_bytes_engine rbe;
-  llvm::support::endianness endian;
+  llvm::endianness endian;
 
  public:
-  MemoryHandler(llvm::support::endianness endian_);
+  MemoryHandler(llvm::endianness endian_);
 
-  MemoryHandler(llvm::support::endianness endian_,
+  MemoryHandler(llvm::endianness endian_,
                 std::unordered_map<uint64_t, uint8_t> initial_state);
 
   uint8_t read_byte(uint64_t addr);
@@ -112,7 +118,11 @@ void ExecuteLiftedFunction(
   }
 
   auto tgt_mod = llvm::CloneModule(*func->getParent());
+#if LLVM_VERSION_MAJOR >= 21
+  tgt_mod->setTargetTriple(llvm::Triple());
+#else
   tgt_mod->setTargetTriple("");
+#endif // LLVM_VERSION_MAJOR
   tgt_mod->setDataLayout(llvm::DataLayout(""));
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmParser();

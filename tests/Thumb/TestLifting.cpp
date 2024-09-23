@@ -198,7 +198,7 @@ class TestSpecRunner {
   test_runner::LiftingTester lifter;
   uint64_t tst_ctr;
   test_runner::random_bytes_engine rbe;
-  llvm::support::endianness endian;
+  llvm::endianness endian;
 
  public:
   TestSpecRunner(llvm::LLVMContext &context, remill::ArchName name)
@@ -206,8 +206,8 @@ class TestSpecRunner {
                                           name)),
         tst_ctr(0),
         endian(lifter.GetArch()->MemoryAccessIsLittleEndian()
-                   ? llvm::support::endianness::little
-                   : llvm::support::endianness::big) {}
+                   ? llvm::endianness::little
+                   : llvm::endianness::big) {}
 
   void RunTestSpec(const TestOutputSpec &test) {
     std::stringstream ss;

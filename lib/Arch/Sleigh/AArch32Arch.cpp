@@ -22,7 +22,6 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
-#include <llvm/TargetParser/Triple.h>
 #include <remill/Arch/AArch32/ArchContext.h>
 
 #include <iomanip>

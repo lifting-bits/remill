@@ -708,7 +708,7 @@ LiftedFunctionArgs(llvm::BasicBlock *block, const IntrinsicTable &intrinsics) {
 void ForEachISel(llvm::Module *module, ISelCallback callback) {
   for (auto &global : module->globals()) {
     const auto &name = global.getName();
-    if (name.startswith("ISEL_") || name.startswith("COND_")) {
+    if (name.find("ISEL_") == 0 || name.find("COND_") == 0) {
       llvm::Function *sem = nullptr;
       if (global.hasInitializer()) {
         sem = llvm::dyn_cast<llvm::Function>(
@@ -888,7 +888,9 @@ static llvm::Type *RecontextualizeType(llvm::Type *type,
     case llvm::Type::PPC_FP128TyID: return llvm::Type::getPPC_FP128Ty(context);
     case llvm::Type::LabelTyID: return llvm::Type::getLabelTy(context);
     case llvm::Type::MetadataTyID: return llvm::Type::getMetadataTy(context);
+#if LLVM_VERSION_MAJOR <= 19
     case llvm::Type::X86_MMXTyID: return llvm::Type::getX86_MMXTy(context);
+#endif // LLVM_VERSION_MAJOR
     case llvm::Type::TokenTyID: return llvm::Type::getTokenTy(context);
     case llvm::Type::IntegerTyID: {
       auto int_type = llvm::dyn_cast<llvm::IntegerType>(type);
@@ -1144,6 +1146,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#if LLVM_VERSION_MAJOR <= 17
       case llvm::Instruction::And: {
         auto ret = llvm::ConstantExpr::getAnd(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1162,6 +1165,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#endif // LLVM_VERSION_MAJOR
       case llvm::Instruction::Xor: {
         auto ret = llvm::ConstantExpr::getXor(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1171,6 +1175,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#if LLVM_VERSION_MAJOR <= 18
       case llvm::Instruction::ICmp: {
         auto ret = llvm::ConstantExpr::getICmp(
             ce->getPredicate(),
@@ -1181,6 +1186,8 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#endif // LLVM_VERSION_MAJOR
+#if LLVM_VERSION_MAJOR <= 17
       case llvm::Instruction::ZExt: {
         auto ret = llvm::ConstantExpr::getZExt(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1189,6 +1196,8 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#endif // LLVM_VERSION_MAJOR
+#if LLVM_VERSION_MAJOR <= 17
       case llvm::Instruction::SExt: {
         auto ret = llvm::ConstantExpr::getSExt(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1197,6 +1206,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#endif // LLVM_VERSION_MAJOR
       case llvm::Instruction::Trunc: {
         auto ret = llvm::ConstantExpr::getTrunc(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1205,6 +1215,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#if LLVM_VERSION_MAJOR <= 18
       case llvm::Instruction::Shl: {
         const auto b = llvm::dyn_cast<llvm::ShlOperator>(ce);
         auto ret = llvm::ConstantExpr::getShl(
@@ -1216,6 +1227,8 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#endif
+#if LLVM_VERSION_MAJOR <= 17
       case llvm::Instruction::LShr: {
         const auto b = llvm::dyn_cast<llvm::LShrOperator>(ce);
         auto ret = llvm::ConstantExpr::getLShr(
@@ -1238,6 +1251,8 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#endif // LLVM_VERSION_MAJOR
+#if LLVM_VERSION_MAJOR <= 20
       case llvm::Instruction::Mul: {
         const auto b = llvm::dyn_cast<llvm::MulOperator>(ce);
         auto ret = llvm::ConstantExpr::getMul(
@@ -1249,6 +1264,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
+#endif // LLVM_VERSION_MAJOR
       case llvm::Instruction::IntToPtr: {
         auto ret = llvm::ConstantExpr::getIntToPtr(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1291,11 +1307,16 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
           indices[i] = MoveConstantIntoModule(ce->getOperand(i + 1u),
                                               dest_module, value_map, type_map);
         }
+#if LLVM_VERSION_MAJOR >= 19
+        auto in_range = g->getInRange();
+#else
+        auto in_range = g->getInRangeIndex();
+#endif // LLVM_VERSION_MAJOR
         auto ret = llvm::ConstantExpr::getGetElementPtr(
             source_type,
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
                                    type_map),
-            indices, g->isInBounds(), g->getInRangeIndex());
+            indices, g->isInBounds(), in_range);
         moved_c = ret;
         return ret;
       }
@@ -1903,7 +1924,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
   const auto initial_addr = addr;
   auto module = intrinsics.error->getParent();
   auto &context = module->getContext();
-  llvm::DataLayout dl(module);
+  llvm::DataLayout dl(module->getDataLayout());
   llvm::Value *args_2[2] = {mem_ptr, addr};
   auto index_type = llvm::Type::getIntNTy(context, dl.getPointerSizeInBits(0));
 
@@ -1930,9 +1951,11 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
       return ir.CreateLoad(type, res);
     }
 
+#if LLVM_VERSION_MAJOR <= 19
     case llvm::Type::X86_MMXTyID:
       return ir.CreateBitCast(ir.CreateCall(intrinsics.read_memory_64, args_2),
                               type);
+#endif // LLVM_VERSION_MAJOR
 
     case llvm::Type::IntegerTyID:
       switch (dl.getTypeAllocSize(type)) {
@@ -2077,7 +2100,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
   const auto initial_addr = addr;
   auto module = intrinsics.error->getParent();
   auto &context = module->getContext();
-  llvm::DataLayout dl(module);
+  llvm::DataLayout dl(module->getDataLayout());
   llvm::Value *args_3[3] = {mem_ptr, addr, val_to_store};
   auto index_type = llvm::Type::getInt32Ty(context);
 
@@ -2109,11 +2132,13 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       return ir.CreateCall(intrinsics.write_memory_f80, args_3);
     }
 
+#if LLVM_VERSION_MAJOR <= 19
     case llvm::Type::X86_MMXTyID: {
       auto i64_type = llvm::Type::getInt64Ty(context);
       args_3[2] = ir.CreateBitCast(val_to_store, i64_type);
       return ir.CreateCall(intrinsics.write_memory_64, args_3);
     }
+#endif // LLVM_VERSION_MAJOR
 
     case llvm::Type::IntegerTyID:
       switch (dl.getTypeAllocSize(type)) {
