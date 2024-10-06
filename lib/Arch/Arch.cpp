@@ -16,6 +16,7 @@
 
 #include "remill/Arch/Arch.h"
 
+#include "llvm/IR/AttributeMask.h"
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <llvm/ADT/APInt.h>
@@ -696,8 +697,7 @@ void Arch::PrepareModuleDataLayout(llvm::Module *mod) const {
 
   for (llvm::Function &func : *mod) {
     auto attribs = func.getAttributes();
-    attribs = attribs.removeFnAttributes(context,
-                                         llvm::AttributeMask(target_attribs));
+    attribs = attribs.removeFnAttributes(context, llvm::AttributeMask(target_attribs));
     func.setAttributes(attribs);
   }
 }

@@ -46,16 +46,31 @@ find_package(LLVM CONFIG REQUIRED)
 if(LLVM_LINK_LLVM_DYLIB)
   set(llvm_libs LLVM)
 else()
-  llvm_map_components_to_libnames(llvm_libs
-    support core irreader
-    bitreader bitwriter
-    passes asmprinter
-    aarch64info aarch64desc aarch64codegen aarch64asmparser
-    armcodegen armasmparser
-    interpreter mcjit
+   llvm_map_components_to_libnames(llvm_libs
+    support
+    core
+    irreader
+    bitreader
+    bitwriter
+    passes
+    asmprinter
+    aarch64info
+    aarch64desc
+    aarch64codegen
+    aarch64asmparser
+    armcodegen
+    armasmparser
+    HipStdPar
+    CodeGenTypes
+    interpreter
+    mcjit
+    FrontendOffloading
     nvptxdesc
-    x86info x86codegen x86asmparser
-    sparccodegen sparcasmparser
+    x86info
+    x86codegen
+    x86asmparser
+    sparccodegen
+    sparcasmparser
     webassemblydesc)
 endif()
 message(STATUS "LLVM Libraries: ${llvm_libs}")
@@ -299,6 +314,10 @@ target_link_libraries(remill INTERFACE
   remill_version
   ${LINKER_END_GROUP}
 )
+
+if(WIN32)
+    target_link_libraries(remill INTERFACE Ws2_32.lib)
+endif()
 
 #
 # Also install clang, libllvm and llvm-link

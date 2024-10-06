@@ -353,16 +353,17 @@ llvm::Value *InstructionLifter::LoadWordRegValOrZero(llvm::BasicBlock *block,
   }
 
   auto val = LoadRegValue(block, state_ptr, reg_name);
-  auto val_type = llvm::dyn_cast_or_null<llvm::IntegerType>(val->getType());
+  auto val_type = val->getType();
   auto word_type = zero->getType();
 
   CHECK(val_type) << "Register " << reg_name << " expected to be an integer.";
 
-  auto val_size = val_type->getBitWidth();
-  auto word_size = word_type->getBitWidth();
+  auto val_size  = (llvm::dyn_cast_or_null<llvm::IntegerType>(val_type))->getBitWidth();
+  auto word_size =  (llvm::dyn_cast_or_null<llvm::IntegerType>(word_type))->getBitWidth();
+
   CHECK_LE(val_size, word_size)
       << "Register " << reg_name << " expected to be no larger than the "
-      << "machine word size (" << word_type->getBitWidth() << " bits).";
+      << "machine word size (" << (llvm::dyn_cast_or_null<llvm::IntegerType>(word_type))->getBitWidth() << " bits).";
 
   if (val_size < word_size) {
     val = new llvm::ZExtInst(val, word_type, llvm::Twine::createNull(), block);

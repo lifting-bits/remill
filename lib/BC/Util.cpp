@@ -47,6 +47,8 @@
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Analysis/ConstantFolding.h>
+#include <llvm/IR/DataLayout.h>
 
 #include "remill/Arch/Arch.h"
 #include "remill/Arch/Name.h"
@@ -1121,6 +1123,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
       return nullptr;
     }
   } else if (auto ce = llvm::dyn_cast<llvm::ConstantExpr>(c)) {
+    const llvm::DataLayout &DL = dest_module->getDataLayout();
     switch (ce->getOpcode()) {
       case llvm::Instruction::Add: {
         const auto b = llvm::dyn_cast<llvm::AddOperator>(ce);
@@ -1145,20 +1148,16 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         return ret;
       }
       case llvm::Instruction::And: {
-        auto ret = llvm::ConstantExpr::getAnd(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map));
+        auto ret = ConstantFoldBinaryOpOperands(ce->getOpcode(), MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map, type_map),
+                                                                 MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map, type_map), 
+                                                                 DL);
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::Or: {
-        auto ret = llvm::ConstantExpr::getOr(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map));
+        auto ret = ConstantFoldBinaryOpOperands(ce->getOpcode(), MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map, type_map),
+                                                                 MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map, type_map),
+                                                                 DL);
         moved_c = ret;
         return ret;
       }
@@ -1181,8 +1180,8 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-      case llvm::Instruction::ZExt: {
-        auto ret = llvm::ConstantExpr::getZExt(
+      /* case llvm::Instruction::ZExt: {
+        auto ret = FoldBitCast(c,
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
                                    type_map),
             type);
@@ -1190,13 +1189,14 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         return ret;
       }
       case llvm::Instruction::SExt: {
-        auto ret = llvm::ConstantExpr::getSExt(
+        auto ret = ConstantFoldBinaryOpOperands(
+            ce->getOpcode(),
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
                                    type_map),
             type);
         moved_c = ret;
         return ret;
-      }
+      }*/
       case llvm::Instruction::Trunc: {
         auto ret = llvm::ConstantExpr::getTrunc(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1218,23 +1218,17 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
       }
       case llvm::Instruction::LShr: {
         const auto b = llvm::dyn_cast<llvm::LShrOperator>(ce);
-        auto ret = llvm::ConstantExpr::getLShr(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map),
-            b->isExact());
+        auto ret = ConstantFoldBinaryOpOperands(ce->getOpcode(), MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map, type_map), 
+                                                                 MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map, type_map), 
+                                                                 DL/* b->isExact()*/);
         moved_c = ret;
         return ret;
       }
       case llvm::Instruction::AShr: {
         const auto b = llvm::dyn_cast<llvm::AShrOperator>(ce);
-        auto ret = llvm::ConstantExpr::getAShr(
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,
-                                   type_map),
-            b->isExact());
+        auto ret = ConstantFoldBinaryOpOperands(ce->getOpcode(), MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map, type_map),
+                                                                 MoveConstantIntoModule(ce->getOperand(1), dest_module, value_map,type_map),
+                                                                 DL /* b->isExact()*/);
         moved_c = ret;
         return ret;
       }
