@@ -1180,23 +1180,26 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-      /* case llvm::Instruction::ZExt: {
-        auto ret = FoldBitCast(c,
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            type);
-        moved_c = ret;
-        return ret;
+      case llvm::Instruction::ZExt: {
+        auto newConst = MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map, type_map);
+        unsigned destSize = DL.getTypeSizeInBits(type);
+
+        if (auto *constInt = llvm::dyn_cast<llvm::ConstantInt>(newConst)) {
+          auto ret = llvm::ConstantInt::get(type, constInt->getValue().zext(destSize));
+          moved_c = ret;
+          return ret;
+        }
       }
       case llvm::Instruction::SExt: {
-        auto ret = ConstantFoldBinaryOpOperands(
-            ce->getOpcode(),
-            MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
-                                   type_map),
-            type);
-        moved_c = ret;
-        return ret;
-      }*/
+        auto newConst = MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map, type_map);
+        unsigned destSize = DL.getTypeSizeInBits(type);
+
+        if (auto *constInt = llvm::dyn_cast<llvm::ConstantInt>(newConst)) {
+          auto ret = llvm::ConstantInt::get(type, constInt->getValue().sext(destSize));
+          moved_c = ret;
+          return ret;
+        }
+      }
       case llvm::Instruction::Trunc: {
         auto ret = llvm::ConstantExpr::getTrunc(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,

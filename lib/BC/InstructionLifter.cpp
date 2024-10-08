@@ -357,9 +357,16 @@ llvm::Value *InstructionLifter::LoadWordRegValOrZero(llvm::BasicBlock *block,
   auto word_type = zero->getType();
 
   CHECK(val_type) << "Register " << reg_name << " expected to be an integer.";
+ 
+  auto *val_int_type = llvm::dyn_cast<llvm::IntegerType>(val_type);
+  auto *word_int_type = llvm::dyn_cast<llvm::IntegerType>(word_type);
 
-  auto val_size  = (llvm::dyn_cast_or_null<llvm::IntegerType>(val_type))->getBitWidth();
-  auto word_size =  (llvm::dyn_cast_or_null<llvm::IntegerType>(word_type))->getBitWidth();
+  if (!val_int_type || !word_int_type) {
+      llvm::report_fatal_error("val_type o word_type non sono tipi interi validi");
+  }
+
+  auto val_size = val_int_type->getBitWidth();
+  auto word_size = word_int_type->getBitWidth();
 
   CHECK_LE(val_size, word_size)
       << "Register " << reg_name << " expected to be no larger than the "

@@ -119,14 +119,16 @@ file(GLOB sleigh_patches "${CMAKE_CURRENT_SOURCE_DIR}/patches/sleigh/*.patch")
 
 set(sleigh_ADDITIONAL_PATCHES "${sleigh_patches}" CACHE STRING "" FORCE)
 
-# In one of the sleigh headers they use std::byte without the std namespace prefix.
-# This then causes a windows compilation failure, because of a conflicting definition
-# of 'byte' in one of the windows SDK headers. So as a fix we must append
-# _HAS_STD_BYTE to the compile definitions.
-add_compile_definitions(_HAS_STD_BYTE=0)
-# In another sleigh source file, there is an implicit narrowing conversion.
-# This flag allows implicit narrowing.
-add_compile_options ( -Xclang -Wno-narrowing)
+if(WIN32)
+  # In one of the sleigh headers they use std::byte without the std namespace prefix.
+  # This then causes a windows compilation failure, because of a conflicting definition
+  # of 'byte' in one of the windows SDK headers. So as a fix we must append
+  # _HAS_STD_BYTE to the compile definitions.
+  add_compile_definitions(_HAS_STD_BYTE=0)
+  # In another sleigh source file, there is an implicit narrowing conversion.
+  # This flag allows implicit narrowing.
+  add_compile_options ( -Xclang -Wno-narrowing)
+endif()
 
 # GHIDRA SLEIGH
 FetchContent_Declare(sleigh
