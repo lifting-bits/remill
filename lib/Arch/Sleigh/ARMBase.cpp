@@ -74,128 +74,129 @@ void AArch32ArchBase::PopulateRegisterTable(void) const {
 
   auto u128 = llvm::Type::getInt128Ty(*context);
 
+#define OFFSET_OF(state, access) \
+  (reinterpret_cast<uintptr_t>(&state.access) \
+    - reinterpret_cast<uintptr_t>(&state))
 
-#define OFFSET_OF(type, access) \
-  (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
-      static_cast<type *>(nullptr)->access)))
+#define REG(state, name, access, type) \
+  AddRegister(#name, type, OFFSET_OF(state, access), nullptr)
 
-#define REG(name, access, type) \
-  AddRegister(#name, type, OFFSET_OF(AArch32State, access), nullptr)
+#define SUB_REG(state, name, access, type, parent_reg_name) \
+  AddRegister(#name, type, OFFSET_OF(state, access), #parent_reg_name)
 
-#define SUB_REG(name, access, type, parent_reg_name) \
-  AddRegister(#name, type, OFFSET_OF(AArch32State, access), #parent_reg_name)
+  AArch32State state;
 
-  REG(R0, gpr.r0.dword, u32);
-  REG(R1, gpr.r1.dword, u32);
-  REG(R2, gpr.r2.dword, u32);
-  REG(R3, gpr.r3.dword, u32);
-  REG(R4, gpr.r4.dword, u32);
-  REG(R5, gpr.r5.dword, u32);
-  REG(R6, gpr.r6.dword, u32);
-  REG(R7, gpr.r7.dword, u32);
-  REG(R8, gpr.r8.dword, u32);
-  REG(R9, gpr.r9.dword, u32);
-  REG(R10, gpr.r10.dword, u32);
-  REG(R11, gpr.r11.dword, u32);
-  REG(R12, gpr.r12.dword, u32);
-  REG(R13, gpr.r13.dword, u32);
-  REG(R14, gpr.r14.dword, u32);
-  REG(R15, gpr.r15.dword, u32);
+  REG(state, R0, gpr.r0.dword, u32);
+  REG(state, R1, gpr.r1.dword, u32);
+  REG(state, R2, gpr.r2.dword, u32);
+  REG(state, R3, gpr.r3.dword, u32);
+  REG(state, R4, gpr.r4.dword, u32);
+  REG(state, R5, gpr.r5.dword, u32);
+  REG(state, R6, gpr.r6.dword, u32);
+  REG(state, R7, gpr.r7.dword, u32);
+  REG(state, R8, gpr.r8.dword, u32);
+  REG(state, R9, gpr.r9.dword, u32);
+  REG(state, R10, gpr.r10.dword, u32);
+  REG(state, R11, gpr.r11.dword, u32);
+  REG(state, R12, gpr.r12.dword, u32);
+  REG(state, R13, gpr.r13.dword, u32);
+  REG(state, R14, gpr.r14.dword, u32);
+  REG(state, R15, gpr.r15.dword, u32);
 
-  SUB_REG(SP, gpr.r13.dword, u32, R13);
-  SUB_REG(LR, gpr.r14.dword, u32, R14);
-  SUB_REG(PC, gpr.r15.dword, u32, R15);
+  SUB_REG(state, SP, gpr.r13.dword, u32, R13);
+  SUB_REG(state, LR, gpr.r14.dword, u32, R14);
+  SUB_REG(state, PC, gpr.r15.dword, u32, R15);
 
-  REG(Q0, neon.q0, u128);
-  REG(Q1, neon.q1, u128);
-  REG(Q2, neon.q2, u128);
-  REG(Q3, neon.q3, u128);
-  REG(Q4, neon.q4, u128);
-  REG(Q5, neon.q5, u128);
-  REG(Q6, neon.q6, u128);
-  REG(Q7, neon.q7, u128);
-  REG(Q8, neon.q8, u128);
-  REG(Q9, neon.q9, u128);
-  REG(Q10, neon.q10, u128);
-  REG(Q11, neon.q11, u128);
-  REG(Q12, neon.q12, u128);
-  REG(Q13, neon.q13, u128);
-  REG(Q14, neon.q14, u128);
-  REG(Q15, neon.q15, u128);
+  REG(state, Q0, neon.q0, u128);
+  REG(state, Q1, neon.q1, u128);
+  REG(state, Q2, neon.q2, u128);
+  REG(state, Q3, neon.q3, u128);
+  REG(state, Q4, neon.q4, u128);
+  REG(state, Q5, neon.q5, u128);
+  REG(state, Q6, neon.q6, u128);
+  REG(state, Q7, neon.q7, u128);
+  REG(state, Q8, neon.q8, u128);
+  REG(state, Q9, neon.q9, u128);
+  REG(state, Q10, neon.q10, u128);
+  REG(state, Q11, neon.q11, u128);
+  REG(state, Q12, neon.q12, u128);
+  REG(state, Q13, neon.q13, u128);
+  REG(state, Q14, neon.q14, u128);
+  REG(state, Q15, neon.q15, u128);
 
-  REG(FPSCR, fpscr.value, u32);
+  REG(state, FPSCR, fpscr.value, u32);
 
-  SUB_REG(D0, neon.q0.dwords.low_dword, u64, Q0);
-  SUB_REG(D1, neon.q0.dwords.high_dword, u64, Q0);
-  SUB_REG(D2, neon.q1.dwords.low_dword, u64, Q1);
-  SUB_REG(D3, neon.q1.dwords.high_dword, u64, Q1);
-  SUB_REG(D4, neon.q2.dwords.low_dword, u64, Q2);
-  SUB_REG(D5, neon.q2.dwords.high_dword, u64, Q2);
-  SUB_REG(D6, neon.q3.dwords.low_dword, u64, Q3);
-  SUB_REG(D7, neon.q3.dwords.high_dword, u64, Q3);
-  SUB_REG(D8, neon.q4.dwords.low_dword, u64, Q4);
-  SUB_REG(D9, neon.q4.dwords.high_dword, u64, Q4);
-  SUB_REG(D10, neon.q5.dwords.low_dword, u64, Q5);
-  SUB_REG(D11, neon.q5.dwords.high_dword, u64, Q5);
-  SUB_REG(D12, neon.q6.dwords.low_dword, u64, Q6);
-  SUB_REG(D13, neon.q6.dwords.high_dword, u64, Q6);
-  SUB_REG(D14, neon.q7.dwords.low_dword, u64, Q7);
-  SUB_REG(D15, neon.q7.dwords.high_dword, u64, Q7);
-  SUB_REG(D16, neon.q8.dwords.low_dword, u64, Q8);
-  SUB_REG(D17, neon.q8.dwords.high_dword, u64, Q8);
-  SUB_REG(D18, neon.q9.dwords.low_dword, u64, Q9);
-  SUB_REG(D19, neon.q9.dwords.high_dword, u64, Q9);
-  SUB_REG(D20, neon.q10.dwords.low_dword, u64, Q10);
-  SUB_REG(D21, neon.q10.dwords.high_dword, u64, Q10);
-  SUB_REG(D22, neon.q11.dwords.low_dword, u64, Q11);
-  SUB_REG(D23, neon.q11.dwords.high_dword, u64, Q11);
-  SUB_REG(D24, neon.q12.dwords.low_dword, u64, Q12);
-  SUB_REG(D25, neon.q12.dwords.high_dword, u64, Q12);
-  SUB_REG(D26, neon.q13.dwords.low_dword, u64, Q13);
-  SUB_REG(D27, neon.q13.dwords.high_dword, u64, Q13);
-  SUB_REG(D28, neon.q14.dwords.low_dword, u64, Q14);
-  SUB_REG(D29, neon.q14.dwords.high_dword, u64, Q14);
-  SUB_REG(D30, neon.q15.dwords.low_dword, u64, Q15);
-  SUB_REG(D31, neon.q15.dwords.high_dword, u64, Q15);
+  SUB_REG(state, D0, neon.q0.dwords.low_dword, u64, Q0);
+  SUB_REG(state, D1, neon.q0.dwords.high_dword, u64, Q0);
+  SUB_REG(state, D2, neon.q1.dwords.low_dword, u64, Q1);
+  SUB_REG(state, D3, neon.q1.dwords.high_dword, u64, Q1);
+  SUB_REG(state, D4, neon.q2.dwords.low_dword, u64, Q2);
+  SUB_REG(state, D5, neon.q2.dwords.high_dword, u64, Q2);
+  SUB_REG(state, D6, neon.q3.dwords.low_dword, u64, Q3);
+  SUB_REG(state, D7, neon.q3.dwords.high_dword, u64, Q3);
+  SUB_REG(state, D8, neon.q4.dwords.low_dword, u64, Q4);
+  SUB_REG(state, D9, neon.q4.dwords.high_dword, u64, Q4);
+  SUB_REG(state, D10, neon.q5.dwords.low_dword, u64, Q5);
+  SUB_REG(state, D11, neon.q5.dwords.high_dword, u64, Q5);
+  SUB_REG(state, D12, neon.q6.dwords.low_dword, u64, Q6);
+  SUB_REG(state, D13, neon.q6.dwords.high_dword, u64, Q6);
+  SUB_REG(state, D14, neon.q7.dwords.low_dword, u64, Q7);
+  SUB_REG(state, D15, neon.q7.dwords.high_dword, u64, Q7);
+  SUB_REG(state, D16, neon.q8.dwords.low_dword, u64, Q8);
+  SUB_REG(state, D17, neon.q8.dwords.high_dword, u64, Q8);
+  SUB_REG(state, D18, neon.q9.dwords.low_dword, u64, Q9);
+  SUB_REG(state, D19, neon.q9.dwords.high_dword, u64, Q9);
+  SUB_REG(state, D20, neon.q10.dwords.low_dword, u64, Q10);
+  SUB_REG(state, D21, neon.q10.dwords.high_dword, u64, Q10);
+  SUB_REG(state, D22, neon.q11.dwords.low_dword, u64, Q11);
+  SUB_REG(state, D23, neon.q11.dwords.high_dword, u64, Q11);
+  SUB_REG(state, D24, neon.q12.dwords.low_dword, u64, Q12);
+  SUB_REG(state, D25, neon.q12.dwords.high_dword, u64, Q12);
+  SUB_REG(state, D26, neon.q13.dwords.low_dword, u64, Q13);
+  SUB_REG(state, D27, neon.q13.dwords.high_dword, u64, Q13);
+  SUB_REG(state, D28, neon.q14.dwords.low_dword, u64, Q14);
+  SUB_REG(state, D29, neon.q14.dwords.high_dword, u64, Q14);
+  SUB_REG(state, D30, neon.q15.dwords.low_dword, u64, Q15);
+  SUB_REG(state, D31, neon.q15.dwords.high_dword, u64, Q15);
 
-  SUB_REG(S0, neon.q0.words.ll_word, u32, D0);
-  SUB_REG(S1, neon.q0.words.lh_word, u32, D0);
-  SUB_REG(S2, neon.q0.words.hl_word, u32, D1);
-  SUB_REG(S3, neon.q0.words.hh_word, u32, D1);
-  SUB_REG(S4, neon.q1.words.ll_word, u32, D2);
-  SUB_REG(S5, neon.q1.words.lh_word, u32, D2);
-  SUB_REG(S6, neon.q1.words.hl_word, u32, D3);
-  SUB_REG(S7, neon.q1.words.hh_word, u32, D3);
-  SUB_REG(S8, neon.q2.words.ll_word, u32, D4);
-  SUB_REG(S9, neon.q2.words.lh_word, u32, D4);
-  SUB_REG(S10, neon.q2.words.hl_word, u32, D5);
-  SUB_REG(S11, neon.q2.words.hh_word, u32, D5);
-  SUB_REG(S12, neon.q3.words.ll_word, u32, D6);
-  SUB_REG(S13, neon.q3.words.lh_word, u32, D6);
-  SUB_REG(S14, neon.q3.words.hl_word, u32, D7);
-  SUB_REG(S15, neon.q3.words.hh_word, u32, D7);
-  SUB_REG(S16, neon.q4.words.ll_word, u32, D8);
-  SUB_REG(S17, neon.q4.words.lh_word, u32, D8);
-  SUB_REG(S18, neon.q4.words.hl_word, u32, D9);
-  SUB_REG(S19, neon.q4.words.hh_word, u32, D9);
-  SUB_REG(S20, neon.q5.words.ll_word, u32, D10);
-  SUB_REG(S21, neon.q5.words.lh_word, u32, D10);
-  SUB_REG(S22, neon.q5.words.hl_word, u32, D11);
-  SUB_REG(S23, neon.q5.words.hh_word, u32, D11);
-  SUB_REG(S24, neon.q6.words.ll_word, u32, D12);
-  SUB_REG(S25, neon.q6.words.lh_word, u32, D12);
-  SUB_REG(S26, neon.q6.words.hl_word, u32, D13);
-  SUB_REG(S27, neon.q6.words.hh_word, u32, D13);
-  SUB_REG(S28, neon.q7.words.ll_word, u32, D14);
-  SUB_REG(S29, neon.q7.words.lh_word, u32, D14);
-  SUB_REG(S30, neon.q7.words.hl_word, u32, D15);
-  SUB_REG(S31, neon.q7.words.hh_word, u32, D15);
+  SUB_REG(state, S0, neon.q0.words.ll_word, u32, D0);
+  SUB_REG(state, S1, neon.q0.words.lh_word, u32, D0);
+  SUB_REG(state, S2, neon.q0.words.hl_word, u32, D1);
+  SUB_REG(state, S3, neon.q0.words.hh_word, u32, D1);
+  SUB_REG(state, S4, neon.q1.words.ll_word, u32, D2);
+  SUB_REG(state, S5, neon.q1.words.lh_word, u32, D2);
+  SUB_REG(state, S6, neon.q1.words.hl_word, u32, D3);
+  SUB_REG(state, S7, neon.q1.words.hh_word, u32, D3);
+  SUB_REG(state, S8, neon.q2.words.ll_word, u32, D4);
+  SUB_REG(state, S9, neon.q2.words.lh_word, u32, D4);
+  SUB_REG(state, S10, neon.q2.words.hl_word, u32, D5);
+  SUB_REG(state, S11, neon.q2.words.hh_word, u32, D5);
+  SUB_REG(state, S12, neon.q3.words.ll_word, u32, D6);
+  SUB_REG(state, S13, neon.q3.words.lh_word, u32, D6);
+  SUB_REG(state, S14, neon.q3.words.hl_word, u32, D7);
+  SUB_REG(state, S15, neon.q3.words.hh_word, u32, D7);
+  SUB_REG(state, S16, neon.q4.words.ll_word, u32, D8);
+  SUB_REG(state, S17, neon.q4.words.lh_word, u32, D8);
+  SUB_REG(state, S18, neon.q4.words.hl_word, u32, D9);
+  SUB_REG(state, S19, neon.q4.words.hh_word, u32, D9);
+  SUB_REG(state, S20, neon.q5.words.ll_word, u32, D10);
+  SUB_REG(state, S21, neon.q5.words.lh_word, u32, D10);
+  SUB_REG(state, S22, neon.q5.words.hl_word, u32, D11);
+  SUB_REG(state, S23, neon.q5.words.hh_word, u32, D11);
+  SUB_REG(state, S24, neon.q6.words.ll_word, u32, D12);
+  SUB_REG(state, S25, neon.q6.words.lh_word, u32, D12);
+  SUB_REG(state, S26, neon.q6.words.hl_word, u32, D13);
+  SUB_REG(state, S27, neon.q6.words.hh_word, u32, D13);
+  SUB_REG(state, S28, neon.q7.words.ll_word, u32, D14);
+  SUB_REG(state, S29, neon.q7.words.lh_word, u32, D14);
+  SUB_REG(state, S30, neon.q7.words.hl_word, u32, D15);
+  SUB_REG(state, S31, neon.q7.words.hh_word, u32, D15);
 
 
-  REG(N, sr.n, u8);
-  REG(C, sr.c, u8);
-  REG(Z, sr.z, u8);
-  REG(V, sr.v, u8);
+  REG(state, N, sr.n, u8);
+  REG(state, C, sr.c, u8);
+  REG(state, Z, sr.z, u8);
+  REG(state, V, sr.v, u8);
 }
 
 
