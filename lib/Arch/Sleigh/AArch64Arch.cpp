@@ -79,27 +79,29 @@ DecodingContext AArch64Arch::CreateInitialContext(void) const {
 void AArch64Arch::PopulateRegisterTable(void) const {
   AArch64ArchBase::PopulateRegisterTable();
 
-#define OFFSET_OF(type, access) \
-  (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
-      static_cast<type *>(nullptr)->access)))
+#define OFFSET_OF(state, access) \
+  (reinterpret_cast<uintptr_t>(&state.access) \
+    - reinterpret_cast<uintptr_t>(&state))
 
-#define REG(name, access, type) \
-  AddRegister(#name, type, OFFSET_OF(AArch64State, access), nullptr)
+#define REG(state, name, access, type) \
+  AddRegister(#name, type, OFFSET_OF(state, access), nullptr)
 
-#define SUB_REG(name, access, type, parent_reg_name) \
-  AddRegister(#name, type, OFFSET_OF(AArch64State, access), #parent_reg_name)
+#define SUB_REG(state, name, access, type, parent_reg_name) \
+  AddRegister(#name, type, OFFSET_OF(state, access), #parent_reg_name)
 
   auto u8 = llvm::Type::getInt8Ty(*context);
 
-  REG(NG, sleigh_flags.NG, u8);
-  REG(ZR, sleigh_flags.ZR, u8);
-  REG(CY, sleigh_flags.CY, u8);
-  REG(OV, sleigh_flags.OV, u8);
-  REG(SHIFT_CARRY, sleigh_flags.shift_carry, u8);
-  REG(TMPCY, sleigh_flags.tmpCY, u8);
-  REG(TMPOV, sleigh_flags.tmpOV, u8);
-  REG(TMPZR, sleigh_flags.tmpZR, u8);
-  REG(TMPNG, sleigh_flags.tmpNG, u8);
+  AArch64State state;
+
+  REG(state, NG, sleigh_flags.NG, u8);
+  REG(state, ZR, sleigh_flags.ZR, u8);
+  REG(state, CY, sleigh_flags.CY, u8);
+  REG(state, OV, sleigh_flags.OV, u8);
+  REG(state, SHIFT_CARRY, sleigh_flags.shift_carry, u8);
+  REG(state, TMPCY, sleigh_flags.tmpCY, u8);
+  REG(state, TMPOV, sleigh_flags.tmpOV, u8);
+  REG(state, TMPZR, sleigh_flags.tmpZR, u8);
+  REG(state, TMPNG, sleigh_flags.tmpNG, u8);
 }
 
 

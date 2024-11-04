@@ -83,15 +83,15 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
 
   reg_by_offset.resize(sizeof(SPARC32State));
 
-#define OFFSET_OF(type, access) \
-  (reinterpret_cast<uintptr_t>(&reinterpret_cast<const volatile char &>( \
-      static_cast<type *>(nullptr)->access)))
+#define OFFSET_OF(state, access) \
+  (reinterpret_cast<uintptr_t>(&state.access) \
+    - reinterpret_cast<uintptr_t>(&state))
 
-#define REG(name, access, type) \
-  AddRegister(#name, type, OFFSET_OF(SPARC32State, access), nullptr)
+#define REG(state, name, access, type) \
+  AddRegister(#name, type, OFFSET_OF(state, access), nullptr)
 
-#define SUB_REG(name, access, type, parent_reg_name) \
-  AddRegister(#name, type, OFFSET_OF(SPARC32State, access), #parent_reg_name)
+#define SUB_REG(state, name, access, type, parent_reg_name) \
+  AddRegister(#name, type, OFFSET_OF(state, access), #parent_reg_name)
 
   auto u8 = llvm::Type::getInt8Ty(*context);
   auto u32 = llvm::Type::getInt32Ty(*context);
@@ -100,154 +100,156 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   auto f32 = llvm::Type::getFloatTy(*context);
   auto f64 = llvm::Type::getDoubleTy(*context);
 
-  REG(PC, pc.dword, u32);
+  SPARC32State state;
 
-  REG(CWP, cwp.dword, u32);
+  REG(state, PC, pc.dword, u32);
 
-  REG(I0_1, gpr.i0_1.qword, u64);
-  REG(I2_3, gpr.i2_3.qword, u64);
-  REG(I4_5, gpr.i4_5.qword, u64);
-  REG(FP_7, gpr.fp_7.qword, u64);
-  REG(L0_1, gpr.l0_1.qword, u64);
-  REG(L2_3, gpr.l2_3.qword, u64);
-  REG(L4_5, gpr.l4_5.qword, u64);
-  REG(L6_7, gpr.l6_7.qword, u64);
-  REG(O0_1, gpr.o0_1.qword, u64);
-  REG(O2_3, gpr.o2_3.qword, u64);
-  REG(O4_5, gpr.o4_5.qword, u64);
-  REG(SP_7, gpr.sp_7.qword, u64);
-  REG(G0_1, gpr.g0_1.qword, u64);
-  REG(G2_3, gpr.g2_3.qword, u64);
-  REG(G4_5, gpr.g4_5.qword, u64);
-  REG(G6_7, gpr.g6_7.qword, u64);
+  REG(state, CWP, cwp.dword, u32);
 
-  SUB_REG(I0, gpr.i0_1.reg1.dword, u32, I0_1);
-  SUB_REG(I1, gpr.i0_1.reg2.dword, u32, I0_1);
-  SUB_REG(I2, gpr.i2_3.reg1.dword, u32, I2_3);
-  SUB_REG(I3, gpr.i2_3.reg2.dword, u32, I2_3);
-  SUB_REG(I4, gpr.i4_5.reg1.dword, u32, I4_5);
-  SUB_REG(I5, gpr.i4_5.reg2.dword, u32, I4_5);
-  SUB_REG(FP, gpr.fp_7.reg1.dword, u32, FP_7);
-  SUB_REG(I7, gpr.fp_7.reg2.dword, u32, FP_7);
-  SUB_REG(L0, gpr.l0_1.reg1.dword, u32, L0_1);
-  SUB_REG(L1, gpr.l0_1.reg2.dword, u32, L0_1);
-  SUB_REG(L2, gpr.l2_3.reg1.dword, u32, L2_3);
-  SUB_REG(L3, gpr.l2_3.reg2.dword, u32, L2_3);
-  SUB_REG(L4, gpr.l4_5.reg1.dword, u32, L4_5);
-  SUB_REG(L5, gpr.l4_5.reg2.dword, u32, L4_5);
-  SUB_REG(L6, gpr.l6_7.reg1.dword, u32, L6_7);
-  SUB_REG(L7, gpr.l6_7.reg2.dword, u32, L6_7);
-  SUB_REG(O0, gpr.o0_1.reg1.dword, u32, O0_1);
-  SUB_REG(O1, gpr.o0_1.reg2.dword, u32, O0_1);
-  SUB_REG(O2, gpr.o2_3.reg1.dword, u32, O2_3);
-  SUB_REG(O3, gpr.o2_3.reg2.dword, u32, O2_3);
-  SUB_REG(O4, gpr.o4_5.reg1.dword, u32, O4_5);
-  SUB_REG(O5, gpr.o4_5.reg2.dword, u32, O4_5);
-  SUB_REG(SP, gpr.sp_7.reg1.dword, u32, SP_7);
-  SUB_REG(O7, gpr.sp_7.reg2.dword, u32, SP_7);
+  REG(state, I0_1, gpr.i0_1.qword, u64);
+  REG(state, I2_3, gpr.i2_3.qword, u64);
+  REG(state, I4_5, gpr.i4_5.qword, u64);
+  REG(state, FP_7, gpr.fp_7.qword, u64);
+  REG(state, L0_1, gpr.l0_1.qword, u64);
+  REG(state, L2_3, gpr.l2_3.qword, u64);
+  REG(state, L4_5, gpr.l4_5.qword, u64);
+  REG(state, L6_7, gpr.l6_7.qword, u64);
+  REG(state, O0_1, gpr.o0_1.qword, u64);
+  REG(state, O2_3, gpr.o2_3.qword, u64);
+  REG(state, O4_5, gpr.o4_5.qword, u64);
+  REG(state, SP_7, gpr.sp_7.qword, u64);
+  REG(state, G0_1, gpr.g0_1.qword, u64);
+  REG(state, G2_3, gpr.g2_3.qword, u64);
+  REG(state, G4_5, gpr.g4_5.qword, u64);
+  REG(state, G6_7, gpr.g6_7.qword, u64);
 
-  SUB_REG(G0, gpr.g0_1.reg1.dword, u32, G0_1);
-  SUB_REG(G1, gpr.g0_1.reg2.dword, u32, G0_1);
-  SUB_REG(G2, gpr.g2_3.reg1.dword, u32, G2_3);
-  SUB_REG(G3, gpr.g2_3.reg2.dword, u32, G2_3);
-  SUB_REG(G4, gpr.g4_5.reg1.dword, u32, G4_5);
-  SUB_REG(G5, gpr.g4_5.reg2.dword, u32, G4_5);
-  SUB_REG(G6, gpr.g6_7.reg1.dword, u32, G6_7);
-  SUB_REG(G7, gpr.g6_7.reg2.dword, u32, G6_7);
+  SUB_REG(state, I0, gpr.i0_1.reg1.dword, u32, I0_1);
+  SUB_REG(state, I1, gpr.i0_1.reg2.dword, u32, I0_1);
+  SUB_REG(state, I2, gpr.i2_3.reg1.dword, u32, I2_3);
+  SUB_REG(state, I3, gpr.i2_3.reg2.dword, u32, I2_3);
+  SUB_REG(state, I4, gpr.i4_5.reg1.dword, u32, I4_5);
+  SUB_REG(state, I5, gpr.i4_5.reg2.dword, u32, I4_5);
+  SUB_REG(state, FP, gpr.fp_7.reg1.dword, u32, FP_7);
+  SUB_REG(state, I7, gpr.fp_7.reg2.dword, u32, FP_7);
+  SUB_REG(state, L0, gpr.l0_1.reg1.dword, u32, L0_1);
+  SUB_REG(state, L1, gpr.l0_1.reg2.dword, u32, L0_1);
+  SUB_REG(state, L2, gpr.l2_3.reg1.dword, u32, L2_3);
+  SUB_REG(state, L3, gpr.l2_3.reg2.dword, u32, L2_3);
+  SUB_REG(state, L4, gpr.l4_5.reg1.dword, u32, L4_5);
+  SUB_REG(state, L5, gpr.l4_5.reg2.dword, u32, L4_5);
+  SUB_REG(state, L6, gpr.l6_7.reg1.dword, u32, L6_7);
+  SUB_REG(state, L7, gpr.l6_7.reg2.dword, u32, L6_7);
+  SUB_REG(state, O0, gpr.o0_1.reg1.dword, u32, O0_1);
+  SUB_REG(state, O1, gpr.o0_1.reg2.dword, u32, O0_1);
+  SUB_REG(state, O2, gpr.o2_3.reg1.dword, u32, O2_3);
+  SUB_REG(state, O3, gpr.o2_3.reg2.dword, u32, O2_3);
+  SUB_REG(state, O4, gpr.o4_5.reg1.dword, u32, O4_5);
+  SUB_REG(state, O5, gpr.o4_5.reg2.dword, u32, O4_5);
+  SUB_REG(state, SP, gpr.sp_7.reg1.dword, u32, SP_7);
+  SUB_REG(state, O7, gpr.sp_7.reg2.dword, u32, SP_7);
+
+  SUB_REG(state, G0, gpr.g0_1.reg1.dword, u32, G0_1);
+  SUB_REG(state, G1, gpr.g0_1.reg2.dword, u32, G0_1);
+  SUB_REG(state, G2, gpr.g2_3.reg1.dword, u32, G2_3);
+  SUB_REG(state, G3, gpr.g2_3.reg2.dword, u32, G2_3);
+  SUB_REG(state, G4, gpr.g4_5.reg1.dword, u32, G4_5);
+  SUB_REG(state, G5, gpr.g4_5.reg2.dword, u32, G4_5);
+  SUB_REG(state, G6, gpr.g6_7.reg1.dword, u32, G6_7);
+  SUB_REG(state, G7, gpr.g6_7.reg2.dword, u32, G6_7);
 
   // Ancillary State Register
-  REG(Y, asr.yreg.dword, u32);
-  REG(TICK, asr.tick.dword, u32);
-  REG(CCR, asr.ccr.dword, u32);
-  REG(PCR, asr.pcr.dword, u32);
-  REG(PIC, asr.pic.dword, u32);
-  REG(GSR, asr.gsr.dword, u32);
-  REG(SOFTINT_SET, asr.softint_set.dword, u32);
-  REG(SOFTINT_CLR, asr.softint_clr.dword, u32);
-  REG(SOFTINT, asr.softint.dword, u32);
-  REG(TICK_CMPR, asr.tick_cmpr.dword, u32);
-  REG(STICK, asr.stick.dword, u32);
-  REG(STICK_CMPR, asr.stick_cmpr.dword, u32);
+  REG(state, Y, asr.yreg.dword, u32);
+  REG(state, TICK, asr.tick.dword, u32);
+  REG(state, CCR, asr.ccr.dword, u32);
+  REG(state, PCR, asr.pcr.dword, u32);
+  REG(state, PIC, asr.pic.dword, u32);
+  REG(state, GSR, asr.gsr.dword, u32);
+  REG(state, SOFTINT_SET, asr.softint_set.dword, u32);
+  REG(state, SOFTINT_CLR, asr.softint_clr.dword, u32);
+  REG(state, SOFTINT, asr.softint.dword, u32);
+  REG(state, TICK_CMPR, asr.tick_cmpr.dword, u32);
+  REG(state, STICK, asr.stick.dword, u32);
+  REG(state, STICK_CMPR, asr.stick_cmpr.dword, u32);
 
-  REG(I_CF, ccr.icc.i_cf, u8);
-  REG(I_VF, ccr.icc.i_vf, u8);
-  REG(I_ZF, ccr.icc.i_zf, u8);
-  REG(I_NF, ccr.icc.i_nf, u8);
+  REG(state, I_CF, ccr.icc.i_cf, u8);
+  REG(state, I_VF, ccr.icc.i_vf, u8);
+  REG(state, I_ZF, ccr.icc.i_zf, u8);
+  REG(state, I_NF, ccr.icc.i_nf, u8);
 
-  REG(X_CF, ccr.xcc.x_cf, u8);
-  REG(X_VF, ccr.xcc.x_vf, u8);
-  REG(X_ZF, ccr.xcc.x_zf, u8);
-  REG(X_NF, ccr.xcc.x_nf, u8);
+  REG(state, X_CF, ccr.xcc.x_cf, u8);
+  REG(state, X_VF, ccr.xcc.x_vf, u8);
+  REG(state, X_ZF, ccr.xcc.x_zf, u8);
+  REG(state, X_NF, ccr.xcc.x_nf, u8);
 
-  REG(ccf_fcc0, fsr.fcc0, u8);
-  REG(ccf_fcc1, fsr.fcc1, u8);
-  REG(ccf_fcc2, fsr.fcc2, u8);
-  REG(ccf_fcc3, fsr.fcc3, u8);
+  REG(state, ccf_fcc0, fsr.fcc0, u8);
+  REG(state, ccf_fcc1, fsr.fcc1, u8);
+  REG(state, ccf_fcc2, fsr.fcc2, u8);
+  REG(state, ccf_fcc3, fsr.fcc3, u8);
 
-  REG(fsr_aexc, fsr.aexc, u8);
-  REG(fsr_cexc, fsr.cexc, u8);
+  REG(state, fsr_aexc, fsr.aexc, u8);
+  REG(state, fsr_cexc, fsr.cexc, u8);
 
-  REG(FQ0, fpreg.v[0], u128);
-  REG(FQ4, fpreg.v[1], u128);
-  REG(FQ8, fpreg.v[2], u128);
-  REG(FQ12, fpreg.v[3], u128);
-  REG(FQ16, fpreg.v[4], u128);
-  REG(FQ20, fpreg.v[5], u128);
-  REG(FQ24, fpreg.v[6], u128);
-  REG(FQ28, fpreg.v[7], u128);
+  REG(state, FQ0, fpreg.v[0], u128);
+  REG(state, FQ4, fpreg.v[1], u128);
+  REG(state, FQ8, fpreg.v[2], u128);
+  REG(state, FQ12, fpreg.v[3], u128);
+  REG(state, FQ16, fpreg.v[4], u128);
+  REG(state, FQ20, fpreg.v[5], u128);
+  REG(state, FQ24, fpreg.v[6], u128);
+  REG(state, FQ28, fpreg.v[7], u128);
 
-  SUB_REG(FS0, fpreg.v[0].floats.elems[0], f32, FQ0);
-  SUB_REG(FS1, fpreg.v[0].floats.elems[1], f32, FQ0);
-  SUB_REG(FS2, fpreg.v[0].floats.elems[2], f32, FQ0);
-  SUB_REG(FS3, fpreg.v[0].floats.elems[3], f32, FQ0);
-  SUB_REG(FS4, fpreg.v[1].floats.elems[0], f32, FQ4);
-  SUB_REG(FS5, fpreg.v[1].floats.elems[1], f32, FQ4);
-  SUB_REG(FS6, fpreg.v[1].floats.elems[2], f32, FQ4);
-  SUB_REG(FS7, fpreg.v[1].floats.elems[3], f32, FQ4);
-  SUB_REG(FS8, fpreg.v[2].floats.elems[0], f32, FQ8);
-  SUB_REG(FS9, fpreg.v[2].floats.elems[1], f32, FQ8);
-  SUB_REG(FS10, fpreg.v[2].floats.elems[2], f32, FQ8);
-  SUB_REG(FS11, fpreg.v[2].floats.elems[3], f32, FQ8);
-  SUB_REG(FS12, fpreg.v[3].floats.elems[0], f32, FQ12);
-  SUB_REG(FS13, fpreg.v[3].floats.elems[1], f32, FQ12);
-  SUB_REG(FS14, fpreg.v[3].floats.elems[2], f32, FQ12);
-  SUB_REG(FS15, fpreg.v[3].floats.elems[3], f32, FQ12);
-  SUB_REG(FS16, fpreg.v[4].floats.elems[0], f32, FQ16);
-  SUB_REG(FS17, fpreg.v[4].floats.elems[1], f32, FQ16);
-  SUB_REG(FS18, fpreg.v[4].floats.elems[2], f32, FQ16);
-  SUB_REG(FS19, fpreg.v[4].floats.elems[3], f32, FQ16);
-  SUB_REG(FS20, fpreg.v[5].floats.elems[0], f32, FQ20);
-  SUB_REG(FS21, fpreg.v[5].floats.elems[1], f32, FQ20);
-  SUB_REG(FS22, fpreg.v[5].floats.elems[2], f32, FQ20);
-  SUB_REG(FS23, fpreg.v[5].floats.elems[3], f32, FQ20);
-  SUB_REG(FS24, fpreg.v[6].floats.elems[0], f32, FQ24);
-  SUB_REG(FS25, fpreg.v[6].floats.elems[1], f32, FQ24);
-  SUB_REG(FS26, fpreg.v[6].floats.elems[2], f32, FQ24);
-  SUB_REG(FS27, fpreg.v[6].floats.elems[3], f32, FQ24);
-  SUB_REG(FS28, fpreg.v[7].floats.elems[0], f32, FQ28);
-  SUB_REG(FS29, fpreg.v[7].floats.elems[1], f32, FQ28);
-  SUB_REG(FS30, fpreg.v[7].floats.elems[2], f32, FQ28);
-  SUB_REG(FS31, fpreg.v[7].floats.elems[3], f32, FQ28);
+  SUB_REG(state, FS0, fpreg.v[0].floats.elems[0], f32, FQ0);
+  SUB_REG(state, FS1, fpreg.v[0].floats.elems[1], f32, FQ0);
+  SUB_REG(state, FS2, fpreg.v[0].floats.elems[2], f32, FQ0);
+  SUB_REG(state, FS3, fpreg.v[0].floats.elems[3], f32, FQ0);
+  SUB_REG(state, FS4, fpreg.v[1].floats.elems[0], f32, FQ4);
+  SUB_REG(state, FS5, fpreg.v[1].floats.elems[1], f32, FQ4);
+  SUB_REG(state, FS6, fpreg.v[1].floats.elems[2], f32, FQ4);
+  SUB_REG(state, FS7, fpreg.v[1].floats.elems[3], f32, FQ4);
+  SUB_REG(state, FS8, fpreg.v[2].floats.elems[0], f32, FQ8);
+  SUB_REG(state, FS9, fpreg.v[2].floats.elems[1], f32, FQ8);
+  SUB_REG(state, FS10, fpreg.v[2].floats.elems[2], f32, FQ8);
+  SUB_REG(state, FS11, fpreg.v[2].floats.elems[3], f32, FQ8);
+  SUB_REG(state, FS12, fpreg.v[3].floats.elems[0], f32, FQ12);
+  SUB_REG(state, FS13, fpreg.v[3].floats.elems[1], f32, FQ12);
+  SUB_REG(state, FS14, fpreg.v[3].floats.elems[2], f32, FQ12);
+  SUB_REG(state, FS15, fpreg.v[3].floats.elems[3], f32, FQ12);
+  SUB_REG(state, FS16, fpreg.v[4].floats.elems[0], f32, FQ16);
+  SUB_REG(state, FS17, fpreg.v[4].floats.elems[1], f32, FQ16);
+  SUB_REG(state, FS18, fpreg.v[4].floats.elems[2], f32, FQ16);
+  SUB_REG(state, FS19, fpreg.v[4].floats.elems[3], f32, FQ16);
+  SUB_REG(state, FS20, fpreg.v[5].floats.elems[0], f32, FQ20);
+  SUB_REG(state, FS21, fpreg.v[5].floats.elems[1], f32, FQ20);
+  SUB_REG(state, FS22, fpreg.v[5].floats.elems[2], f32, FQ20);
+  SUB_REG(state, FS23, fpreg.v[5].floats.elems[3], f32, FQ20);
+  SUB_REG(state, FS24, fpreg.v[6].floats.elems[0], f32, FQ24);
+  SUB_REG(state, FS25, fpreg.v[6].floats.elems[1], f32, FQ24);
+  SUB_REG(state, FS26, fpreg.v[6].floats.elems[2], f32, FQ24);
+  SUB_REG(state, FS27, fpreg.v[6].floats.elems[3], f32, FQ24);
+  SUB_REG(state, FS28, fpreg.v[7].floats.elems[0], f32, FQ28);
+  SUB_REG(state, FS29, fpreg.v[7].floats.elems[1], f32, FQ28);
+  SUB_REG(state, FS30, fpreg.v[7].floats.elems[2], f32, FQ28);
+  SUB_REG(state, FS31, fpreg.v[7].floats.elems[3], f32, FQ28);
 
-  SUB_REG(FD0, fpreg.v[0].doubles.elems[0], f64, FQ0);
-  SUB_REG(FD2, fpreg.v[0].doubles.elems[1], f64, FQ0);
-  SUB_REG(FD4, fpreg.v[1].doubles.elems[0], f64, FQ4);
-  SUB_REG(FD6, fpreg.v[1].doubles.elems[1], f64, FQ4);
-  SUB_REG(FD8, fpreg.v[2].doubles.elems[0], f64, FQ8);
-  SUB_REG(FD10, fpreg.v[2].doubles.elems[1], f64, FQ8);
-  SUB_REG(FD12, fpreg.v[3].doubles.elems[0], f64, FQ12);
-  SUB_REG(FD14, fpreg.v[3].doubles.elems[1], f64, FQ12);
-  SUB_REG(FD16, fpreg.v[4].doubles.elems[0], f64, FQ16);
-  SUB_REG(FD18, fpreg.v[4].doubles.elems[1], f64, FQ16);
-  SUB_REG(FD20, fpreg.v[5].doubles.elems[0], f64, FQ20);
-  SUB_REG(FD22, fpreg.v[5].doubles.elems[1], f64, FQ20);
-  SUB_REG(FD24, fpreg.v[6].doubles.elems[0], f64, FQ24);
-  SUB_REG(FD26, fpreg.v[6].doubles.elems[1], f64, FQ24);
-  SUB_REG(FD28, fpreg.v[7].doubles.elems[0], f64, FQ28);
-  SUB_REG(FD30, fpreg.v[7].doubles.elems[1], f64, FQ28);
+  SUB_REG(state, FD0, fpreg.v[0].doubles.elems[0], f64, FQ0);
+  SUB_REG(state, FD2, fpreg.v[0].doubles.elems[1], f64, FQ0);
+  SUB_REG(state, FD4, fpreg.v[1].doubles.elems[0], f64, FQ4);
+  SUB_REG(state, FD6, fpreg.v[1].doubles.elems[1], f64, FQ4);
+  SUB_REG(state, FD8, fpreg.v[2].doubles.elems[0], f64, FQ8);
+  SUB_REG(state, FD10, fpreg.v[2].doubles.elems[1], f64, FQ8);
+  SUB_REG(state, FD12, fpreg.v[3].doubles.elems[0], f64, FQ12);
+  SUB_REG(state, FD14, fpreg.v[3].doubles.elems[1], f64, FQ12);
+  SUB_REG(state, FD16, fpreg.v[4].doubles.elems[0], f64, FQ16);
+  SUB_REG(state, FD18, fpreg.v[4].doubles.elems[1], f64, FQ16);
+  SUB_REG(state, FD20, fpreg.v[5].doubles.elems[0], f64, FQ20);
+  SUB_REG(state, FD22, fpreg.v[5].doubles.elems[1], f64, FQ20);
+  SUB_REG(state, FD24, fpreg.v[6].doubles.elems[0], f64, FQ24);
+  SUB_REG(state, FD26, fpreg.v[6].doubles.elems[1], f64, FQ24);
+  SUB_REG(state, FD28, fpreg.v[7].doubles.elems[0], f64, FQ28);
+  SUB_REG(state, FD30, fpreg.v[7].doubles.elems[1], f64, FQ28);
   
-  REG(DECOMPILE_MODE, decompile_mode, u8);
-  REG(DIDRESTORE, didrestore, u8);
+  REG(state, DECOMPILE_MODE, decompile_mode, u8);
+  REG(state, DIDRESTORE, didrestore, u8);
 }
 
 // Populate a just-initialized lifted function function with architecture-
