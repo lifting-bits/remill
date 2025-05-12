@@ -282,7 +282,18 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       mem = __remill_aarch64_emulate_instruction(mem);
       break;
 
-    case SyncHyperCall::kAArch64Breakpoint: asm volatile("bkpt" :); break;
+    case SyncHyperCall::kAArch64Breakpoint:
+#  ifdef __has_builtin
+#    if __has_builtin(__builtin_debugtrap)
+      __builtin_debugtrap();
+#      define REMILL_USED_DEBUG_TRAP
+#    endif
+#  endif
+#  ifndef REMILL_USED_DEBUG_TRAP
+      asm volatile("brk #0");
+#  endif
+#  undef REMILL_USED_DEBUG_TRAP
+      break;
 
 #elif REMILL_HYPERCALL_SPARC32 || REMILL_HYPERCALL_SPARC64
 
