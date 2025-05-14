@@ -126,6 +126,10 @@ __remill_write_memory_f80(Memory *, addr_t, const native_float80_t &);
 [[gnu::used]] extern Memory *__remill_async_hyper_call(State &, addr_t ret_addr,
                                                        Memory *);
 
+[[gnu::used]] extern void
+__remill_set_coprocessor_reg(State &, uint8_t cop_num, uint64_t reg_num,
+                             uint64_t value, uint8_t sel);
+
 // This intrinsic must be tagged with the `always_inline` function attribute
 // since it has an implementation we want to use in Anvill's lifted IR.
 //
@@ -375,5 +379,9 @@ __remill_compare_exchange_memory_128(Memory *, addr_t addr, uint128_t &expected,
 [[gnu::used]] extern Memory *__remill_ppc_emulate_instruction(Memory *);
 
 [[gnu::used]] extern Memory *__remill_ppc_syscall(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_mips_emulate_instruction(Memory *);
+
+[[gnu::used, gnu::const]] extern Memory *__remill_mips_syscall(Memory *);
 
 }  // extern C

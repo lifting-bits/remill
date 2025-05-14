@@ -85,6 +85,7 @@ static size_t kNextPcArgNum = 3;
 
 static const std::string kEqualityClaimName = "claim_eq";
 static const std::string kSysCallName = "syscall";
+static const std::string kSetCopRegName = "setCopReg";
 
 static bool isVarnodeInConstantSpace(VarnodeData vnode) {
   auto spc = vnode.getAddr().getSpace();
@@ -1398,6 +1399,37 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                         args);
 
         return kLiftedInstruction;
+      } else if (other_func_name == kSetCopRegName &&
+                 insn.arch_name == ArchName::kArchMIPS) {
+        DLOG(INFO) << "Invoking setCopReg";
+
+        if (isize == 5) {
+          VarnodeData &cop_num = vars[1];
+          VarnodeData &reg_num = vars[2];
+          VarnodeData &value = vars[3];
+          VarnodeData &sel = vars[4];
+
+          auto inval_cop_num = this->LiftIntegerInParam(bldr, cop_num);
+          auto inval_reg_num = ConstantValue::CreatConstant(
+              this->replacement_cont.LiftOffsetOrReplace(
+                  bldr, reg_num,
+                  llvm::IntegerType::get(this->context, reg_num.size * 8)));
+          auto inval_value = LiftIntegerInParam(bldr, value);
+          auto inval_sel = this->LiftIntegerInParam(bldr, sel);
+
+          std::array<llvm::Value *, 5> args = {
+              state_pointer, inval_cop_num.value(),
+              inval_reg_num.get()
+                  ->LiftAsInParam(bldr, llvm::IntegerType::get(
+                                            this->context, reg_num.size * 8))
+                  .value(),
+              inval_value.value(), inval_sel.value()};
+
+          bldr.CreateCall(
+              insn_lifter_parent.GetIntrinsicTable()->set_coprocessor_reg,
+              args);
+        }
+        return kLiftedInstruction;
       }
       DLOG(ERROR) << "Unsupported pcode intrinsic: " << *other_func_name;
     }
@@ -1426,6 +1458,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     if (!maybe_should_branch) {
       DLOG(ERROR) << "Failed to lift iparam branch taken var";
       return LiftStatus::kLiftedLifterError;
+    }
+
+    if (btaken_var.invert) {
+      // Branch taken evaluation is inverted
+      *maybe_should_branch = bldr.CreateICmpEQ(
+          *maybe_should_branch,
+          llvm::ConstantInt::get(llvm::IntegerType::get(this->context, 8), 0));
     }
 
     auto should_branch = bldr.CreateZExtOrTrunc(
@@ -1652,7 +1691,8 @@ SleighLifter::SleighLifter(const remill::Arch &arch_,
     : InstructionLifter(&arch_, intrinsics_),
       sleigh_context(new sleigh::SingleInstructionSleighContext(
           dec_.GetSLAName(), dec_.GetPSpec())),
-      decoder(dec_) {}
+      decoder(dec_),
+      arch(arch_) {}
 
 
 const std::string_view SleighLifter::kInstructionFunctionPrefix =
@@ -1679,8 +1719,14 @@ SleighLifter::DefineInstructionFunction(Instruction &inst,
                                         ptr_ty};
   auto ty =
       llvm::FunctionType::get(inst.arch->MemoryPointerType(), params, false);
-  auto func = llvm::Function::Create(ty, llvm::GlobalValue::ExternalLinkage, 0,
-                                     nm.str(), target_mod);
+  auto func = target_mod->getFunction(nm.str());
+
+  if (!func || func->getFunctionType() != ty) {
+    func = llvm::Function::Create(ty, llvm::GlobalValue::ExternalLinkage, 0,
+                                  nm.str(), target_mod);
+  } else if (func->isDeclaration()) {
+    func->setLinkage(llvm::GlobalValue::WeakAnyLinkage);
+  }
 
   auto memory = remill::NthArgument(func, 1);
   auto state = remill::NthArgument(func, 0);
@@ -1734,7 +1780,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
   //TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
 
 
-  auto cfg = sleigh::CreateCFG(pcode_record.ops);
+  auto cfg = sleigh::CreateCFG(pcode_record.ops, this->arch);
 
 
   SleighLifter::PcodeToLLVMEmitIntoBlock::DecodingContextConstants
@@ -1813,6 +1859,27 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
           next_pc,
           llvm::ConstantInt::get(this->GetWordType(), inst.bytes.size())),
       next_pc_ref);
+
+  ///////////////////////////////////////////////////////////////////////////////////////////
+  // Handle COUNT Reg approximation
+  // May be prefered here over patches to sleigh definitions for now
+  // TODO(M4xw): Implement exact cycle count per opcode according to the optimization manual
+  if (inst.arch->IsMIPS()) {
+    const auto [count_ref, count_ref_type] =
+        LoadRegAddress(block, state_ptr, "COUNT");
+
+    const auto count =
+        intoblock_builer.CreateLoad(this->GetWordType(), count_ref);
+
+    intoblock_builer.CreateStore(
+        intoblock_builer.CreateAdd(
+            count, llvm::ConstantInt::get(
+                       this->GetWordType(),
+                       4)),  // Historically approximated Count per Opcode
+        count_ref);
+  }
+  LOG(INFO) << inst.Serialize();
+  //////////////////////////////////////////////////////////////////////////////////////////
 
   // TODO(Ian): THIS IS AN UNSOUND ASSUMPTION THAT RETURNS ALWAYS RETURN TO THE FALLTHROUGH, this is just to make things work
   intoblock_builer.CreateStore(
