@@ -40,7 +40,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare_git_user
@@ -109,21 +109,21 @@ jobs:
           echo ::set-output name=TGZ_PACKAGE_PATH::remill-rel/$(ls *.tar.gz)
 
       - name: Store the DEB package
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_deb_package
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_${{ matrix.compiler.CC }}_deb_package
           path: ${{ steps.package_names.outputs.DEB_PACKAGE_PATH }}
 
       - name: Store the RPM package
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_rpm_package
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_${{ matrix.compiler.CC }}_rpm_package
           path: ${{ steps.package_names.outputs.RPM_PACKAGE_PATH }}
 
       - name: Store the TGZ package
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_tgz_package
+          name: ${{ matrix.image.name }}-${{ matrix.image.tag }}_llvm${{ matrix.llvm }}_${{ matrix.compiler.CC }}_tgz_package
           path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
 
   build_mac:
@@ -136,7 +136,7 @@ jobs:
     runs-on: macos-13
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/prepare_git_user
@@ -182,7 +182,7 @@ jobs:
           echo ::set-output name=TGZ_PACKAGE_PATH::remill-build/$(ls *.tar.gz)
 
       - name: Store the TGZ package
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}_llvm${{ matrix.llvm }}_tgz_package
           path: ${{ steps.package_names.outputs.TGZ_PACKAGE_PATH }}
@@ -195,7 +195,7 @@ jobs:
 
     steps:
       - name: Clone the remill repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: remill
           fetch-depth: 0
@@ -207,7 +207,7 @@ jobs:
           ./scripts/generate_changelog.sh changelog.md
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
 
       - name: Draft the new release
         id: create_release
@@ -262,7 +262,7 @@ jobs:
         llvm: ["17"]
         ubuntu: ["22.04"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build LLVM ${{ matrix.llvm }} on ${{ matrix.ubuntu }}
         run: |
           docker build . -t ghcr.io/lifting-bits/remill/remill-llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}:latest -f Dockerfile --build-arg UBUNTU_VERSION=${{ matrix.ubuntu }} --build-arg LLVM_VERSION=${{ matrix.llvm }}
