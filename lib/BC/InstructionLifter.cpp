@@ -513,6 +513,10 @@ llvm::Value *InstructionLifter::LiftShiftRegisterOperand(
 namespace {
 
 static llvm::Type *IntendedArgumentType(llvm::Argument *arg) {
+  if (!arg->hasNUsesOrMore(1)) {
+    return nullptr;
+  }
+
   for (auto user : arg->users()) {
     if (auto cast_inst = llvm::dyn_cast<llvm::IntToPtrInst>(user)) {
       return cast_inst->getType();
@@ -570,7 +574,9 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
   // are being passed as arguments.
   auto arg_type = IntendedArgumentType(arg);
 
-  if (llvm::isa<llvm::PointerType>(arg_type)) {
+  if (!arg_type) {
+    return llvm::UndefValue::get(arg->getType());
+  } else if (llvm::isa<llvm::PointerType>(arg_type)) {
     auto [val, val_type] = LoadRegAddress(block, state_ptr, arch_reg.name);
     return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
@@ -675,7 +681,9 @@ llvm::Value *InstructionLifter::LiftExpressionOperand(Instruction &inst,
   // are being passed as arguments.
   auto arg_type = IntendedArgumentType(arg);
 
-  if (llvm::isa<llvm::PointerType>(arg_type)) {
+  if (!arg_type) {
+    return llvm::UndefValue::get(arg->getType());
+  } else if (llvm::isa<llvm::PointerType>(arg_type)) {
     return ConvertToIntendedType(inst, op, block, val, real_arg_type);
 
   } else {
