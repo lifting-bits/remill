@@ -188,6 +188,56 @@ TEST_INPUTS(PADDU_INPUTS_64)
     paddusb xmm0, [rsp+0x10]
 TEST_END_64
 
+#if HAS_FEATURE_AVX
+
+TEST_BEGIN_64(VPADDUSBv128v128v128, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    movq xmm0, ARG1_64
+    movq xmm1, ARG2_64
+    vpaddusb xmm2, xmm0, xmm1
+TEST_END_64
+
+TEST_BEGIN_64(VPADDUSBv128v128mv128, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG2_64
+    push ARG1_64
+    push ARG2_64
+    movq xmm0, [rsp]
+    vpaddusb xmm1, xmm0, [rsp+0x8]
+TEST_END_64
+
+TEST_BEGIN_64(VPADDUSBv256v256v256, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push 0
+    push 0
+    push 0
+    push ARG1_64
+    vmovdqu ymm0, [rsp]
+    push ARG2_64
+    push ARG2_64
+    push ARG2_64
+    push ARG2_64
+    vmovdqu ymm1, [rsp]
+    vpaddusb ymm2, ymm0, ymm1
+TEST_END_64
+
+TEST_BEGIN_64(VPADDUSBv256v256mv256, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push 0
+    push 0
+    push 0
+    push ARG1_64
+    vmovdqu ymm0, [rsp]
+    push ARG2_64
+    push ARG2_64
+    push ARG2_64
+    push ARG2_64
+    vpaddusb ymm2, ymm0, [rsp]
+TEST_END_64
+
+#endif  // HAS_FEATURE_AVX
+
+
 TEST_BEGIN_64(PADDUSWv128mv128_0, 2)
 TEST_INPUTS(PADDU_INPUTS_64)
     push ARG1_64
@@ -216,3 +266,52 @@ TEST_INPUTS(PADDU_INPUTS_64)
     paddusw xmm1, [rsp]
     paddusw xmm0, [rsp+0x10]
 TEST_END_64
+
+#if HAS_FEATURE_AVX
+
+TEST_BEGIN_64(VPADDUSWv128v128v128, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    movq xmm0, ARG1_64
+    movq xmm1, ARG2_64
+    vpaddusw xmm2, xmm0, xmm1
+TEST_END_64
+
+TEST_BEGIN_64(VPADDUSWv128v128mv128, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push ARG2_64
+    push ARG1_64
+    push ARG2_64
+    movq xmm0, [rsp]
+    vpaddusw xmm1, xmm0, [rsp+0x8]
+TEST_END_64
+
+TEST_BEGIN_64(VPADDUSWv256v256v256, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push 0
+    push 0
+    push 0
+    push ARG1_64
+    vmovdqu ymm0, [rsp]
+    push ARG2_64
+    push ARG2_64
+    push ARG2_64
+    push ARG2_64
+    vmovdqu ymm1, [rsp]
+    vpaddusw ymm2, ymm0, ymm1
+TEST_END_64
+
+TEST_BEGIN_64(VPADDUSWv256v256mv256, 2)
+TEST_INPUTS(PADDU_INPUTS_64)
+    push 0
+    push 0
+    push 0
+    push ARG1_64
+    vmovdqu ymm0, [rsp]
+    push ARG2_64
+    push ARG2_64
+    push ARG2_64
+    push ARG2_64
+    vpaddusw ymm2, ymm0, [rsp]
+TEST_END_64
+
+#endif  // HAS_FEATURE_AVX
