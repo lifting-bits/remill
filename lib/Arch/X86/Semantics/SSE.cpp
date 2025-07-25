@@ -1400,11 +1400,11 @@ DEF_SEM(MINPS, D dst, S1 src1, S2 src2) {
     if (__builtin_isunordered(v1, v2)) {
       min = v2;
 
-    // or if both floats are 0.0:
+      // or if both floats are 0.0:
     } else if ((v1 == 0.0) && (v2 == 0.0)) {
       min = v2;
 
-    // or if src2 is less than src1:
+      // or if src2 is less than src1:
     } else if (__builtin_isless(v2, v1)) {
       min = v2;
     }
@@ -1431,11 +1431,11 @@ DEF_SEM(MAXPS, D dst, S1 src1, S2 src2) {
     if (__builtin_isunordered(v1, v2)) {
       max = v2;
 
-    // or if both floats are 0.0:
+      // or if both floats are 0.0:
     } else if ((v1 == 0.0) && (v2 == 0.0)) {
       max = v2;
 
-    // or if src2 is greater than src1:
+      // or if src2 is greater than src1:
     } else if (__builtin_isgreater(v2, v1)) {
       max = v2;
     }
@@ -1738,7 +1738,7 @@ DEF_HELPER(SquareRoot64, float64_t src_float)->float64_t {
           1;  // equivalent to a bitwise OR with 0x0008000000000000
       square_root = temp_nan.d;
 
-    // Else, src is a QNaN. Pass it directly to the result:
+      // Else, src is a QNaN. Pass it directly to the result:
     } else {
       square_root = src_float;
     }
@@ -1892,17 +1892,25 @@ DEF_SEM(HADDPS, D dst, S1 src1, S2 src2) {
 
   // Compute the horizontal packing
   auto vec_count = NumVectorElems(lhs_vec);
+  auto tmp_vec_count = vec_count;
+  if (vec_count == 8) {
+    // For VEX.256, it is basically two 128bits concatenated.
+    // The upper half of lhs_vec will be inserted into dst_vec after the lower half of rhs_vec
+    tmp_vec_count /= 2;
+  }
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = FExtractV32(lhs_vec, index);
     auto v2 = FExtractV32(lhs_vec, index + 1);
-    auto i = UDiv(UInt32(index), UInt32(2));
+    auto off = Select(index < tmp_vec_count, 0, 2);
+    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
     dst_vec = FInsertV32(dst_vec, i, FAdd(v1, v2));
   }
   _Pragma("unroll") for (size_t index = 0; index < NumVectorElems(rhs_vec);
                          index += 2) {
     auto v1 = FExtractV32(rhs_vec, index);
     auto v2 = FExtractV32(rhs_vec, index + 1);
-    auto i = UDiv(UAdd(UInt32(index), UInt32(vec_count)), UInt32(2));
+    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
     dst_vec = FInsertV32(dst_vec, i, FAdd(v1, v2));
   }
   FWriteV32(dst, dst_vec);
@@ -1915,19 +1923,30 @@ DEF_SEM(HADDPD, D dst, S1 src1, S2 src2) {
   auto rhs_vec = FReadV64(src2);
   auto dst_vec = FClearV64(FReadV64(dst));
 
-  // Compute the horizontal packing
+  static_assert(
+      NumVectorElems(lhs_vec) == NumVectorElems(rhs_vec),
+      "First and second source vector must have the same number of elements");
+
   auto vec_count = NumVectorElems(lhs_vec);
+  auto tmp_vec_count = vec_count;
+  if (vec_count == 4) {
+    // For VEX.256, it is basically two 128bits concatenated.
+    // The upper half of lhs_vec will be inserted into dst_vec after the lower half of rhs_vec
+    tmp_vec_count /= 2;
+  }
+  // Compute the horizontal packing
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = FExtractV64(lhs_vec, index);
     auto v2 = FExtractV64(lhs_vec, index + 1);
-    auto i = UDiv(UInt32(index), UInt32(2));
+    auto off = Select(index < tmp_vec_count, 0, 1);
+    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
     dst_vec = FInsertV64(dst_vec, i, FAdd(v1, v2));
   }
-  _Pragma("unroll") for (size_t index = 0; index < NumVectorElems(rhs_vec);
-                         index += 2) {
+  _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = FExtractV64(rhs_vec, index);
     auto v2 = FExtractV64(rhs_vec, index + 1);
-    auto i = UDiv(UAdd(UInt32(index), UInt32(vec_count)), UInt32(2));
+    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
     dst_vec = FInsertV64(dst_vec, i, FAdd(v1, v2));
   }
   FWriteV64(dst, dst_vec);
