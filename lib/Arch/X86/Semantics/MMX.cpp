@@ -228,39 +228,39 @@ DEF_ISEL(PADDB_MMXq_MEMq) = PADDB<V64W, V64, MV64>;
 DEF_ISEL(PADDB_XMMdq_XMMdq) = PADDB<V128W, V128, V128>;
 DEF_ISEL(PADDB_XMMdq_MEMdq) = PADDB<V128W, V128, MV128>;
 
-IF_AVX(DEF_ISEL(VPADDB_XMMdq_XMMdq_XMMdq) = PADDB<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPADDB_XMMdq_XMMdq_MEMdq) = PADDB<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPADDB_YMMqq_YMMqq_YMMqq) = PADDB<VV256W, VV256, VV256>;)
-IF_AVX(DEF_ISEL(VPADDB_YMMqq_YMMqq_MEMqq) = PADDB<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VPADDB_XMMdq_XMMdq_XMMdq) = PADDB<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPADDB_XMMdq_XMMdq_MEMdq) = PADDB<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPADDB_YMMqq_YMMqq_YMMqq) = PADDB<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VPADDB_YMMqq_YMMqq_MEMqq) = PADDB<VV256W, V256, MV256>;)
 
 DEF_ISEL(PADDW_MMXq_MMXq) = PADDW<V64W, V64, V64>;
 DEF_ISEL(PADDW_MMXq_MEMq) = PADDW<V64W, V64, MV64>;
 DEF_ISEL(PADDW_XMMdq_XMMdq) = PADDW<V128W, V128, V128>;
 DEF_ISEL(PADDW_XMMdq_MEMdq) = PADDW<V128W, V128, MV128>;
 
-IF_AVX(DEF_ISEL(VPADDW_XMMdq_XMMdq_XMMdq) = PADDW<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPADDW_XMMdq_XMMdq_MEMdq) = PADDW<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPADDW_YMMqq_YMMqq_YMMqq) = PADDW<VV256W, VV256, VV256>;)
-IF_AVX(DEF_ISEL(VPADDW_YMMqq_YMMqq_MEMqq) = PADDW<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VPADDW_XMMdq_XMMdq_XMMdq) = PADDW<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPADDW_XMMdq_XMMdq_MEMdq) = PADDW<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPADDW_YMMqq_YMMqq_YMMqq) = PADDW<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VPADDW_YMMqq_YMMqq_MEMqq) = PADDW<VV256W, V256, MV256>;)
 
 DEF_ISEL(PADDD_MMXq_MMXq) = PADDD<V64W, V64, V64>;
 DEF_ISEL(PADDD_MMXq_MEMq) = PADDD<V64W, V64, MV64>;
 DEF_ISEL(PADDD_XMMdq_XMMdq) = PADDD<V128W, V128, V128>;
 DEF_ISEL(PADDD_XMMdq_MEMdq) = PADDD<V128W, V128, MV128>;
 
-IF_AVX(DEF_ISEL(VPADDD_XMMdq_XMMdq_XMMdq) = PADDD<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPADDD_XMMdq_XMMdq_MEMdq) = PADDD<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPADDD_YMMqq_YMMqq_YMMqq) = PADDD<VV256W, VV256, VV256>;)
-IF_AVX(DEF_ISEL(VPADDD_YMMqq_YMMqq_MEMqq) = PADDD<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VPADDD_XMMdq_XMMdq_XMMdq) = PADDD<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPADDD_XMMdq_XMMdq_MEMdq) = PADDD<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPADDD_YMMqq_YMMqq_YMMqq) = PADDD<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VPADDD_YMMqq_YMMqq_MEMqq) = PADDD<VV256W, V256, MV256>;)
 
 DEF_ISEL(PADDQ_MMXq_MMXq) = PADDQ<V64W, V64, V64>;
 DEF_ISEL(PADDQ_MMXq_MEMq) = PADDQ<V64W, V64, MV64>;
 DEF_ISEL(PADDQ_XMMdq_XMMdq) = PADDQ<V128W, V128, V128>;
 DEF_ISEL(PADDQ_XMMdq_MEMdq) = PADDQ<V128W, V128, MV128>;
-IF_AVX(DEF_ISEL(VPADDQ_XMMdq_XMMdq_XMMdq) = PADDQ<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPADDQ_XMMdq_XMMdq_MEMdq) = PADDQ<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPADDQ_YMMqq_YMMqq_MEMqq) = PADDQ<VV256W, VV256, MV256>;)
-IF_AVX(DEF_ISEL(VPADDQ_YMMqq_YMMqq_YMMqq) = PADDQ<VV256W, VV256, VV256>;)
+IF_AVX(DEF_ISEL(VPADDQ_XMMdq_XMMdq_XMMdq) = PADDQ<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPADDQ_XMMdq_XMMdq_MEMdq) = PADDQ<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPADDQ_YMMqq_YMMqq_MEMqq) = PADDQ<VV256W, V256, MV256>;)
+IF_AVX(DEF_ISEL(VPADDQ_YMMqq_YMMqq_YMMqq) = PADDQ<VV256W, V256, V256>;)
 
 /*
 5255 VPADDQ VPADDQ_ZMMu64_MASKmskw_ZMMu64_ZMMu64_AVX512 AVX512 AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
@@ -332,19 +332,19 @@ DEF_ISEL(PADDSB_MMXq_MMXq) = PADDSB<V64W, V64, V64>;
 DEF_ISEL(PADDSB_MMXq_MEMq) = PADDSB<V64W, V64, MV64>;
 DEF_ISEL(PADDSB_XMMdq_XMMdq) = PADDSB<V128W, V128, V128>;
 DEF_ISEL(PADDSB_XMMdq_MEMdq) = PADDSB<V128W, V128, MV128>;
-IF_AVX(DEF_ISEL(VPADDSB_XMMdq_XMMdq_XMMdq) = PADDSB<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPADDSB_XMMdq_XMMdq_MEMdq) = PADDSB<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPADDSB_YMMqq_YMMqq_MEMqq) = PADDSB<VV256W, VV256, MV256>;)
-IF_AVX(DEF_ISEL(VPADDSB_YMMqq_YMMqq_YMMqq) = PADDSB<VV256W, VV256, VV256>;)
+IF_AVX(DEF_ISEL(VPADDSB_XMMdq_XMMdq_XMMdq) = PADDSB<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPADDSB_XMMdq_XMMdq_MEMdq) = PADDSB<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPADDSB_YMMqq_YMMqq_MEMqq) = PADDSB<VV256W, V256, MV256>;)
+IF_AVX(DEF_ISEL(VPADDSB_YMMqq_YMMqq_YMMqq) = PADDSB<VV256W, V256, V256>;)
 
 DEF_ISEL(PADDSW_MMXq_MMXq) = PADDSW<V64W, V64, V64>;
 DEF_ISEL(PADDSW_MMXq_MEMq) = PADDSW<V64W, V64, MV64>;
 DEF_ISEL(PADDSW_XMMdq_XMMdq) = PADDSW<V128W, V128, V128>;
 DEF_ISEL(PADDSW_XMMdq_MEMdq) = PADDSW<V128W, V128, MV128>;
-IF_AVX(DEF_ISEL(VPADDSW_XMMdq_XMMdq_XMMdq) = PADDSW<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPADDSW_XMMdq_XMMdq_MEMdq) = PADDSW<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPADDSW_YMMqq_YMMqq_MEMqq) = PADDSW<VV256W, VV256, MV256>;)
-IF_AVX(DEF_ISEL(VPADDSW_YMMqq_YMMqq_YMMqq) = PADDSW<VV256W, VV256, VV256>;)
+IF_AVX(DEF_ISEL(VPADDSW_XMMdq_XMMdq_XMMdq) = PADDSW<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPADDSW_XMMdq_XMMdq_MEMdq) = PADDSW<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPADDSW_YMMqq_YMMqq_MEMqq) = PADDSW<VV256W, V256, MV256>;)
+IF_AVX(DEF_ISEL(VPADDSW_YMMqq_YMMqq_YMMqq) = PADDSW<VV256W, V256, V256>;)
 
 namespace {
 
@@ -396,17 +396,17 @@ DEF_SEM(PADDUSW, D dst, S1 src1, S2 src2) {
 
 DEF_ISEL(PADDUSB_XMMdq_XMMdq) = PADDUSB<V128W, V128, V128>;
 DEF_ISEL(PADDUSB_XMMdq_MEMdq) = PADDUSB<V128W, V128, MV128>;
-IF_AVX(DEF_ISEL(VPADDUSB_XMMdq_XMMdq_XMMdq) = PADDUSB<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPADDUSB_XMMdq_XMMdq_MEMdq) = PADDUSB<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPADDUSB_YMMqq_YMMqq_YMMqq) = PADDUSB<VV256W, VV256, VV256>;)
-IF_AVX(DEF_ISEL(VPADDUSB_YMMqq_YMMqq_MEMqq) = PADDUSB<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VPADDUSB_XMMdq_XMMdq_XMMdq) = PADDUSB<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPADDUSB_XMMdq_XMMdq_MEMdq) = PADDUSB<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPADDUSB_YMMqq_YMMqq_YMMqq) = PADDUSB<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VPADDUSB_YMMqq_YMMqq_MEMqq) = PADDUSB<VV256W, V256, MV256>;)
 
 DEF_ISEL(PADDUSW_XMMdq_XMMdq) = PADDUSW<V128W, V128, V128>;
 DEF_ISEL(PADDUSW_XMMdq_MEMdq) = PADDUSW<V128W, V128, MV128>;
-IF_AVX(DEF_ISEL(VPADDUSW_XMMdq_XMMdq_XMMdq) = PADDUSW<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPADDUSW_XMMdq_XMMdq_MEMdq) = PADDUSW<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPADDUSW_YMMqq_YMMqq_YMMqq) = PADDUSW<VV256W, VV256, V256>;)
-IF_AVX(DEF_ISEL(VPADDUSW_YMMqq_YMMqq_MEMqq) = PADDUSW<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VPADDUSW_XMMdq_XMMdq_XMMdq) = PADDUSW<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPADDUSW_XMMdq_XMMdq_MEMdq) = PADDUSW<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPADDUSW_YMMqq_YMMqq_YMMqq) = PADDUSW<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VPADDUSW_YMMqq_YMMqq_MEMqq) = PADDUSW<VV256W, V256, MV256>;)
 
 namespace {
 
@@ -424,20 +424,22 @@ DEF_SEM(PHADDW, D dst, S1 src1, S2 src2) {
   auto vec_count = NumVectorElems(lhs_vec);
   auto tmp_vec_count = vec_count;
   if (vec_count == 16) {
-    // For VEX.256, it is basically two 128bits concatenated
+    // For VEX.256, it is basically two 128bits concatenated.
+    // The upper half of lhs_vec will be inserted into dst_vec after the lower half of rhs_vec
     tmp_vec_count /= 2;
   }
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV16(lhs_vec, index);
     auto v2 = SExtractV16(lhs_vec, index + 1);
-    // For VEX.256, the upper 128 bits are added and inserted after the lower 128 bits of rhs_vec
-    auto i = index / 2 + (index < tmp_vec_count ? 0 : 4);
+    auto off = Select(index < tmp_vec_count, 0, 4);
+    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
     dst_vec = SInsertV16(dst_vec, i, SAdd(v1, v2));
   }
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV16(rhs_vec, index);
     auto v2 = SExtractV16(rhs_vec, index + 1);
-    auto i = (index + (index < tmp_vec_count ? tmp_vec_count : vec_count)) / 2;
+    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
     dst_vec = SInsertV16(dst_vec, i, SAdd(v1, v2));
   }
   SWriteV16(dst, dst_vec);
@@ -450,24 +452,30 @@ DEF_SEM(PHADDD, D dst, S1 src1, S2 src2) {
   auto rhs_vec = SReadV32(src2);
   auto dst_vec = SClearV32(SReadV32(dst));
 
+  static_assert(
+      NumVectorElems(lhs_vec) == NumVectorElems(rhs_vec),
+      "First and second source vector must have the same number of elements");
+
   // Compute the horizontal packing
   auto vec_count = NumVectorElems(lhs_vec);
   auto tmp_vec_count = vec_count;
   if (vec_count == 8) {
-    // For VEX.256, it is basically two 128bits concatenated
+    // For VEX.256, it is basically two 128bits concatenated.
+    // The upper half of lhs_vec will be inserted into dst_vec after the lower half of rhs_vec
     tmp_vec_count /= 2;
   }
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV32(lhs_vec, index);
     auto v2 = SExtractV32(lhs_vec, index + 1);
-    // For VEX.256, the upper 128 bits are added and inserted after the lower 128 bits of rhs_vec
-    auto i = index / 2 + (index < tmp_vec_count ? 0 : 2);
+    auto off = Select(index < tmp_vec_count, 0, 2);
+    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
     dst_vec = SInsertV32(dst_vec, i, SAdd(v1, v2));
   }
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV32(rhs_vec, index);
     auto v2 = SExtractV32(rhs_vec, index + 1);
-    auto i = (index + (index < tmp_vec_count ? tmp_vec_count : vec_count)) / 2;
+    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
     dst_vec = SInsertV32(dst_vec, i, SAdd(v1, v2));
   }
   SWriteV32(dst, dst_vec);
@@ -481,20 +489,20 @@ DEF_ISEL(PHADDW_MMXq_MEMq) = PHADDW<V64W, V64, MV64>;
 DEF_ISEL(PHADDW_XMMdq_XMMdq) = PHADDW<V128W, V128, V128>;
 DEF_ISEL(PHADDW_XMMdq_MEMdq) = PHADDW<V128W, V128, MV128>;
 
-IF_AVX(DEF_ISEL(VPHADDW_XMMdq_XMMdq_XMMdq) = PHADDW<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPHADDW_XMMdq_XMMdq_MEMdq) = PHADDW<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPHADDW_YMMqq_YMMqq_YMMqq) = PHADDW<VV256W, VV256, VV256>;)
-IF_AVX(DEF_ISEL(VPHADDW_YMMqq_YMMqq_MEMqq) = PHADDW<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VPHADDW_XMMdq_XMMdq_XMMdq) = PHADDW<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPHADDW_XMMdq_XMMdq_MEMdq) = PHADDW<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPHADDW_YMMqq_YMMqq_YMMqq) = PHADDW<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VPHADDW_YMMqq_YMMqq_MEMqq) = PHADDW<VV256W, V256, MV256>;)
 
 DEF_ISEL(PHADDD_MMXq_MMXq) = PHADDD<V64W, V64, V64>;
 DEF_ISEL(PHADDD_MMXq_MEMq) = PHADDD<V64W, V64, MV64>;
 DEF_ISEL(PHADDD_XMMdq_XMMdq) = PHADDD<V128W, V128, V128>;
 DEF_ISEL(PHADDD_XMMdq_MEMdq) = PHADDD<V128W, V128, MV128>;
 
-IF_AVX(DEF_ISEL(VPHADDD_XMMdq_XMMdq_XMMdq) = PHADDD<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPHADDD_XMMdq_XMMdq_MEMdq) = PHADDD<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPHADDD_YMMqq_YMMqq_YMMqq) = PHADDD<VV256W, VV256, VV256>;)
-IF_AVX(DEF_ISEL(VPHADDD_YMMqq_YMMqq_MEMqq) = PHADDD<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VPHADDD_XMMdq_XMMdq_XMMdq) = PHADDD<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPHADDD_XMMdq_XMMdq_MEMdq) = PHADDD<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPHADDD_YMMqq_YMMqq_YMMqq) = PHADDD<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VPHADDD_YMMqq_YMMqq_MEMqq) = PHADDD<VV256W, V256, MV256>;)
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(PHADDSW, D dst, S1 src1, S2 src2) {
@@ -509,7 +517,8 @@ DEF_SEM(PHADDSW, D dst, S1 src1, S2 src2) {
   auto vec_count = NumVectorElems(src1_vec);
   auto tmp_vec_count = vec_count;
   if (vec_count == 16) {
-    // For VEX.256, it is basically two 128bits concatenated
+    // For VEX.256, it is basically two 128bits concatenated.
+    // The upper half of lhs_vec will be inserted into dst_vec after the lower half of rhs_vec
     tmp_vec_count /= 2;
   }
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
@@ -525,7 +534,8 @@ DEF_SEM(PHADDSW, D dst, S1 src1, S2 src2) {
     auto value =
         Select(SCmpLt(SAnd(SNot(add_elem), and_elem), decltype(add_elem)(0)),
                decltype(add_elem)(0x8000), tmp);
-    size_t i = index / 2 + (index < tmp_vec_count ? 0 : 4);
+    auto off = Select(index < tmp_vec_count, 0, 4);
+    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
     dst_vec = SInsertV16(dst_vec, i, value);
   }
 
@@ -542,8 +552,8 @@ DEF_SEM(PHADDSW, D dst, S1 src1, S2 src2) {
     auto value =
         Select(SCmpLt(SAnd(SNot(add_elem), and_elem), decltype(add_elem)(0)),
                decltype(add_elem)(0x8000), tmp);
-    size_t i =
-        (index + (index < tmp_vec_count ? tmp_vec_count : vec_count)) / 2;
+    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
     dst_vec = SInsertV16(dst_vec, i, value);
   }
   SWriteV16(dst, dst_vec);
@@ -554,10 +564,10 @@ DEF_ISEL(PHADDSW_MMXq_MMXq) = PHADDSW<V64W, V64, V64>;
 DEF_ISEL(PHADDSW_MMXq_MEMq) = PHADDSW<V64W, V64, MV64>;
 DEF_ISEL(PHADDSW_XMMdq_XMMdq) = PHADDSW<V128W, V128, V128>;
 DEF_ISEL(PHADDSW_XMMdq_MEMdq) = PHADDSW<V128W, V128, MV128>;
-IF_AVX(DEF_ISEL(VPHADDSW_XMMdq_XMMdq_XMMdq) = PHADDSW<VV128W, VV128, VV128>;)
-IF_AVX(DEF_ISEL(VPHADDSW_XMMdq_XMMdq_MEMdq) = PHADDSW<VV128W, VV128, MV128>;)
-IF_AVX(DEF_ISEL(VPHADDSW_YMMqq_YMMqq_YMMqq) = PHADDSW<VV256W, VV256, VV256>;)
-IF_AVX(DEF_ISEL(VPHADDSW_YMMqq_YMMqq_MEMqq) = PHADDSW<VV256W, VV256, MV256>;)
+IF_AVX(DEF_ISEL(VPHADDSW_XMMdq_XMMdq_XMMdq) = PHADDSW<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VPHADDSW_XMMdq_XMMdq_MEMdq) = PHADDSW<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VPHADDSW_YMMqq_YMMqq_YMMqq) = PHADDSW<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VPHADDSW_YMMqq_YMMqq_MEMqq) = PHADDSW<VV256W, V256, MV256>;)
 
 namespace {
 
