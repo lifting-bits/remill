@@ -328,7 +328,6 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/ABI.S"
 #include "tests/X86/MMX/INPUTS.S"
 
-
 /* Change to `0` and put new `#include`s above when making new tests to speed
  * up compile and test times. */
 #if 1
@@ -506,6 +505,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/CMPSS.S"
 #include "tests/X86/SSE/COMISD.S"
 #include "tests/X86/SSE/COMISS.S"
+#include "tests/X86/SSE/HADD.S"
 #include "tests/X86/SSE/PACKUSWB.S"
 #include "tests/X86/SSE/PCMPISTRI.S"
 #include "tests/X86/SSE/PSHUFD.S"
