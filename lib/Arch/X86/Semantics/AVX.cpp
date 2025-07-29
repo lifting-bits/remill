@@ -78,6 +78,33 @@ DEF_SEM(VINSERTF128, VV256W dst, V256 src1, S2 src2, I8 src3) {
 //  return memory;
 //}
 
+#  define MAKE_VMASKMOVx(chunk_size, is_load) \
+    template <typename D, typename M, typename S> \
+    DEF_SEM(VMASKMOV##chunk_size##_##is_load, D dst, M mask, S src) { \
+      auto dst_vec = UReadV##chunk_size(dst); \
+      if (is_load) { \
+        dst_vec = UClearV##chunk_size(dst_vec); \
+      } \
+      auto src_vec = UReadV##chunk_size(src); \
+      auto mask_vec = UReadV##chunk_size(mask); \
+      auto vec_count = NumVectorElems(src_vec); \
+      _Pragma("unroll") for (size_t index = 0; index < vec_count; index++) { \
+        auto mask_chunk = UExtractV##chunk_size(mask_vec, index); \
+        auto src_chunk = UExtractV##chunk_size(src_vec, index); \
+        auto dst_chunk = UExtractV##chunk_size(dst_vec, index); \
+        auto new_chunk = Select(READBIT(mask_chunk, (chunk_size - 1)), \
+                                src_chunk, dst_chunk); \
+        dst_vec = UInsertV##chunk_size(dst_vec, index, new_chunk); \
+      } \
+      UWriteV##chunk_size(dst, dst_vec); \
+      return memory; \
+    }
+
+// Suffix 1: load variant
+MAKE_VMASKMOVx(32, 1) MAKE_VMASKMOVx(64, 1)
+    // Suffix 0: store variant
+    MAKE_VMASKMOVx(32, 0) MAKE_VMASKMOVx(64, 0)
+
 }  // namespace
 
 DEF_ISEL(VINSERTF128_YMMqq_YMMqq_MEMdq_IMMb) = VINSERTF128<MV128>;
@@ -86,5 +113,26 @@ DEF_ISEL(VINSERTF128_YMMqq_YMMqq_XMMdq_IMMb) = VINSERTF128<V128>;
 DEF_ISEL(VZEROUPPER) = DoVZEROUPPER;
 DEF_ISEL(VPBROADCASTB_YMMqq_XMMb) = VPBROADCASTB<VV256W, V128>;
 DEF_ISEL(VPBROADCASTQ_YMMqq_XMMq) = VPBROADCASTQ<VV256W, V128>;
+
+DEF_ISEL(VMASKMOVPS_XMMdq_XMMdq_MEMdq) = VMASKMOV32_1<VV128W, V128, MV128>;
+DEF_ISEL(VMASKMOVPS_MEMdq_XMMdq_XMMdq) = VMASKMOV32_0<MV128W, V128, V128>;
+DEF_ISEL(VMASKMOVPS_YMMqq_YMMqq_MEMqq) = VMASKMOV32_1<VV256W, V256, MV256>;
+DEF_ISEL(VMASKMOVPS_MEMqq_YMMqq_YMMqq) = VMASKMOV32_0<MV256W, V256, V256>;
+
+DEF_ISEL(VMASKMOVPD_XMMdq_XMMdq_MEMdq) = VMASKMOV64_1<VV128W, V128, MV128>;
+DEF_ISEL(VMASKMOVPD_MEMdq_XMMdq_XMMdq) = VMASKMOV64_0<MV128W, V128, V128>;
+DEF_ISEL(VMASKMOVPD_YMMqq_YMMqq_MEMqq) = VMASKMOV64_1<VV256W, V256, MV256>;
+DEF_ISEL(VMASKMOVPD_MEMqq_YMMqq_YMMqq) = VMASKMOV64_0<MV256W, V256, V256>;
+
+DEF_ISEL(VPMASKMOVD_XMMdq_XMMdq_MEMdq) = VMASKMOV32_1<VV128W, VV128, MV128>;
+DEF_ISEL(VPMASKMOVD_MEMdq_XMMdq_XMMdq) = VMASKMOV32_0<MV128W, VV128, VV128>;
+DEF_ISEL(VPMASKMOVD_YMMqq_YMMqq_MEMqq) = VMASKMOV32_1<VV256W, VV256, MV256>;
+DEF_ISEL(VPMASKMOVD_MEMqq_YMMqq_YMMqq) = VMASKMOV32_0<MV256W, VV256, VV256>;
+
+DEF_ISEL(VPMASKMOVQ_XMMdq_XMMdq_MEMdq) = VMASKMOV64_1<VV128W, VV128, MV128>;
+DEF_ISEL(VPMASKMOVQ_MEMdq_XMMdq_XMMdq) = VMASKMOV64_0<MV128W, VV128, VV128>;
+DEF_ISEL(VPMASKMOVQ_YMMqq_YMMqq_MEMqq) = VMASKMOV64_1<VV256W, VV256, MV256>;
+DEF_ISEL(VPMASKMOVQ_MEMqq_YMMqq_YMMqq) = VMASKMOV64_0<MV256W, VV256, VV256>;
+
 
 #endif  // HAS_FEATURE_AVX
