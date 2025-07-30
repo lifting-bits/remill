@@ -1599,34 +1599,42 @@ IF_AVX(DEF_ISEL(VUNPCKHPS_XMMdq_XMMdq_XMMdq) = UNPCKHPS<VV128W, V128, V128>;)
 
 namespace {
 
-template <typename D, typename S1>
-DEF_SEM(MOVDDUP, D dst, S1 src) {
+#define MAKE_MOVDDUP(num_src_elements) \
+  template <typename D, typename S1> \
+  DEF_SEM(MOVDDUP_##num_src_elements, D dst, S1 src) { \
+\
+    /* Treat src as a vector of QWORD (64-bit) floats, even if it's just one element:*/ \
+    auto src_vec = FReadV64(src); \
+    auto tmp_vec = FClearV64(FReadV64(dst)); \
+\
+    /* "Move and duplicate" QWORD src[63:0] into dest[63:0] and into dest[127:64]:*/ \
+    _Pragma("unroll") for (auto idx = 0u; idx < num_src_elements * 2; \
+                           idx += 2) { \
+      auto src_float = FExtractV64(src_vec, idx); \
+      tmp_vec = FInsertV64(tmp_vec, idx, src_float); \
+      tmp_vec = FInsertV64(tmp_vec, idx + 1, src_float); \
+    } \
+    /* SSE: Writes to XMM (dest[MAXVL-1:127] unmodified). AVX: Zero-extends XMM.*/ \
+    FWriteV64(dst, tmp_vec); \
+    return memory; \
+  }
 
-  // Treat src as a vector of QWORD (64-bit) floats, even if it's just one element:
-  auto src_vec = FReadV64(src);
+// for SSE and VEX.128
+MAKE_MOVDDUP(1)
+// for VEX.256
+MAKE_MOVDDUP(2)
 
-  // "Move and duplicate" QWORD src[63:0] into dest[63:0] and into dest[127:64]:
-  auto src_float = FExtractV64(src_vec, 0);
-
-  float64v2_t temp_vec =
-      {};  // length of src and dest may differ, so manually create.
-  temp_vec = FInsertV64(temp_vec, 0, src_float);
-  temp_vec = FInsertV64(temp_vec, 1, src_float);
-
-  // SSE: Writes to XMM (dest[MAXVL-1:127] unmodified). AVX: Zero-extends XMM.
-  FWriteV64(dst, temp_vec);
-  return memory;
-}
+#undef MAKE_MOVDDUP
 
 }  // namespace
 
-DEF_ISEL(MOVDDUP_XMMdq_MEMq) = MOVDDUP<V128W, MV64>;
-DEF_ISEL(MOVDDUP_XMMdq_XMMq) = MOVDDUP<V128W, V128>;
-IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_MEMq) = MOVDDUP<VV128W, MV64>;)
-IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_XMMq) = MOVDDUP<VV128W, V128>;)
+DEF_ISEL(MOVDDUP_XMMdq_MEMq) = MOVDDUP_1<V128W, MV64>;
+DEF_ISEL(MOVDDUP_XMMdq_XMMq) = MOVDDUP_1<V128W, V128>;
+IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_MEMq) = MOVDDUP_1<VV128W, MV64>;)
+IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_XMMq) = MOVDDUP_1<VV128W, V128>;)
+IF_AVX(DEF_ISEL(VMOVDDUP_YMMqq_MEMqq) = MOVDDUP_2<VV256W, MV128>;)
+IF_AVX(DEF_ISEL(VMOVDDUP_YMMqq_YMMqq) = MOVDDUP_2<VV256W, V256>;)
 /*
-2320 VMOVDDUP VMOVDDUP_YMMqq_MEMqq DATAXFER AVX AVX ATTRIBUTES:
-2321 VMOVDDUP VMOVDDUP_YMMqq_YMMqq DATAXFER AVX AVX ATTRIBUTES:
 4070 VMOVDDUP VMOVDDUP_ZMMf64_MASKmskw_ZMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_512 ATTRIBUTES: MASKOP_EVEX
 4071 VMOVDDUP VMOVDDUP_ZMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_512 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX
 4072 VMOVDDUP VMOVDDUP_XMMf64_MASKmskw_XMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_128 ATTRIBUTES: MASKOP_EVEX
@@ -1634,6 +1642,43 @@ IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_XMMq) = MOVDDUP<VV128W, V128>;)
 4074 VMOVDDUP VMOVDDUP_YMMf64_MASKmskw_YMMf64_AVX512 DATAXFER AVX512EVEX AVX512F_256 ATTRIBUTES: MASKOP_EVEX
 4075 VMOVDDUP VMOVDDUP_YMMf64_MASKmskw_MEMf64_AVX512 DATAXFER AVX512EVEX AVX512F_256 ATTRIBUTES: DISP8_MOVDDUP MASKOP_EVEX
 */
+
+namespace {
+
+#define MAKE_MOVSxDUP(name, src_idx) \
+  template <typename D, typename S1> \
+  DEF_SEM(MOVS##name##DUP, D dst, S1 src) { \
+    auto src_vec = FReadV32(src); \
+    auto dst_vec = FClearV32(FReadV32(dst)); \
+    auto vector_count = NumVectorElems(src_vec); \
+    _Pragma("unroll") for (auto idx = 0u; idx < vector_count; idx += 2) { \
+      auto src_float = FExtractV32(src_vec, idx + src_idx); \
+      dst_vec = FInsertV32(dst_vec, idx, src_float); \
+      dst_vec = FInsertV32(dst_vec, idx + 1, src_float); \
+    } \
+    FWriteV32(dst, dst_vec); \
+    return memory; \
+  }
+
+MAKE_MOVSxDUP(L, 0u) MAKE_MOVSxDUP(H, 1u)
+
+#undef MAKE_MOVDDUP
+
+}  // namespace
+
+DEF_ISEL(MOVSLDUP_XMMps_MEMps) = MOVSLDUP<V128W, MV128>;
+DEF_ISEL(MOVSLDUP_XMMps_XMMps) = MOVSLDUP<V128W, V128>;
+IF_AVX(DEF_ISEL(VMOVSLDUP_XMMdq_MEMdq) = MOVSLDUP<VV128W, MV128>;)
+IF_AVX(DEF_ISEL(VMOVSLDUP_XMMdq_XMMdq) = MOVSLDUP<VV128W, V128>;)
+IF_AVX(DEF_ISEL(VMOVSLDUP_YMMqq_MEMqq) = MOVSLDUP<VV256W, MV256>;)
+IF_AVX(DEF_ISEL(VMOVSLDUP_YMMqq_YMMqq) = MOVSLDUP<VV256W, V256>;)
+
+DEF_ISEL(MOVSHDUP_XMMps_MEMps) = MOVSHDUP<V128W, MV128>;
+DEF_ISEL(MOVSHDUP_XMMps_XMMps) = MOVSHDUP<V128W, V128>;
+IF_AVX(DEF_ISEL(VMOVSHDUP_XMMdq_MEMdq) = MOVSHDUP<VV128W, MV128>;)
+IF_AVX(DEF_ISEL(VMOVSHDUP_XMMdq_XMMdq) = MOVSHDUP<VV128W, V128>;)
+IF_AVX(DEF_ISEL(VMOVSHDUP_YMMqq_MEMqq) = MOVSHDUP<VV256W, MV256>;)
+IF_AVX(DEF_ISEL(VMOVSHDUP_YMMqq_YMMqq) = MOVSHDUP<VV256W, V256>;)
 
 namespace {
 
