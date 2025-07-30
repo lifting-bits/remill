@@ -56,4 +56,35 @@ TEST_INPUTS(
     vmovddup xmm0, qword ptr [rsp];  // "moves and duplicates" the value of src into dest
 TEST_END_64
 
+TEST_BEGIN_64(VMOVDDUPv256v256, 2)
+TEST_INPUTS(
+    0x0000000000000000, 0x0000000000000000,  // sanity check
+    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
+    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+    push ARG1_64;
+    push ARG1_64;
+    push ARG1_64;
+    push ARG1_64;
+    vmovdqu ymm0, [rsp]
+    push ARG2_64;
+    push ARG2_64;
+    vmovdqu ymm1, [rsp]
+    vmovddup ymm0, ymm1;
+TEST_END_64
+
+TEST_BEGIN_64(VMOVDDUPv256m128, 2)
+TEST_INPUTS(
+    0x0000000000000000, 0x0000000000000000,  // sanity check
+    0xfedcba9876543210, 0x0000000000000000,  // arbitrarily chosen values
+    0xfedcba9876543210, 0xffffffffffffffff)  // other arbitrarily chosen values
+    push ARG1_64;
+    push ARG1_64;
+    push ARG1_64;
+    push ARG1_64;
+    vmovdqu ymm0, [rsp]
+    push ARG2_64;
+    push ARG2_64;
+    vmovddup ymm0, [rsp];
+TEST_END_64
+
 #endif
