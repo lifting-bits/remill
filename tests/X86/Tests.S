@@ -534,6 +534,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SSE/SHUFPS.S"
 #include "tests/X86/SSE/SHUFPD.S"
 #include "tests/X86/SSE/PMOVSX.S"
+#include "tests/X86/SSE/PMOVZX.S"
 
 #include "tests/X86/STRINGOP/CMPS.S"
 #include "tests/X86/STRINGOP/LODS.S"
