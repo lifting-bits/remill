@@ -504,6 +504,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/SHIFT/SHR.S"
 #include "tests/X86/SHIFT/SHRD.S"
 
+#include "tests/X86/SSE/ADDSUB.S"
 #include "tests/X86/SSE/CMPSS.S"
 #include "tests/X86/SSE/COMISD.S"
 #include "tests/X86/SSE/COMISS.S"
