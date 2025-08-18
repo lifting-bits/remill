@@ -143,7 +143,7 @@ target_include_directories(remill_settings INTERFACE
   $<BUILD_INTERFACE:${LLVM_INCLUDE_DIR}>
 )
 
-if(WIN32)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND MSVC)
   # warnings and compiler settings
   target_compile_options(remill_settings INTERFACE
     "$<$<CONFIG:Debug>:/MDd>$<$<CONFIG:Release>:/MD>"
@@ -167,6 +167,9 @@ if(WIN32)
 
 else()
   # warnings and compiler settings
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_options(remill_settings INTERFACE -fPIC)
+  endif()
   target_compile_options(remill_settings INTERFACE
     -Wall -Wextra -Wno-unused-parameter -Wno-c++98-compat
     -Wno-unreachable-code-return -Wno-nested-anon-types

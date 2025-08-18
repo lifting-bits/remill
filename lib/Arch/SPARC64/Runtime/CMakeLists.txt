@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.21)
 project(sparc64_runtime)
 
 set(SPARC64RUNTIME_SOURCEFILES
