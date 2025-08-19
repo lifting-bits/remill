@@ -44,6 +44,7 @@ class IntrinsicTable {
   // OS interaction.
   llvm::Function *const sync_hyper_call;
   llvm::Function *const async_hyper_call;
+  llvm::Function *const set_coprocessor_reg;
 
   // Memory read intrinsics.
   llvm::Function *const read_memory_8;
