@@ -82,7 +82,7 @@ set(REMILL_BUILD_SEMANTICS_DIR_SPARC64 "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/SPA
 set(REMILL_BUILD_SEMANTICS_DIR_PPC64_32ADDR "${CMAKE_CURRENT_BINARY_DIR}/lib/Arch/PPC/Runtime")
 set(REMILL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(REMILL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
-
+set(FETCHCONTENT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BCCompiler.cmake")
 
 # Intel XED
@@ -167,16 +167,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND MSVC)
 
 else()
   # warnings and compiler settings
-  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_compile_options(remill_settings INTERFACE -fPIC)
-  endif()
+  set_target_properties(remill_settings PROPERTIES 
+    INTERFACE_POSITION_INDEPENDENT_CODE ON
+  )
   target_compile_options(remill_settings INTERFACE
     -Wall -Wextra -Wno-unused-parameter -Wno-c++98-compat
     -Wno-unreachable-code-return -Wno-nested-anon-types
     -Wno-extended-offsetof
     -Wno-variadic-macros -Wno-return-type-c-linkage
     -Wno-c99-extensions -Wno-ignored-attributes -Wno-unused-local-typedef
-    -Wno-unknown-pragmas -Wno-unknown-warning-option -fPIC
+    -Wno-unknown-pragmas -Wno-unknown-warning-option
     -fno-omit-frame-pointer -fvisibility-inlines-hidden
     -fno-asynchronous-unwind-tables
   )

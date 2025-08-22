@@ -28,13 +28,6 @@ set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 function(add_runtime_helper target_name little_endian)
   message(" > Generating runtime target: ${target_name}")
 
-  # Visual C++ requires C++14
-  if(WIN32)
-    set(required_cpp_standard "c++14")
-  else()
-    set(required_cpp_standard "c++17")
-  endif()
-
   # necessary to build code as 32-bit
   # on aarch64
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*)" AND "${PLATFORM_NAME}" STREQUAL "linux")
@@ -47,7 +40,7 @@ function(add_runtime_helper target_name little_endian)
     SOURCES ${ARMRUNTIME_SOURCEFILES}
     ADDRESS_SIZE 32
     DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
-    BCFLAGS "${arch_flags}" "-std=${required_cpp_standard}"
+    BCFLAGS "${arch_flags}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
     ARCH arm

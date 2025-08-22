@@ -25,8 +25,7 @@ add_executable(lift-aarch64-tests
 )
 
 set_target_properties(lift-aarch64-tests PROPERTIES
-  POSITION_INDEPENDENT_CODE ON
-  COMPILE_FLAGS "-fPIC -pie"
+  COMPILE_FLAGS "-pie"
 )
 
 target_compile_options(lift-aarch64-tests
@@ -52,8 +51,7 @@ add_executable(run-aarch64-tests
 )
 
 set_target_properties(run-aarch64-tests PROPERTIES
-  POSITION_INDEPENDENT_CODE ON
-  COMPILE_FLAGS "-fPIC -pie"
+  COMPILE_FLAGS "-pie"
   OBJECT_DEPENDS "${AARCH64_TEST_FILES}"
 )
 

@@ -32,8 +32,6 @@ add_library(remill_arch_x86 STATIC
 
 add_subdirectory(Runtime)
 
-set_property(TARGET remill_arch_x86 PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 target_link_libraries(remill_arch_x86 LINK_PUBLIC
   remill_settings
 )
