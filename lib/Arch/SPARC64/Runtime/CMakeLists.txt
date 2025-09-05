@@ -32,18 +32,11 @@ endif(REMILL_BARRIER_AS_NOP)
 function(add_runtime_helper target_name little_endian)
   message(" > Generating runtime target: ${target_name}")
 
-  # Visual C++ requires C++14
-  if(WIN32)
-    set(required_cpp_standard "c++14")
-  else()
-    set(required_cpp_standard "c++17")
-  endif()
-
   add_runtime(${target_name}
     SOURCES ${SPARC64RUNTIME_SOURCEFILES}
     ADDRESS_SIZE 64
     DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
-    BCFLAGS "-std=${required_cpp_standard}" "${EXTRA_BC_FLAGS}"
+    BCFLAGS "${EXTRA_BC_FLAGS}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
     ARCH sparc64

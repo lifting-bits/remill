@@ -30,5 +30,3 @@ target_link_libraries(
 )
 
 target_include_directories(test-runner PUBLIC "${TEST_RUNNER_INCLUDE_DIR}")
-
-set_property(TARGET test-runner PROPERTY POSITION_INDEPENDENT_CODE ON)

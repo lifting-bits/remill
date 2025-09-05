@@ -21,8 +21,6 @@ add_library(remill_os STATIC
   OS.cpp
 )
 
-set_property(TARGET remill_os PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 target_link_libraries(remill_os LINK_PRIVATE
   remill_settings
 )

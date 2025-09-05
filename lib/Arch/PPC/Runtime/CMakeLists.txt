@@ -23,18 +23,11 @@ set(PPCRUNTIME_SOURCEFILES
 
 set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 
-# Visual C++ requires C++14
-if(WIN32)
-  set(required_cpp_standard "c++14")
-else()
-  set(required_cpp_standard "c++17")
-endif()
 
 add_runtime(ppc
   SOURCES ${PPCRUNTIME_SOURCEFILES}
   ADDRESS_SIZE 32
   DEFINITIONS "LITTLE_ENDIAN=${little_endian}"
-  BCFLAGS "-std=${required_cpp_standard}"
   INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
   INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
   ARCH ppc

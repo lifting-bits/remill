@@ -33,8 +33,6 @@ add_library(remill_arch_aarch64 STATIC
 
 add_subdirectory(Runtime)
 
-set_property(TARGET remill_arch_aarch64 PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 target_link_libraries(remill_arch_aarch64 LINK_PUBLIC
   remill_settings
 )

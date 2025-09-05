@@ -216,7 +216,6 @@ function(add_runtime target_name)
   set(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "${absolute_target_path}")
 
   add_custom_target("${target_name}" ALL DEPENDS "${absolute_target_path}")
-  set_property(TARGET "${target_name}" PROPERTY LOCATION "${absolute_target_path}")
 
   if(REMILL_ENABLE_INSTALL_TARGET)
     if(DEFINED install_destination)

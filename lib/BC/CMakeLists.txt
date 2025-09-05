@@ -37,8 +37,6 @@ add_library(remill_bc STATIC
 
 target_include_directories(remill_bc AFTER PRIVATE "${REMILL_SOURCE_DIR}")
 
-set_property(TARGET remill_bc PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 target_link_libraries(remill_bc LINK_PRIVATE
   remill_settings
 )
