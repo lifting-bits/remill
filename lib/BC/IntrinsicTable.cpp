@@ -65,6 +65,7 @@ IntrinsicTable::IntrinsicTable(llvm::Module *module)
       // OS interaction.
       sync_hyper_call(FindIntrinsic(module, "__remill_sync_hyper_call")),
       async_hyper_call(FindIntrinsic(module, "__remill_async_hyper_call")),
+      set_coprocessor_reg(FindIntrinsic(module, "__remill_set_coprocessor_reg")),
 
       // Memory access.
       read_memory_8(FindIntrinsic(module, "__remill_read_memory_8")),

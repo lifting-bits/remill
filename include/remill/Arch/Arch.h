@@ -358,6 +358,7 @@ class Arch {
   bool IsSPARC32(void) const;
   bool IsSPARC64(void) const;
   bool IsPPC(void) const;
+  bool IsMIPS(void) const;
 
   bool IsWindows(void) const;
   bool IsLinux(void) const;
@@ -436,6 +437,10 @@ class Arch {
 
   // Defined in `lib/Arch/Sleigh/PPCArch.cpp`
   static ArchPtr GetSleighPPC(llvm::LLVMContext *context, OSName os,
+                              ArchName arch_name);
+
+  // Defined in `lib/Arch/Sleigh/MIPSArch.cpp`
+  static ArchPtr GetSleighMIPS(llvm::LLVMContext *context, OSName os,
                               ArchName arch_name);
 
   // Defined in `lib/Arch/SPARC32/Arch.cpp`.

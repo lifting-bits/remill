@@ -67,11 +67,13 @@ class PcodeCFG {
   PcodeCFG(std::map<size_t, PcodeBlock> blocks);
 };
 
-PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops);
+PcodeCFG CreateCFG(const std::vector<RemillPcodeOp> &linear_ops,
+                   const remill::Arch &arch);
 
 class PcodeCFGBuilder {
  public:
-  explicit PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops);
+  explicit PcodeCFGBuilder(const std::vector<RemillPcodeOp> &linear_ops,
+                           const remill::Arch &arch);
   PcodeCFG Build() const;
 
  private:
@@ -82,6 +84,7 @@ class PcodeCFGBuilder {
   std::vector<size_t> GetBlockStarts() const;
 
   const std::vector<RemillPcodeOp> &linear_ops;
+  const remill::Arch &arch;
 };
 
 

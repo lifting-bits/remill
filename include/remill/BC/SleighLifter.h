@@ -82,6 +82,7 @@ class SleighLifter : public InstructionLifter {
       const ContextValues &context_values);
 
   ::Sleigh &GetEngine(void) const;
+  const remill::Arch &arch;
 };
 
 

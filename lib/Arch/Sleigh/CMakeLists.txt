@@ -39,14 +39,17 @@ add_library(remill_arch_sleigh STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC32/SPARC32Base.h"
 
   "${REMILL_INCLUDE_DIR}/remill/Arch/PPC/Runtime/State.h"
+  "${REMILL_INCLUDE_DIR}/remill/Arch/MIPS/Runtime/State.h"
 
   Arch.h
   Thumb.h
   PPC.h
+  MIPS.h
   Arch.cpp
   X86Arch.cpp
   Thumb2Arch.cpp
   PPCArch.cpp
+  MIPSArch.cpp
   ControlFlowStructuring.cpp
   ControlFlowStructuring.h
 

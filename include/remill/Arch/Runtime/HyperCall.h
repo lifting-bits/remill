@@ -96,6 +96,9 @@ class SyncHyperCall {
 
     kPPCEmulateInstruction,
     kPPCSysCall,
+
+    kMIPSEmulateInstruction,
+    kMIPSSysCall,
   };
 } __attribute__((packed));
 

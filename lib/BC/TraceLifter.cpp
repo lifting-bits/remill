@@ -477,6 +477,9 @@ bool TraceLifter::Impl::Lift(
         case Instruction::kCategoryDirectFunctionCall: {
         direct_func_call:
           try_add_delay_slot(true, block);
+          // M4xw: How to handle this appropriately?
+          StoreProgramCounter(block, inst.branch_taken_pc, *intrinsics);
+
           if (inst.branch_not_taken_pc != inst.branch_taken_pc) {
             trace_work_list.insert(inst.branch_taken_pc);
             auto target_trace = get_trace_decl(inst.branch_taken_pc);

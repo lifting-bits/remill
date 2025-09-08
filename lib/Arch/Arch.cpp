@@ -58,6 +58,7 @@ static unsigned AddressSize(ArchName arch_name) {
     case kArchThumb2LittleEndian:
     case kArchSparc32:
     case kArchSparc32_SLEIGH:
+    case kArchMIPS: return 32; // Actually MIPS64 but on 32bit Address bus for vr4300
     case kArchPPC: return 32;
     case kArchAMD64:
     case kArchAMD64_AVX:
@@ -117,6 +118,7 @@ ArchLocker Arch::Lock(ArchName arch_name_) {
     case ArchName::kArchX86_SLEIGH:
     case ArchName::kArchSparc32_SLEIGH:
     case ArchName::kArchPPC: return &gSleighArchLock;
+    case ArchName::kArchMIPS: return &gSleighArchLock;
     default: return ArchLocker();
   }
 }
@@ -247,6 +249,10 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
       return GetSleighPPC(context_, os_name_, arch_name_);
     }
 
+    case kArchMIPS: {
+      DLOG(INFO) << "Using architecture: MIPS";
+      return GetSleighMIPS(context_, os_name_, arch_name_);
+    }
     default: {
       return nullptr;
     }
@@ -426,6 +432,10 @@ bool Arch::IsSPARC64(void) const {
 
 bool Arch::IsPPC(void) const {
   return remill::kArchPPC == arch_name;
+}
+
+bool Arch::IsMIPS(void) const {
+  return remill::kArchMIPS == arch_name;
 }
 
 bool Arch::IsWindows(void) const {
@@ -720,8 +730,14 @@ llvm::Function *Arch::DeclareLiftedFunction(std::string_view name_,
   auto func_type = llvm::dyn_cast<llvm::FunctionType>(
       RecontextualizeType(LiftedFunctionType(), context));
   llvm::StringRef name(name_.data(), name_.size());
-  auto func = llvm::Function::Create(
+  auto func = module->getFunction(name.str());
+  
+  if (!func || func->getFunctionType() != func_type) {
+    func = llvm::Function::Create(
       func_type, llvm::GlobalValue::ExternalLinkage, 0u, name, module);
+  } else if (func->isDeclaration()) {
+    func->setLinkage(llvm::GlobalValue::WeakAnyLinkage);
+  }
 
   auto memory = remill::NthArgument(func, kMemoryPointerArgNum);
   auto state = remill::NthArgument(func, kStatePointerArgNum);
