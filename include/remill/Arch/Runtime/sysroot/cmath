@@ -1,0 +1,96 @@
+#pragma once
+
+// https://en.cppreference.com/w/cpp/numeric/math/FP_categories
+#define FP_NAN 0
+#define FP_INFINITE 1
+#define FP_ZERO 2
+#define FP_SUBNORMAL 3
+#define FP_NORMAL 4
+
+// https://en.cppreference.com/w/cpp/numeric/math/NAN
+#define NAN (__builtin_nanf(""))
+
+namespace std {
+
+// https://en.cppreference.com/w/cpp/numeric/math/signbit
+constexpr bool signbit(float __x) {
+  return __builtin_signbit(__x);
+}
+
+constexpr bool signbit(double __x) {
+  return __builtin_signbit(__x);
+}
+
+constexpr bool signbit(long double __x) {
+  return __builtin_signbit(__x);
+}
+
+// https://en.cppreference.com/w/cpp/numeric/math/fpclassify
+constexpr int fpclassify(float __x) {
+  return __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL,
+                              FP_ZERO, __x);
+}
+
+constexpr int fpclassify(double __x) {
+  return __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL,
+                              FP_ZERO, __x);
+}
+
+constexpr int fpclassify(long double __x) {
+  return __builtin_fpclassify(FP_NAN, FP_INFINITE, FP_NORMAL, FP_SUBNORMAL,
+                              FP_ZERO, __x);
+}
+
+// https://en.cppreference.com/w/cpp/numeric/math/isnan
+constexpr bool isnan(float num) {
+  return __builtin_isnan(num);
+}
+
+constexpr bool isnan(double num) {
+  return __builtin_isnan(num);
+}
+
+constexpr bool isnan(long double num) {
+  return __builtin_isnan(num);
+}
+
+// https://en.cppreference.com/w/cpp/numeric/math/fabs
+constexpr float fabs(float num) {
+  return __builtin_fabsf(num);
+}
+
+constexpr double fabs(double num) {
+  return __builtin_fabs(num);
+}
+
+constexpr long double fabs(long double num) {
+  return __builtin_fabsl(num);
+}
+
+// https://en.cppreference.com/w/cpp/numeric/math/sqrt
+constexpr float sqrt(float num) {
+  return __builtin_sqrtf(num);
+}
+
+constexpr double sqrt(double num) {
+  return __builtin_sqrt(num);
+}
+
+constexpr long double sqrt(long double num) {
+  return __builtin_sqrtl(num);
+}
+
+// https://en.cppreference.com/w/cpp/numeric/math/isunordered
+constexpr bool isunordered(float x, float y) {
+  return __builtin_isunordered(x, y);
+}
+
+constexpr bool isunordered(double x, double y) {
+  return __builtin_isunordered(x, y);
+}
+
+constexpr bool isunordered(long double x, long double y) {
+  return __builtin_isunordered(x, y);
+}
+
+}  // namespace std

@@ -15,7 +15,6 @@
  */
 
 #include <algorithm>
-#include <bitset>
 #include <cmath>
 
 // clang-format off

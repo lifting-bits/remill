@@ -28,7 +28,7 @@ compile_commands.json
 .cache
 deps/*
 third_party/*
-build/*
+build*/
 remill-build/*
 generated/*
 gtest_build/*

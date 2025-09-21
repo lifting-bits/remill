@@ -28,14 +28,6 @@ set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 function(add_runtime_helper target_name little_endian)
   message(" > Generating runtime target: ${target_name}")
 
-  # necessary to build code as 32-bit
-  # on aarch64
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*)" AND "${PLATFORM_NAME}" STREQUAL "linux")
-    set(arch_flags "--target=arm-linux-gnueabihf")
-  else()
-    set(arch_flags "-m32")
-  endif()
-
   add_runtime(${target_name}
     SOURCES ${ARMRUNTIME_SOURCEFILES}
     ADDRESS_SIZE 32

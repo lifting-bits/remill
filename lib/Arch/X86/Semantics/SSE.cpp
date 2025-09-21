@@ -662,19 +662,26 @@ union StringCompareControl {
 static_assert(1 == sizeof(StringCompareControl),
               "Invalid packing of `StringCompareControl`.");
 
+// https://godbolt.org/z/fa4vGfoxd
 template <size_t x, size_t y>
-class BitMatrix : std::bitset<x * y> {
+class BitMatrix {
  public:
   ALWAYS_INLINE bool Test(size_t i, size_t j) const {
-    return this->operator[]((x * i) + j);
+    size_t pos = (x * i) + j;
+    return (data[pos / 8] >> (pos % 8)) & 1;
   }
 
   ALWAYS_INLINE void Set(size_t i, size_t j, bool val) {
-    this->operator[]((x * i) + j) = val;
+    size_t pos = (x * i) + j;
+    if (val) {
+      data[pos / 8] |= (uint8_t(1) << (pos % 8));
+    } else {
+      data[pos / 8] &= ~(uint8_t(1) << (pos % 8));
+    }
   }
 
  private:
-  bool rows[x][y];
+  uint8_t data[(x * y + 7) / 8] = {};
 };
 
 // src1 is a char set, src2 is a string. We set a bit of `int_res_1` to `1`
@@ -2011,7 +2018,7 @@ DEF_SEM(LDMXCSR, M32 src) {
   } else {
     rounding_mode = FE_TOWARDZERO;
   }
-  fesetround(rounding_mode);
+  std::fesetround(rounding_mode);
 
   // TODO: set FPU precision based on MXCSR precision flag (csr.pe)
 
@@ -2025,7 +2032,7 @@ DEF_SEM(STMXCSR, M32W dst) {
   csr.pe = 0;
 
   // Store the current FPU rounding mode:
-  switch (fegetround()) {
+  switch (std::fegetround()) {
     default:
     case FE_TONEAREST:
       csr.rp = 0;

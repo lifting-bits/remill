@@ -15,7 +15,6 @@
  */
 
 #include <algorithm>
-#include <bitset>
 #include <cmath>
 
 #include "remill/Arch/AArch64/Runtime/State.h"

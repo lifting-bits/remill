@@ -32,19 +32,11 @@ endif(REMILL_BARRIER_AS_NOP)
 function(add_runtime_helper target_name little_endian)
   message(" > Generating runtime target: ${target_name}")
 
-  # necessary to build code as 32-bit
-  # on aarch64
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*)" AND "${PLATFORM_NAME}" STREQUAL "linux")
-    set(arch_flags "--target=arm-linux-gnueabihf")
-  else()
-    set(arch_flags "-m32")
-  endif()
-
   add_runtime(${target_name}
     SOURCES ${SPARC32RUNTIME_SOURCEFILES}
     ADDRESS_SIZE 32
     DEFINITIONS "LITTLE_ENDIAN=${little_endian}" "REMILL_DISABLE_INT128=1"
-    BCFLAGS "${arch_flags}" "${EXTRA_BC_FLAGS}"
+    BCFLAGS "${EXTRA_BC_FLAGS}"
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
     ARCH sparc

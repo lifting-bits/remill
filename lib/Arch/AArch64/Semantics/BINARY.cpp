@@ -436,14 +436,14 @@ DEF_SEM(FCMP_DZ, V64 src1) {
 
 DEF_SEM(FABS_S, V128W dst, V32 src) {
   auto val = FExtractV32(FReadV32(src), 0);
-  auto result = static_cast<float32_t>(fabs(val));
+  auto result = static_cast<float32_t>(std::fabs(val));
   FWriteV32(dst, result);
   return memory;
 }
 
 DEF_SEM(FABS_D, V128W dst, V64 src) {
   auto val = FExtractV64(FReadV64(src), 0);
-  auto result = static_cast<float64_t>(fabs(val));
+  auto result = static_cast<float64_t>(std::fabs(val));
   FWriteV64(dst, result);
   return memory;
 }

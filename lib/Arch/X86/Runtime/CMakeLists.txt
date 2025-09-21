@@ -41,6 +41,7 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
     INCLUDEDIRECTORIES "${REMILL_INCLUDE_DIR}" "${REMILL_SOURCE_DIR}"
     INSTALLDESTINATION "${REMILL_INSTALL_SEMANTICS_DIR}"
     ARCH ${x86_arch}
+    BCFLAGS -mlong-double-80
 
     DEPENDENCIES
     "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Float.h"

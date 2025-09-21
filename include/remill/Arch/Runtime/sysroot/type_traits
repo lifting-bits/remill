@@ -1,0 +1,155 @@
+#pragma once
+
+// https://en.cppreference.com/w/cpp/header/type_traits.html
+namespace std {
+
+template <class T, T v>
+struct integral_constant {
+  static constexpr T value = v;
+  using value_type = T;
+  using type = integral_constant;  // using injected-class-name
+  constexpr operator value_type() const noexcept {
+    return value;
+  }
+  constexpr value_type operator()() const noexcept {
+    return value;
+  }  // since c++14
+};
+
+using true_type = std::integral_constant<bool, true>;
+using false_type = std::integral_constant<bool, false>;
+
+template <class T, class U>
+struct is_same : std::false_type {};
+
+template <class T>
+struct is_same<T, T> : std::true_type {};
+
+template <class T>
+struct remove_cv {
+  typedef T type;
+};
+template <class T>
+struct remove_cv<const T> {
+  typedef T type;
+};
+template <class T>
+struct remove_cv<volatile T> {
+  typedef T type;
+};
+template <class T>
+struct remove_cv<const volatile T> {
+  typedef T type;
+};
+
+template <class T>
+struct remove_const {
+  typedef T type;
+};
+template <class T>
+struct remove_const<const T> {
+  typedef T type;
+};
+
+template <class T>
+struct remove_volatile {
+  typedef T type;
+};
+template <class T>
+struct remove_volatile<volatile T> {
+  typedef T type;
+};
+
+template <class T>
+struct is_floating_point
+    : std::integral_constant<
+          bool,
+          // Note: standard floating-point types
+          std::is_same<float, typename std::remove_cv<T>::type>::value ||
+              std::is_same<double, typename std::remove_cv<T>::type>::value ||
+              std::is_same<long double,
+                           typename std::remove_cv<T>::type>::value> {};
+
+// Base template - defaults to false
+template <typename T>
+struct is_integral : std::false_type {};
+
+// Specializations for each integral type (set to true)
+template <>
+struct is_integral<bool> : std::true_type {};
+template <>
+struct is_integral<char> : std::true_type {};
+template <>
+struct is_integral<signed char> : std::true_type {};
+template <>
+struct is_integral<unsigned char> : std::true_type {};
+template <>
+struct is_integral<wchar_t> : std::true_type {};
+template <>
+struct is_integral<char16_t> : std::true_type {};
+template <>
+struct is_integral<char32_t> : std::true_type {};
+template <>
+struct is_integral<short> : std::true_type {};
+template <>
+struct is_integral<unsigned short> : std::true_type {};
+template <>
+struct is_integral<int> : std::true_type {};
+template <>
+struct is_integral<unsigned int> : std::true_type {};
+template <>
+struct is_integral<long> : std::true_type {};
+template <>
+struct is_integral<unsigned long> : std::true_type {};
+template <>
+struct is_integral<long long> : std::true_type {};
+template <>
+struct is_integral<unsigned long long> : std::true_type {};
+
+// Handle cv-qualifiers (const, volatile)
+template <typename T>
+struct is_integral<const T> : is_integral<T> {};
+
+template <typename T>
+struct is_integral<volatile T> : is_integral<T> {};
+
+template <typename T>
+struct is_integral<const volatile T> : is_integral<T> {};
+
+template <class T>
+struct is_arithmetic
+    : std::integral_constant<bool, std::is_integral<T>::value ||
+                                       std::is_floating_point<T>::value> {};
+
+namespace detail {
+template <typename T, bool = std::is_arithmetic<T>::value>
+struct is_signed : std::integral_constant<bool, T(-1) < T(0)> {};
+
+template <typename T>
+struct is_signed<T, false> : std::false_type {};
+}  // namespace detail
+
+template <typename T>
+struct is_signed : detail::is_signed<T>::type {};
+
+
+namespace detail {
+template <typename T, bool = std::is_arithmetic<T>::value>
+struct is_unsigned : std::integral_constant<bool, T(0) < T(-1)> {};
+
+template <typename T>
+struct is_unsigned<T, false> : std::false_type {};
+}  // namespace detail
+
+template <typename T>
+struct is_unsigned : detail::is_unsigned<T>::type {};
+
+template <bool B, class T = void>
+struct enable_if {};
+
+template <class T>
+struct enable_if<true, T> {
+  typedef T type;
+};
+
+}  // namespace std
