@@ -1,0 +1,87 @@
+#pragma once
+
+#include <cstdint>
+#include <type_traits>
+
+namespace std {
+
+// Type trait to check if T is a fixed-width integer type
+template <typename T>
+struct is_fixed_width_int : false_type {};
+
+template <>
+struct is_fixed_width_int<int8_t> : true_type {};
+template <>
+struct is_fixed_width_int<int16_t> : true_type {};
+template <>
+struct is_fixed_width_int<int32_t> : true_type {};
+template <>
+struct is_fixed_width_int<int64_t> : true_type {};
+template <>
+struct is_fixed_width_int<uint8_t> : true_type {};
+template <>
+struct is_fixed_width_int<uint16_t> : true_type {};
+template <>
+struct is_fixed_width_int<uint32_t> : true_type {};
+template <>
+struct is_fixed_width_int<uint64_t> : true_type {};
+
+template <typename T>
+inline constexpr bool is_fixed_width_int_v = is_fixed_width_int<T>::value;
+
+// Forward declaration
+template <typename T, typename Enable = void>
+struct numeric_limits;
+
+// Specialization 1: Fixed-width integers (using bit manipulation)
+template <typename T>
+struct numeric_limits<T,
+                      typename enable_if<is_fixed_width_int<T>::value>::type> {
+  static constexpr T min() noexcept {
+    if constexpr (is_unsigned<T>::value) {
+      return T(0);
+    } else {
+      // Signed min: set only the sign bit
+      return static_cast<T>(T(1) << (sizeof(T) * 8 - 1));
+    }
+  }
+
+  static constexpr T max() noexcept {
+    if constexpr (is_unsigned<T>::value) {
+      // Unsigned max: all bits set
+      return static_cast<T>(~T(0));
+    } else {
+      // Signed max: all bits except sign bit
+      return static_cast<T>(~min());
+    }
+  }
+};
+
+// Specialization 2: Floating-point types (float, double, long double)
+template <typename T>
+struct numeric_limits<T,
+                      typename enable_if<is_floating_point<T>::value>::type> {
+  // min() returns smallest positive normalized value (standard behavior)
+  static constexpr T min() noexcept {
+    if constexpr (is_same<T, float>::value) {
+      return __FLT_MIN__;
+    } else if constexpr (is_same<T, double>::value) {
+      return __DBL_MIN__;
+    } else {  // long double
+      return __LDBL_MIN__;
+    }
+  }
+
+  // max() returns largest finite value
+  static constexpr T max() noexcept {
+    if constexpr (is_same<T, float>::value) {
+      return __FLT_MAX__;
+    } else if constexpr (is_same<T, double>::value) {
+      return __DBL_MAX__;
+    } else {  // long double
+      return __LDBL_MAX__;
+    }
+  }
+};
+
+}  // namespace std

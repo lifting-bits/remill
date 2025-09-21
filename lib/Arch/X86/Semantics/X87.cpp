@@ -400,12 +400,12 @@ DEF_FPU_SEM(FPU_NOP) {
 }
 
 DEF_SEM(DoFWAIT) {
-  feraiseexcept(fetestexcept(FE_ALL_EXCEPT));
+  std::feraiseexcept(std::fetestexcept(FE_ALL_EXCEPT));
   return memory;
 }
 
 DEF_SEM(DoFNCLEX) {
-  feclearexcept(FE_ALL_EXCEPT);
+  std::feclearexcept(FE_ALL_EXCEPT);
   state.sw.pe = 0;
   state.sw.ue = 0;
   state.sw.oe = 0;
@@ -1311,7 +1311,7 @@ DEF_SEM(FNSTCW, M16W dst) {
   auto &cw = state.x87.fxsave.cwd;
   cw.pc = kPrecisionSingle;
 
-  switch (fegetround()) {
+  switch (std::fegetround()) {
     default:
     case FE_TONEAREST: cw.rc = kFPURoundToNearestEven; break;
     case FE_DOWNWARD: cw.rc = kFPURoundDownNegInf; break;
@@ -1336,7 +1336,7 @@ DEF_SEM(FLDCW, M16 cwd) {
 
     case kFPURoundToZero: rounding_mode = FE_TOWARDZERO; break;
   }
-  fesetround(rounding_mode);
+  std::fesetround(rounding_mode);
   return memory;
 }
 

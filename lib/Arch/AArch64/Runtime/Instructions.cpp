@@ -15,11 +15,9 @@
  */
 
 #include <algorithm>
-#include <bitset>
 #include <cmath>
 
 // clang-format off
-#include "remill/Arch/Name.h"
 #include "remill/Arch/Runtime/Float.h"
 #include "remill/Arch/Runtime/Intrinsics.h"
 #include "remill/Arch/Runtime/Operators.h"

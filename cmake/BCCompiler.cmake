@@ -2,11 +2,13 @@
 # compiler detection
 #
 
-if(DEFINED CMAKE_OSX_SYSROOT)
-  set(EXTRA_BC_SYSROOT -isysroot ${CMAKE_OSX_SYSROOT})
-endif()
-
+# NOTE: This is a fake sysroot, with just enough to build the semantics
+set(BC_SYSROOT "${PROJECT_SOURCE_DIR}/include/remill/Arch/Runtime/sysroot")
 set(DEFAULT_BC_COMPILER_FLAGS
+  "--sysroot=${BC_SYSROOT}"
+  -nostdinc++
+  -isystem "${BC_SYSROOT}"
+
   -emit-llvm -Wno-unknown-warning-option -Wall -Wshadow
   -Wconversion -Wpadded -pedantic -Wshorten-64-to-32 -Wgnu-alignof-expression
   -Wno-gnu-anonymous-struct -Wno-return-type-c-linkage
@@ -19,7 +21,6 @@ set(DEFAULT_BC_COMPILER_FLAGS
   -Wno-unused-function -Wgnu-inline-cpp-without-extern
   -Wno-pass-failed=transform-warning
   -std=c++17
-  ${EXTRA_BC_SYSROOT}
 )
 
 find_package(Clang CONFIG REQUIRED)
@@ -52,6 +53,8 @@ endif()
 set(add_runtime_usage "add_runtime(target_name SOURCES <src1 src2> ADDRESS_SIZE <size> DEFINITIONS <def1 def2> BCFLAGS <bcflag1 bcflag2> LINKERFLAGS <lnkflag1 lnkflag2> INCLUDEDIRECTORIES <path1 path2> INSTALLDESTINATION <path> DEPENDENCIES <dependency1 dependency2>")
 
 function(add_runtime target_name)
+  set(BUILD_COMMANDS "")
+
   if(NOT DEFINED CMAKE_BC_COMPILER)
     message(FATAL_ERROR "The bitcode compiler was not found!")
   endif()
@@ -176,27 +179,21 @@ function(add_runtime target_name)
       set(additional_windows_settings "-D_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH")
     endif()
 
-    # The hyper call implementation contains inline assembly for each architecture so we'll need to
-    # cross-compile for the runtime architecture.
-    if(${source_file} STREQUAL ${hyper_call_source})
-      # Some architectures add an explicit target for the host to successfully
-      # compile with 32 bits (like AArch64 to arm), however, we don't want that
-      # to interfere with the hyper call crosscompile
-      list(FILTER bc_flag_list EXCLUDE REGEX "--target=.*")
-      set(target_decl "-target" "${arch}-none-eabi")
-    elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-      set(target_decl "-target" "x86_64-apple-macosx11.0.0")
+    # Only arm32 has eabihf (hard float)
+    if("${arch}" STREQUAL "arm")
+      set(target_decl "-target" "${arch}-none-eabihf")
     else()
-      unset(target_decl)
+      set(target_decl "-target" "${arch}-none-elf")
     endif()
 
-
     add_custom_command(OUTPUT "${absolute_output_file_path}"
-      COMMAND "${CMAKE_BC_COMPILER}" ${include_directory_list} ${additional_windows_settings} ${target_decl}  "-DADDRESS_SIZE_BITS=${address_size}" ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c "${absolute_source_file_path}" -o "${absolute_output_file_path}"
+      COMMAND "${CMAKE_BC_COMPILER}" ${include_directory_list} ${additional_windows_settings} ${target_decl} "-DADDRESS_SIZE_BITS=${address_size}" ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c "${absolute_source_file_path}" -o "${absolute_output_file_path}"
       MAIN_DEPENDENCY "${absolute_source_file_path}"
       ${dependency_list_directive}
-      COMMENT "Building BC object ${absolute_output_file_path}"
+      COMMENT "Building BC object: \"${CMAKE_BC_COMPILER}\" ${include_directory_list} ${additional_windows_settings} ${target_decl} \"-DADDRESS_SIZE_BITS=${address_size}\" ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c \"${absolute_source_file_path}\" -o \"${absolute_output_file_path}\""
     )
+
+    set(BUILD_COMMANDS "${BUILD_COMMANDS}\"${CMAKE_BC_COMPILER}\" ${include_directory_list} ${additional_windows_settings} ${target_decl} \"-DADDRESS_SIZE_BITS=${address_size}\" ${definition_list} ${DEFAULT_BC_COMPILER_FLAGS} ${bc_flag_list} ${source_file_option_list} -c \"${absolute_source_file_path}\" -o \"${absolute_output_file_path}\"\n")
 
     set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "${absolute_output_file_path}")
     list(APPEND bitcode_file_list "${absolute_output_file_path}")
@@ -213,6 +210,9 @@ function(add_runtime target_name)
     DEPENDS ${bitcode_file_list}
     COMMENT "Linking BC runtime ${absolute_target_path}"
   )
+  set(BUILD_COMMANDS "${BUILD_COMMANDS}\"${CMAKE_BC_LINKER}\" ${linker_flag_list} ${bitcode_file_list} -o \"${absolute_target_path}\"\n")
+  string(REPLACE ";" " " BUILD_COMMANDS "${BUILD_COMMANDS}")
+  file(WRITE "${CMAKE_BINARY_DIR}/runtimes/${target_name}.txt" "${BUILD_COMMANDS}")
 
   set(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES "${absolute_target_path}")
 

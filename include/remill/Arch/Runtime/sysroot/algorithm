@@ -1,0 +1,17 @@
+#pragma once
+
+namespace std {
+
+// http://www.en.cppreference.com/w/cpp/algorithm/min.html
+template <class T>
+const T &min(const T &a, const T &b) {
+  return (b < a) ? b : a;
+}
+
+// http://www.en.cppreference.com/w/cpp/algorithm/max.html
+template <class T>
+const T &max(const T &a, const T &b) {
+  return (a < b) ? b : a;
+}
+
+}  // namespace std

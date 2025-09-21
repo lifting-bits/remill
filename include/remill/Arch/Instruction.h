@@ -35,7 +35,7 @@ class Arch;
 struct Register;
 class OperandExpression;
 
-enum ArchName : unsigned;
+enum ArchName : uint32_t;
 
 struct LLVMOpExpr {
   unsigned llvm_opcode;
