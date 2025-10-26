@@ -23,7 +23,6 @@ include(FetchContent)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/settings.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/options.cmake")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
 if(REMILL_ENABLE_TESTING)
   include(CTest)
@@ -34,9 +33,6 @@ message(STATUS "Compiler ID is ${CMAKE_C_COMPILER_ID}")
 #
 # libraries
 #
-
-# Z3
-find_package(Z3 CONFIG REQUIRED)
 
 # LLVM
 find_package(LLVM CONFIG REQUIRED)
