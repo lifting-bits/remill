@@ -8,6 +8,7 @@ import json
 import subprocess
 import tqdm
 import sys
+import shlex
 
 # paralellism for CI
 
@@ -42,6 +43,8 @@ class DiffTesterInfo:
         exit_stat = subprocess.run(command_args)
         if exit_stat.returncode == 0:
             return TestResults(num_tests, 0)
+
+        sys.stderr.write(f"Command:\n{shlex.join(command_args)}\n")
 
         if exit_stat != 2:
             return TestResults(num_tests, num_tests)

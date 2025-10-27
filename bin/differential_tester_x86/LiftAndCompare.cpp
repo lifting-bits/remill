@@ -439,6 +439,9 @@ int main(int argc, char **argv) {
   std::vector<TestCase> failed_testcases;
   auto succeeded_tot = true;
   for (auto tc : testcases) {
+    llvm::errs() << llvm::toHex(tc.bytes) << "\n";
+    llvm::errs().flush();
+    
     auto tc_succeeded = runTestCase(tc, diffbuilder, whitelist, ++ctr);
     if (!tc_succeeded) {
       succeeded_tot = false;
