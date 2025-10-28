@@ -107,7 +107,11 @@ extern "C" [[gnu::used]] void __remill_intrinsics(void) {
   USED(__remill_fetch_and_xor_32);
   USED(__remill_fetch_and_xor_64);
 
-  USED(__remill_fpu_exception_test_and_clear);
+  USED(__remill_fpu_exception_test);
+  USED(__remill_fpu_exception_clear);
+  USED(__remill_fpu_exception_raise);
+  USED(__remill_fpu_set_rounding);
+  USED(__remill_fpu_get_rounding);
 
   //  USED(__remill_defer_inlining);
 

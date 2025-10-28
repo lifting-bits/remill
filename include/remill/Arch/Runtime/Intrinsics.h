@@ -257,17 +257,35 @@ __remill_compare_exchange_memory_128(Memory *, addr_t addr, uint128_t &expected,
 [[gnu::used]] extern Memory *__remill_fetch_and_nand_64(Memory *, addr_t addr,
                                                         uint64_t &value);
 
-// Read and modify the floating point exception state of the (virtual) machine
-// that is executing the actual floating point operations.
-//
-//      auto old = __remill_fpu_exception_test_and_clear(0, FE_ALL_EXCEPT);
-//      auto y = ...;
-//      auto res = x op y;
-//      auto flags = __remill_fpu_exception_test_and_clear(FE_ALL_EXCEPT, 0);
-//
-// These flags are also subject to optimizations
-[[gnu::used]] extern int __remill_fpu_exception_test_and_clear(int read_mask,
-                                                               int clear_mask);
+// Read current floating point exception flags.
+// Uses architecture-specific FPUExceptionFlag values that are mapped to
+// cfenv flags. Typically implemented via std::fetestexcept.
+// NOTE: You need to use BarrierReorder around this to avoid reordering bugs.
+[[gnu::used]] extern int32_t __remill_fpu_exception_test(int32_t read_mask);
+
+// Clear floating point exception flags.
+// Uses architecture-specific FPUExceptionFlag values that are mapped to
+// cfenv flags. Typically implemented via std::feclearexcept.
+// NOTE: You need to use BarrierReorder around this to avoid reordering bugs.
+[[gnu::used]] extern void __remill_fpu_exception_clear(int32_t clear_mask);
+
+// Raise floating point exception flags.
+// Uses architecture-specific FPUExceptionFlag values that are mapped to
+// cfenv flags. Typically implemented via std::feraiseexcept.
+// NOTE: You need to use BarrierReorder around this to avoid reordering bugs.
+[[gnu::used]] extern void __remill_fpu_exception_raise(int32_t except_mask);
+
+// Set the floating point rounding mode.
+// Uses architecture-specific FPURoundingControl values that are mapped to
+// cfenv rounding modes. Typically implemented via std::fesetround.
+// NOTE: You need to use BarrierReorder around this to avoid reordering bugs.
+[[gnu::used]] extern void __remill_fpu_set_rounding(int32_t round_mode);
+
+// Get the current floating point rounding mode.
+// Returns architecture-specific FPURoundingControl values mapped from
+// cfenv rounding modes. Typically implemented via std::fegetround.
+// NOTE: You need to use BarrierReorder around this to avoid reordering bugs.
+[[gnu::used]] extern int32_t __remill_fpu_get_rounding();
 
 // Read/write to I/O ports.
 [[gnu::used]] extern uint8_t __remill_read_io_port_8(Memory *, addr_t);

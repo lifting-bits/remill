@@ -400,12 +400,12 @@ DEF_FPU_SEM(FPU_NOP) {
 }
 
 DEF_SEM(DoFWAIT) {
-  std::feraiseexcept(std::fetestexcept(FE_ALL_EXCEPT));
+  __remill_fpu_exception_clear(__remill_fpu_exception_test(kFPUExceptionAll));
   return memory;
 }
 
 DEF_SEM(DoFNCLEX) {
-  std::feclearexcept(FE_ALL_EXCEPT);
+  __remill_fpu_exception_clear(kFPUExceptionAll);
   state.sw.pe = 0;
   state.sw.ue = 0;
   state.sw.oe = 0;
@@ -1311,13 +1311,7 @@ DEF_SEM(FNSTCW, M16W dst) {
   auto &cw = state.x87.fxsave.cwd;
   cw.pc = kPrecisionSingle;
 
-  switch (std::fegetround()) {
-    default:
-    case FE_TONEAREST: cw.rc = kFPURoundToNearestEven; break;
-    case FE_DOWNWARD: cw.rc = kFPURoundDownNegInf; break;
-    case FE_UPWARD: cw.rc = kFPURoundUpInf; break;
-    case FE_TOWARDZERO: cw.rc = kFPURoundToZero; break;
-  }
+  cw.rc = (FPURoundingControl) __remill_fpu_get_rounding();
   Write(dst, cw.flat);
   return memory;
 }
@@ -1326,17 +1320,7 @@ DEF_SEM(FLDCW, M16 cwd) {
   auto &cw = state.x87.fxsave.cwd;
   cw.flat = Read(cwd);
   cw.pc = kPrecisionSingle;
-  int rounding_mode = FE_TONEAREST;
-  switch (cw.rc) {
-    case kFPURoundToNearestEven: rounding_mode = FE_TONEAREST; break;
-
-    case kFPURoundDownNegInf: rounding_mode = FE_DOWNWARD; break;
-
-    case kFPURoundUpInf: rounding_mode = FE_UPWARD; break;
-
-    case kFPURoundToZero: rounding_mode = FE_TOWARDZERO; break;
-  }
-  std::fesetround(rounding_mode);
+  __remill_fpu_set_rounding(cw.rc);
   return memory;
 }
 
@@ -1502,10 +1486,10 @@ DEF_SEM(DoFNINIT) {
   state.x87.fsave.cs.flat = 0x0000;  // FPU data operand segment selector
 
   // Mask all floating-point exceptions:
-  std::feclearexcept(FE_ALL_EXCEPT);
+  __remill_fpu_exception_clear(kFPUExceptionAll);
 
   // Set FPU rounding mode to nearest:
-  std::fesetround(FE_TONEAREST);
+  __remill_fpu_set_rounding(kFPURoundToNearestEven);
 
   // TODO: Set the FPU precision to 64 bits
 
