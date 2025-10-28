@@ -758,7 +758,11 @@ void Arch::InitializeEmptyLiftedFunction(llvm::Function *func) const {
   llvm::IRBuilder<> ir(block);
   ir.CreateAlloca(u8, nullptr, "BRANCH_TAKEN");
   ir.CreateAlloca(addr, nullptr, "RETURN_PC");
-  ir.CreateAlloca(addr, nullptr, "MONITOR");
+
+  // NOTE: we need to start with an initialize MONITOR state,
+  // otherwise STLXR without a preceding LDXR/LDAXR will do UB
+  auto monitor = ir.CreateAlloca(addr, nullptr, "MONITOR");
+  ir.CreateStore(llvm::ConstantInt::get(addr, 0), monitor);
 
   // NOTE(pag): `PC` and `NEXT_PC` are handled by
   //            `FinishLiftedFunctionInitialization`.
