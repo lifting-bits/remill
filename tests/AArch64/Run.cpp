@@ -708,6 +708,11 @@ static void RunWithFlags(const test::TestInfo *info, NZCV flags,
   auto lifted_state = reinterpret_cast<State *>(&gLiftedState);
   auto native_state = reinterpret_cast<State *>(&gNativeState);
 
+  // CRITICAL: Establish consistent FPU environment for both tests
+  std::fesetenv(FE_DFL_ENV);
+  std::feclearexcept(FE_ALL_EXCEPT);
+  std::fesetround(FE_TONEAREST);  // Explicit rounding mode
+
   // Set up the run's info.
   gTestToRun = info->test_begin;
   gStackSwitcher = &(gLiftedStack._redzone2[0]);
@@ -719,6 +724,12 @@ static void RunWithFlags(const test::TestInfo *info, NZCV flags,
   auto native_test_faulted = false;
   if (!sigsetjmp(gJmpBuf, true)) {
     gInNativeTest = true;
+
+    // Reset FPU environment before native test
+    std::fesetenv(FE_DFL_ENV);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::fesetround(FE_TONEAREST);
+
     asm("msr nzcv, %0" : : "r"(flags));
     InvokeTestCase(arg1, arg2, arg3);
   } else {
@@ -740,7 +751,11 @@ static void RunWithFlags(const test::TestInfo *info, NZCV flags,
   // native program state recorded before executing the native testcase,
   // but after swapping execution to operate on `gStack`.
   if (!sigsetjmp(gJmpBuf, true)) {
+    // Reset FPU environment before lifted test (same as native)
     std::fesetenv(FE_DFL_ENV);
+    std::feclearexcept(FE_ALL_EXCEPT);
+    std::fesetround(FE_TONEAREST);
+
     gInNativeTest = false;
     (void) lifted_func(*lifted_state, lifted_state->gpr.pc.aword, nullptr);
   } else {

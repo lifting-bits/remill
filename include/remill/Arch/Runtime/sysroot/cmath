@@ -80,6 +80,19 @@ constexpr long double sqrt(long double num) {
   return __builtin_sqrtl(num);
 }
 
+// https://en.cppreference.com/w/cpp/numeric/math/fma.html
+constexpr float fma(float x, float y, float z) {
+  return __builtin_fmaf(x, y, z);
+}
+
+constexpr double fma(double x, double y, double z) {
+  return __builtin_fma(x, y, z);
+}
+
+constexpr long double fma(long double x, long double y, long double z) {
+  return __builtin_fmal(x, y, z);
+}
+
 // https://en.cppreference.com/w/cpp/numeric/math/isunordered
 constexpr bool isunordered(float x, float y) {
   return __builtin_isunordered(x, y);
