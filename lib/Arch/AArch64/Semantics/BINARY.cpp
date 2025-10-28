@@ -274,8 +274,7 @@ DEF_SEM(FMADD_S, V128W dst, V32 src1, V32 src2, V32 src3) {
 
   __remill_fpu_exception_clear(kFPUExceptionAll);
   BarrierReorder();
-  auto prod = FMul32(factor1, factor2);
-  auto res = FAdd32(prod, add);
+  auto res = std::fma(factor1, factor2, add);
   BarrierReorder();
   auto new_except = __remill_fpu_exception_test(kFPUExceptionAll);
   BarrierReorder();
@@ -301,8 +300,7 @@ DEF_SEM(FMADD_D, V128W dst, V64 src1, V64 src2, V64 src3) {
 
   __remill_fpu_exception_clear(kFPUExceptionAll);
   BarrierReorder();
-  auto prod = FMul64(factor1, factor2);
-  auto res = FAdd64(prod, add);
+  auto res = std::fma(factor1, factor2, add);
   BarrierReorder();
   auto except_new = __remill_fpu_exception_test(kFPUExceptionAll);
   SetFPSRStatusFlags(state, except_new);
