@@ -126,26 +126,34 @@ static_assert(2 == sizeof(FPUStatusWord),
               "Invalid structure packing of `FPUFlags`.");
 
 enum FPUPrecisionControl : uint16_t {
-  kPrecisionSingle,
-  kPrecisionReserved,
-  kPrecisionDouble,
-  kPrecisionExtended
+  kPrecisionSingle = 0,
+  kPrecisionReserved = 1,
+  kPrecisionDouble = 2,
+  kPrecisionExtended = 3,
 };
 
 enum FPURoundingControl : uint16_t {
-  kFPURoundToNearestEven,
-  kFPURoundDownNegInf,
-  kFPURoundUpInf,
-  kFPURoundToZero
+  kFPURoundToNearestEven = 0,
+  kFPURoundDownNegInf = 1,
+  kFPURoundUpInf = 2,
+  kFPURoundToZero = 3,
 };
 
-enum FPUInfinityControl : uint16_t { kInfinityProjective, kInfinityAffine };
+enum FPUInfinityControl : uint16_t {
+  kInfinityProjective = 0,
+  kInfinityAffine = 1,
+};
 
-#ifndef __clang__
-#  define FPUPrecisionControl uint16_t
-#  define FPURoundingControl uint16_t
-#  define FPUInfinityControl uint16_t
-#endif
+enum FPUExceptionFlag : uint16_t {
+  kFPUExceptionInvalid   = (1 << 0),  // FSW.ie, bit 0 - Invalid Operation (FE_INVALID)
+  kFPUExceptionDenormal  = (1 << 1),  // FSW.de, bit 1 - Denormal Operand (FE_DENORMAL)
+  kFPUExceptionDivByZero = (1 << 2),  // FSW.ze, bit 2 - Zero Divide (FE_DIVBYZERO)
+  kFPUExceptionOverflow  = (1 << 3),  // FSW.oe, bit 3 - Overflow (FE_OVERFLOW)
+  kFPUExceptionUnderflow = (1 << 4),  // FSW.ue, bit 4 - Underflow (FE_UNDERFLOW)
+  kFPUExceptionPrecision = (1 << 5),  // FSW.pe, bit 5 - Precision/Inexact (FE_INEXACT)
+  kFPUExceptionStackFault = (1 << 6), // FSW.sf, bit 6 - Stack Fault (no FE_ equivalent, x87-specific)
+  kFPUExceptionAll       = 0x7F       // All exception flags (bits 0-6)
+};
 
 union FPUControlWord final {
   uint16_t flat;
@@ -369,7 +377,10 @@ struct FPUStatusFlags final {
   uint8_t _9;
   uint8_t ie;  // Invalid operation.
 
-  uint8_t _padding[4];
+  uint8_t _10;
+  uint8_t sf; // Stack overflow.
+
+  uint8_t _padding[2];
 } __attribute__((packed));
 
 static_assert(24 == sizeof(FPUStatusFlags),

@@ -228,10 +228,99 @@ MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 16)
 MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 32)
 MAKE_ATOMIC_INTRINSIC(fetch_and_xor, uint, 64)
 
-int __remill_fpu_exception_test_and_clear(int read_mask, int clear_mask) {
-  auto except = std::fetestexcept(read_mask);
-  std::feclearexcept(clear_mask);
-  return except;
+static int MapFpuExceptToFe(int32_t guest_except) {
+  int host_except = 0;
+  if (guest_except & kFPUExceptionInvalid)
+    host_except |= FE_INVALID;
+  if (guest_except & kFPUExceptionDivByZero)
+    host_except |= FE_DIVBYZERO;
+  if (guest_except & kFPUExceptionOverflow)
+    host_except |= FE_OVERFLOW;
+  if (guest_except & kFPUExceptionUnderflow)
+    host_except |= FE_UNDERFLOW;
+  if (guest_except & kFPUExceptionPrecision)
+    host_except |= FE_INEXACT;
+    // NOTE: denormal exception is not available on all architectures
+#ifdef FE_DENORMALOPERAND
+  if (guest_except & kFPUExceptionDenormal)
+    host_except |= FE_DENORMALOPERAND;
+#endif  // FE_DENORMALOPERAND
+#ifdef FE_DENORMAL
+  if (guest_except & kFPUExceptionDenormal)
+    host_except |= FE_DENORMAL;
+#endif
+  return host_except;
+}
+
+static int MapFeToFpuExcept(int host_except) {
+  int guest_except = 0;
+  if (host_except & FE_INVALID)
+    guest_except |= kFPUExceptionInvalid;
+  if (host_except & FE_DIVBYZERO)
+    guest_except |= kFPUExceptionDivByZero;
+  if (host_except & FE_OVERFLOW)
+    guest_except |= kFPUExceptionOverflow;
+  if (host_except & FE_UNDERFLOW)
+    guest_except |= kFPUExceptionUnderflow;
+  if (host_except & FE_INEXACT)
+    guest_except |= kFPUExceptionPrecision;
+    // NOTE: denormal exception is not available on all architectures
+#ifdef FE_DENORMALOPERAND
+  if (host_except & FE_DENORMALOPERAND)
+    guest_except |= kFPUExceptionDenormal;
+#endif  // FE_DENORMALOPERAND
+#ifdef FE_DENORMAL
+  if (host_except & FE_DENORMAL)
+    guest_except |= kFPUExceptionDenormal;
+#endif
+  return guest_except;
+}
+
+static int MapFpuRoundToFe(int32_t guest_round) {
+  switch (guest_round) {
+    case kFPURoundToNearestEven: return FE_TONEAREST;
+    case kFPURoundUpInf: return FE_UPWARD;
+    case kFPURoundDownNegInf: return FE_DOWNWARD;
+    case kFPURoundToZero: return FE_TOWARDZERO;
+    default: return FE_TONEAREST;
+  }
+}
+
+static int MapFeToFpuRound(int host_round) {
+  switch (host_round) {
+    case FE_TONEAREST: return kFPURoundToNearestEven;
+    case FE_UPWARD: return kFPURoundUpInf;
+    case FE_DOWNWARD: return kFPURoundDownNegInf;
+    case FE_TOWARDZERO: return kFPURoundToZero;
+    default: return kFPURoundToNearestEven;
+  }
+}
+
+// New intrinsic implementations
+int32_t __remill_fpu_exception_test(int32_t read_mask) {
+  int host_mask = MapFpuExceptToFe(read_mask);
+  int host_result = std::fetestexcept(host_mask);
+  return MapFeToFpuExcept(host_result);
+}
+
+void __remill_fpu_exception_clear(int32_t clear_mask) {
+  int host_mask = MapFpuExceptToFe(clear_mask);
+  std::feclearexcept(host_mask);
+}
+
+void __remill_fpu_exception_raise(int32_t except_mask) {
+  int host_mask = MapFpuExceptToFe(except_mask);
+  std::feraiseexcept(host_mask);
+}
+
+void __remill_fpu_set_rounding(int32_t round_mode) {
+  int host_mode = MapFpuRoundToFe(round_mode);
+  std::fesetround(host_mode);
+}
+
+int32_t __remill_fpu_get_rounding() {
+  int host_mode = std::fegetround();
+  return MapFeToFpuRound(host_mode);
 }
 
 Memory *__remill_barrier_load_load(Memory *) {

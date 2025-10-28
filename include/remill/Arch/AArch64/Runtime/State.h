@@ -167,35 +167,38 @@ union NZCV {
 
 static_assert(8 == sizeof(NZCV), "Invalid packing of `union NZCV`.");
 
-#if COMPILING_WITH_GCC
-using FPURoundingMode = uint64_t;
-using FPUFlushToZeroMode = uint64_t;
-using FPUDefaultNaNMode = uint64_t;
-using FPUHalfPrecisionMode = uint64_t;
-#else
-
 enum FPURoundingMode : uint64_t {
-  kFPURoundToNearestEven,  // RN (round nearest).
-  kFPURoundUpInf,  // RP (round toward plus infinity).
-  kFPURoundDownNegInf,  // RM (round toward minus infinity).
-  kFPURoundToZero  // RZ (round toward zero).
+  kFPURoundToNearestEven = 0,  // RN (round nearest).
+  kFPURoundUpInf = 1,  // RP (round toward plus infinity).
+  kFPURoundDownNegInf = 2,  // RM (round toward minus infinity).
+  kFPURoundToZero = 3, // RZ (round toward zero).
 };
 
 enum FPUFlushToZeroMode : uint64_t {
-  kFlushToZeroDisabled,
-  kFlushToZeroEnabled
+  kFlushToZeroDisabled = 0,
+  kFlushToZeroEnabled = 1,
 };
 
 enum FPUDefaultNaNMode : uint64_t {
-  kPropagateOriginalNaN,
-  kPropagateDefaultNaN
+  kPropagateOriginalNaN = 0,
+  kPropagateDefaultNaN = 1,
 };
 
 enum FPUHalfPrecisionMode : uint64_t {
-  kIEEEHalfPrecisionMode,
-  kAlternativeHalfPrecisionMode
+  kIEEEHalfPrecisionMode = 0,
+  kAlternativeHalfPrecisionMode = 1,
 };
-#endif
+
+// AArch64 FPSR cumulative exception flags
+enum FPUExceptionFlag : uint16_t {
+  kFPUExceptionInvalid   = (1 << 0),  // FPSR.ioc, bit 0 - Invalid Operation (FE_INVALID)
+  kFPUExceptionDivByZero = (1 << 1),  // FPSR.dzc, bit 1 - Divide by Zero (FE_DIVBYZERO)
+  kFPUExceptionOverflow  = (1 << 2),  // FPSR.ofc, bit 2 - Overflow (FE_OVERFLOW)
+  kFPUExceptionUnderflow = (1 << 3),  // FPSR.ufc, bit 3 - Underflow (FE_UNDERFLOW)
+  kFPUExceptionPrecision = (1 << 4),  // FPSR.ixc, bit 4 - Inexact/Precision (FE_INEXACT)
+  kFPUExceptionDenormal  = (1 << 7),  // FPSR.idc, bit 7 - Input Denormal (no standard FE_ equivalent)
+  kFPUExceptionAll       = 0x9F       // All exception flags (bits 0-4, 7)
+};
 
 // Floating point control register. Really, this is a 32-bit register, but
 // it is accessed 64-bit register instructions: `mrs <Xt>, fpcr`.
@@ -216,6 +219,8 @@ static_assert(sizeof(FPCR) == 8, "Invalid packing of `union FPCR`.");
 
 // Floating point status register. Really, this is a 32-bit register, but
 // it is accessed 64-bit register instructions: `mrs <Xt>, fpsr`.
+// NOTE: This register is not updated directly, the fields are mirrored in
+// the SR register.
 union FPSR {
   uint64_t flat;
   struct {
@@ -265,8 +270,10 @@ struct alignas(8) SR final {
   uint8_t idc;  // Input denormal (cumulative).
   uint8_t _10;
   uint8_t ioc;  // Invalid operation (cumulative).
+  uint8_t _11;
+  uint8_t dzc;  // Divide by zero (cumulative).
 
-  uint8_t _padding[6];
+  uint8_t _padding[4];
 } __attribute__((packed));
 
 static_assert(56 == sizeof(SR), "Invalid packing of `struct SR`.");

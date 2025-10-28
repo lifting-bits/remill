@@ -2007,20 +2007,19 @@ DEF_SEM(LDMXCSR, M32 src) {
   auto &csr = state.x87.fxsave.mxcsr;
   csr.flat = Read(src);
 
-  int rounding_mode = FE_TONEAREST;
-
+  FPURoundingControl rounding_mode;
   if (!csr.rp && !csr.rn) {
-    rounding_mode = FE_TONEAREST;
+    rounding_mode = kFPURoundToNearestEven;
   } else if (!csr.rp && csr.rn) {
-    rounding_mode = FE_DOWNWARD;
+    rounding_mode = kFPURoundDownNegInf;
   } else if (csr.rp && !csr.rn) {
-    rounding_mode = FE_UPWARD;
+    rounding_mode = kFPURoundUpInf;
   } else {
-    rounding_mode = FE_TOWARDZERO;
+    rounding_mode = kFPURoundToZero;
   }
-  std::fesetround(rounding_mode);
+  __remill_fpu_set_rounding(rounding_mode);
 
-  // TODO: set FPU precision based on MXCSR precision flag (csr.pe)
+  // TODO: MXCSR precision flag (csr.pe) controls exceptions and is not handled here
 
   return memory;
 }
@@ -2028,25 +2027,22 @@ DEF_SEM(LDMXCSR, M32 src) {
 DEF_SEM(STMXCSR, M32W dst) {
   auto &csr = state.x87.fxsave.mxcsr;
 
-  // TODO: store the current FPU precision control:
-  csr.pe = 0;
-
   // Store the current FPU rounding mode:
-  switch (std::fegetround()) {
+  switch (__remill_fpu_get_rounding()) {
     default:
-    case FE_TONEAREST:
+    case kFPURoundToNearestEven:
       csr.rp = 0;
       csr.rn = 0;
       break;
-    case FE_DOWNWARD:
+    case kFPURoundDownNegInf:
       csr.rp = 0;
       csr.rn = 1;
       break;
-    case FE_UPWARD:
+    case kFPURoundUpInf:
       csr.rp = 1;
       csr.rn = 0;
       break;
-    case FE_TOWARDZERO:
+    case kFPURoundToZero:
       csr.rp = 1;
       csr.rn = 1;
       break;

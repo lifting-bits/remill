@@ -37,10 +37,6 @@
 #  define _RC_CHOP 0x00000300  //     chop
 #endif
 
-#if __has_include(<cfenv>)
-#  include <cfenv>
-#endif
-
 #include "Math.h"
 
 // macOS does not have this flag
