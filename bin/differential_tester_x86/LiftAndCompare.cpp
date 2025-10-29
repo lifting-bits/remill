@@ -168,7 +168,7 @@ class DifferentialModuleBuilder {
 };
 
 using random_bytes_engine =
-    std::independent_bits_engine<std::default_random_engine, CHAR_BIT, uint8_t>;
+    std::independent_bits_engine<std::default_random_engine, CHAR_BIT, uint16_t>;
 
 
 std::string PrintState(X86State *state) {
