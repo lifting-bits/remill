@@ -23,6 +23,7 @@
 #include <functional>
 #include <map>
 #include <string_view>
+#include <string>
 
 namespace remill {
 

@@ -86,7 +86,7 @@ uint8_t MemoryHandler::read_byte(uint64_t addr) {
     return state.find(addr)->second;
   }
 
-  auto genned = rbe();
+  auto genned = static_cast<uint8_t>(rbe());
   uninitialized_reads.insert({addr, genned});
   state.insert({addr, genned});
   return genned;

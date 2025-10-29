@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <memory>
 #include <string_view>
+#include <string>
 
 namespace llvm {
 class Argument;
