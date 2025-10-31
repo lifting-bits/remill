@@ -1,0 +1,24 @@
+From b3bd823a17698abc4c2a906a7367018d4dedae45 Mon Sep 17 00:00:00 2001
+From: 2over12 <ian.smith@trailofbits.com>
+Date: Tue, 11 Apr 2023 13:05:24 -0400
+Subject: [PATCH 03/13] update target cspec
+
+---
+ Ghidra/Processors/PowerPC/data/languages/ppc_64_32.cspec | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_64_32.cspec b/Ghidra/Processors/PowerPC/data/languages/ppc_64_32.cspec
+index 109b980e35..2160930a8a 100644
+--- a/Ghidra/Processors/PowerPC/data/languages/ppc_64_32.cspec
++++ b/Ghidra/Processors/PowerPC/data/languages/ppc_64_32.cspec
+@@ -94,6 +94,7 @@
+         </pentry>
+       </output>
+       <unaffected>
++        <register name="r13"/>
+         <register name="r14"/>
+         <register name="r15"/>
+         <register name="r16"/>
+-- 
+2.34.1
+
