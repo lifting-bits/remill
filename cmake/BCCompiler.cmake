@@ -18,6 +18,7 @@ set(DEFAULT_BC_COMPILER_FLAGS
   -fno-asynchronous-unwind-tables -Wno-unneeded-internal-declaration
   -Wno-unused-function -Wgnu-inline-cpp-without-extern
   -Wno-pass-failed=transform-warning
+  -std=c++17
   ${EXTRA_BC_SYSROOT}
 )
 

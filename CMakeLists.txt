@@ -132,6 +132,8 @@ option(REMILL_BUILD_SPARC32_RUNTIME "Build the Runtime for SPARC32. Turn this of
 # add everything as public.
 add_library(remill_settings INTERFACE)
 
+target_compile_features(remill_settings INTERFACE cxx_std_17)
+
 target_include_directories(remill_settings INTERFACE
   $<BUILD_INTERFACE:${REMILL_INCLUDE_DIR}>
   $<INSTALL_INTERFACE:include>

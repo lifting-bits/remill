@@ -41,9 +41,9 @@ struct RegisterCondition {
 };
 
 template <typename T>
-concept State = std::is_base_of_v<ArchState, T>;
+using EnableIfState = std::enable_if_t<std::is_base_of_v<ArchState, T>>;
 
-template <State S>
+template <typename S, typename = EnableIfState<S>>
 class TestOutputSpec {
  public:
   uint64_t addr;
