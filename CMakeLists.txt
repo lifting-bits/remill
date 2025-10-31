@@ -190,22 +190,16 @@ else()
   # debug symbols
   if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     target_compile_options(remill_settings INTERFACE
-      -gdwarf-2 -g3
+      -g3
     )
   endif()
 
   # optimization flags and definitions
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(remill_settings INTERFACE
-      -O0
-    )
     target_compile_definitions(remill_settings INTERFACE
       "DEBUG"
     )
   else()
-    target_compile_options(remill_settings INTERFACE
-      -O2
-    )
     target_compile_definitions(remill_settings INTERFACE
       "NDEBUG"
     )

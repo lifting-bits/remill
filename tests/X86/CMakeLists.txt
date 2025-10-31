@@ -62,6 +62,9 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
   target_link_libraries(run-${name}-tests PUBLIC remill GTest::gtest)
   target_compile_definitions(run-${name}-tests PUBLIC ${PROJECT_DEFINITIONS})
 
+  # Without optimizations the tests take infinitely long
+  target_compile_options(run-${name}-tests PRIVATE $<$<CONFIG:Debug>:-O2>)
+
   target_compile_options(run-${name}-tests
     PRIVATE ${X86_TEST_FLAGS}
   )
