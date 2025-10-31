@@ -174,7 +174,7 @@ GetFlows(std::string_view bytes, uint64_t address, uint64_t vle_val) {
 
 using test_runner::TestOutputSpec;
 
-template <test_runner::State S>
+template <typename S, typename = test_runner::EnableIfState<S>>
 class TestSpecRunner {
  private:
   test_runner::LiftingTester lifter;
