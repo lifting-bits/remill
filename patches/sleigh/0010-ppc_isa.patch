@@ -1,14 +1,14 @@
-From 5dc24c4d257bb1359e72c012ccd145cab44c3599 Mon Sep 17 00:00:00 2001
+From df78f4abfdf6db77a9d9a5ff52dac343b9168cdc Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
 Date: Mon, 24 Apr 2023 13:29:42 -0400
-Subject: [PATCH] ppc_isa
+Subject: [PATCH 10/13] ppc_isa
 
 ---
  .../PowerPC/data/languages/ppc_isa.sinc       | 52 ++++++++++++++-----
  1 file changed, 38 insertions(+), 14 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
-index 3148135f1..e30412e89 100644
+index 3148135f19..cda7398ef3 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_isa.sinc
 @@ -2390,15 +2390,25 @@ define pcodeop InstructionCacheBlockLockSetX;
@@ -17,29 +17,29 @@ index 3148135f1..e30412e89 100644
  :b^CC^"ctar" 	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH=0 & LK=0 & BITS_13_15=0 & XOP_1_10=560
 -{
 -	if (!CC) goto inst_next; 
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name18d:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name18d, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
-+ 
++
  	goto [TAR];
 -}
 +
 +  }
-+ 
++
  :b^CC^"ctar" BH  	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH & BH_BITS!=0 & LK=0 & BITS_13_15=0 & XOP_1_10=560
 -{
 -	if (!CC) goto inst_next; 
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name18f:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name18f, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
-+ 
++
  	goto [TAR];
 -}
 +
 +  }
-+ 
++
  
  :b^CC^"ctarl"  	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH=0 & LK=1 & BITS_13_15=0 & XOP_1_10=560
  										[ linkreg=0; globalset(inst_start,linkreg); ]
@@ -49,30 +49,30 @@ index 3148135f1..e30412e89 100644
  :b^CC^"ctar" BI_CR  		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH=0 & LK=0 & BITS_13_15=0 & XOP_1_10=560
 -{
 -	if (!CC) goto inst_next; 
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name191:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name191, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
-+ 
++
  	goto [TAR];
 -}
 +
 +  }
-+ 
++
  
  :b^CC^"ctar" BI_CR,BH  		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH & LK=0 & BITS_13_15=0 & XOP_1_10=560
 -{
 -	if (!CC) goto inst_next; 
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name193:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name193, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
-+ 
++
  	goto [TAR];
 -}
 +
 +  }
-+ 
++
  
  :b^CC^"ctarl" BI_CR 		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH=0 & LK=1 & BITS_13_15=0 & XOP_1_10=560
  										[ linkreg=0; globalset(inst_start,linkreg); ]
@@ -81,17 +81,17 @@ index 3148135f1..e30412e89 100644
  # v3.0
  
 -:addpcis D,OFF16SH		is $(NOTVLE) & OP=19 & XOP_1_5=2 & D & OFF16SH {
-+:addpcis D,OFF16SH		is $(NOTVLE) & OP=19 & XOP_1_5=2 & D & OFF16SH  ; remill_insn_size  { 
++:addpcis D,OFF16SH		is $(NOTVLE) & OP=19 & XOP_1_5=2 & D & OFF16SH  ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name1b9:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name1b9, $(INST_NEXT_PTR));
  	D = inst_next + sext(OFF16SH);
 -}
 +
 +  }
-+ 
++
  
  :cmpeqb CRFD,A,B			is $(NOTVLE) & OP=31 & BITS_21_22=0 & BIT_0=0 & XOP_1_10=224 & A & B & CRFD {
  	tmpa:1 = A:1;
 -- 
-2.39.2 (Apple Git-143)
+2.34.1
 

@@ -1,0 +1,224 @@
+From f252de1b805433764a82fd63af37f580fb15a400 Mon Sep 17 00:00:00 2001
+From: William Tan <1284324+Ninja3047@users.noreply.github.com>
+Date: Thu, 20 Apr 2023 16:24:00 -0400
+Subject: [PATCH 02/13] ppc e200 (#3)
+
+* initial e200 sub arch
+
+* fix description and gnu string
+
+* fix comment
+---
+ .../Processors/PowerPC/certification.manifest |   2 +
+ .../PowerPC/data/languages/ppc.ldefs          |  16 +++
+ .../data/languages/ppc_32_e200_be.cspec       | 106 ++++++++++++++++++
+ .../data/languages/ppc_32_e200_be.slaspec     |  30 +++++
+ .../PowerPC/data/languages/ppc_common.sinc    |   2 +-
+ 5 files changed, 155 insertions(+), 1 deletion(-)
+ create mode 100644 Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.cspec
+ create mode 100644 Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.slaspec
+
+diff --git a/Ghidra/Processors/PowerPC/certification.manifest b/Ghidra/Processors/PowerPC/certification.manifest
+index ad290208f0..39c6bf1451 100644
+--- a/Ghidra/Processors/PowerPC/certification.manifest
++++ b/Ghidra/Processors/PowerPC/certification.manifest
+@@ -23,6 +23,8 @@ data/languages/ppc_32_4xx_le.slaspec||GHIDRA||||END|
+ data/languages/ppc_32_be.cspec||GHIDRA||||END|
+ data/languages/ppc_32_be.slaspec||GHIDRA||||END|
+ data/languages/ppc_32_be_Mac.cspec||GHIDRA||||END|
++data/languages/ppc_32_e200_be.cspec||GHIDRA||||END|
++data/languages/ppc_32_e200_be.slaspec||GHIDRA||||END|
+ data/languages/ppc_32_e500_be.cspec||GHIDRA||||END|
+ data/languages/ppc_32_e500_be.slaspec||GHIDRA||||END|
+ data/languages/ppc_32_e500_le.cspec||GHIDRA||||END|
+diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc.ldefs b/Ghidra/Processors/PowerPC/data/languages/ppc.ldefs
+index 1d3dc8e043..4b0301d7da 100644
+--- a/Ghidra/Processors/PowerPC/data/languages/ppc.ldefs
++++ b/Ghidra/Processors/PowerPC/data/languages/ppc.ldefs
+@@ -174,6 +174,22 @@
+ 	<external_name tool="IDA-PRO" name="ppcl"/>
+     <external_name tool="DWARF.register.mapping.file" name="ppc.dwarf"/>
+   </language>
++  <language processor="PowerPC"
++            endian="big"
++            size="32"
++            variant="PowerISA-e200-vle"
++            version="1.5"
++            slafile="ppc_32_e200_be.sla"
++            processorspec="ppc_32.pspec"
++            manualindexfile="../manuals/PowerPC.idx"
++            id="PowerPC:BE:32:e200:VLE">
++    <description>Power ISA e200 32-bit big-endian family</description>
++    <truncate_space space="ram" size="4"/>
++    <compiler name="default" spec="ppc_32_e200_be.cspec" id="default"/>
++    <external_name tool="gnu" name="powerpc:vle"/>
++    <external_name tool="IDA-PRO" name="ppc"/>
++    <external_name tool="DWARF.register.mapping.file" name="ppc.dwarf"/>
++  </language>
+   <language processor="PowerPC"
+             endian="big"
+             size="32"
+diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.cspec b/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.cspec
+new file mode 100644
+index 0000000000..cfc45d5c05
+--- /dev/null
++++ b/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.cspec
+@@ -0,0 +1,106 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!-- This cspec describes the 32-bit ABI for PowerPC as it is implemented for 64-bit code.
++     Presumably this ABI allows binary compatibility of 64-bit code with existing 32-bit code.
++     The ABI assumes 32-bit registers and addresses, in particular the maximum sized integer value
++     that can be passed in a single register is 4 bytes (even though the register is 8 bytes long).
++     The cspec currently has a limited ability to model this: the maxsize attribute must still be
++     set to 8 for parameter passing registers r3 - r10.
++-->
++<compiler_spec>
++  <global>
++    <range space="ram"/>
++  </global>
++  <data_organization>
++    <pointer_size value="4"/>
++  </data_organization>
++  <aggressivetrim signext="true"/>  <!-- Pointers are 4-bytes but are held in 8-byte registers -->
++  <stackpointer register="r1" space="ram"/>
++  <default_proto>
++    <prototype name="__stdcall" extrapop="0" stackshift="0">
++      <input pointermax="8">
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r3"/>
++        </pentry>
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r4"/>
++        </pentry>
++        <pentry minsize="5" maxsize="8" extension="sign">
++          <addr space="join" piece1="_r3" piece2="_r4"/>
++        </pentry>
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r5"/>
++        </pentry>
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r6"/>
++        </pentry>
++        <pentry minsize="5" maxsize="8" extension="sign">
++          <addr space="join" piece1="_r5" piece2="_r6"/>
++        </pentry>
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r7"/>
++        </pentry>
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r8"/>
++        </pentry>
++        <pentry minsize="5" maxsize="8" extension="sign">
++          <addr space="join" piece1="_r7" piece2="_r8"/>
++        </pentry>
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r9"/>
++        </pentry>
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r10"/>
++        </pentry>
++        <pentry minsize="5" maxsize="8" extension="sign">
++          <addr space="join" piece1="_r9" piece2="_r10"/>
++        </pentry>
++        <pentry minsize="1" maxsize="500" align="4">
++          <addr offset="8" space="stack"/>
++        </pentry>
++      </input>
++      <output>
++        <pentry minsize="1" maxsize="4" extension="sign">
++          <register name="_r3"/>
++        </pentry>
++        <pentry minsize="5" maxsize="8">
++          <addr space="join" piece1="_r3" piece2="_r4"/>
++        </pentry>
++      </output>
++      <unaffected>
++        <register name="r1"/>  <!-- stack pointer -->
++        <register name="r2"/>  <!-- _SDA2_BASE_ -->
++        <register name="r13"/> <!-- _SDA_BASE_  -->
++        <register name="r14"/>
++        <register name="r15"/>
++        <register name="r16"/>
++        <register name="r17"/>
++        <register name="r18"/>
++        <register name="r19"/>
++        <register name="r20"/>
++        <register name="r21"/>
++        <register name="r22"/>
++        <register name="r23"/>
++        <register name="r24"/>
++        <register name="r25"/>
++        <register name="r26"/>
++        <register name="r27"/>
++        <register name="r28"/>
++        <register name="r29"/>
++        <register name="r30"/>
++        <register name="r31"/>
++        <register name="cr2"/>
++        <register name="cr3"/>
++        <register name="cr4"/>
++      </unaffected>
++    </prototype>
++  </default_proto>
++
++  <callfixup name="get_pc_thunk_lr">
++    <pcode>
++      <body><![CDATA[
++      LR = inst_dest + 4;
++      ]]></body>
++    </pcode>
++  </callfixup>
++
++</compiler_spec>
+diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.slaspec b/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.slaspec
+new file mode 100644
+index 0000000000..968574d198
+--- /dev/null
++++ b/Ghidra/Processors/PowerPC/data/languages/ppc_32_e200_be.slaspec
+@@ -0,0 +1,30 @@
++# SLA specification file for NXP PowerPC e200 series core
++
++# NOTE: This language variant includes some registers and instructions not supported
++# by the actual processor (e.g., floating pointer registers and associated instructions).
++# The actual processor only supports a subset of the registers and instructions implemented.
++
++@define E200
++
++@define ENDIAN "big"
++
++# Although a 32-bit architecture, 64-bit general purpose registers are supported.
++# Language has been modeled using a 64-bit implementation with a 32-bit truncated
++# memory space (see ldefs).
++
++@define REGISTER_SIZE "8"
++@define BIT_64 "64"
++
++@define EATRUNC "ea"
++
++@define CTR_OFFSET "32"
++
++@define NoLegacyIntegerMultiplyAccumulate
++
++@include "ppc_common.sinc"
++@include "ppc_vle.sinc"
++@include "quicciii.sinc"
++@include "evx.sinc"
++@include "SPEF_SCR.sinc"
++@include "SPE_EFSD.sinc"
++@include "SPE_EFV.sinc"
+diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
+index aaa76cc4ac..46aa86c74c 100644
+--- a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
++++ b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
+@@ -19,7 +19,7 @@ define register offset=0 size=$(REGISTER_SIZE) [
+ 	r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15
+ 	r16 r17 r18 r19 r20 r21 r22 r23 r24 r25 r26 r27 r28 r29 r30 r31 ];
+ 	
+-@ifdef E500
++@if defined(E500) || defined(E200)
+ # Define 4-byte general purpose sub-registers (LSB) to be used by E500 compiler specification
+ # which must restrict parameter/return passing to low 4-bytes of the 8-byte general purpose registers.
+ @if ENDIAN == "big"
+-- 
+2.34.1
+

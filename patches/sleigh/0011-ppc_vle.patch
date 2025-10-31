@@ -1,14 +1,14 @@
-From 1b4ba461713e9e04f3cab3b09f675bf6bf4e7a3f Mon Sep 17 00:00:00 2001
+From 2d6809a4c60a8c9f60cf32b146749c4ade579680 Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
 Date: Mon, 24 Apr 2023 13:29:42 -0400
-Subject: [PATCH] ppc_vle
+Subject: [PATCH 11/13] ppc_vle
 
 ---
  .../PowerPC/data/languages/ppc_vle.sinc       | 68 +++++++++++++++----
  1 file changed, 55 insertions(+), 13 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
-index 3b6283470..6b174c491 100644
+index 3b62834704..fd3f2cf11a 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_vle.sinc
 @@ -20,9 +20,24 @@ CC32: "ns"		is BI_CC_VLE=3 & BO_VLE=0 & BI_CR_VLE & BI_CC_VLE { tmp:1 = 0; getCr
@@ -18,24 +18,24 @@ index 3b6283470..6b174c491 100644
 -addrBD8: reloc	is BD8_VLE 		[ reloc = inst_start + (BD8_VLE << 1);] 	{ export *[ram]:4 reloc; }
 -addrBD15: reloc	is BD15_VLE 	[ reloc = inst_start + (BD15_VLE << 1);] 	{ export *[ram]:4 reloc; }
 -addrBD24: reloc	is BD24_VLE 	[ reloc = inst_start + (BD24_VLE << 1);] 	{ export *[ram]:4 reloc; }
-+addrBD8: reloc	is BD8_VLE 		 ; remill_insn_size [ reloc = inst_start + (BD8_VLE << 1);] { 
++addrBD8: reloc	is BD8_VLE 		 ; remill_insn_size [ reloc = inst_start + (BD8_VLE << 1);] {
 +remill_please_dont_use_this_temp_name23:$(REGISTER_SIZE)=reloc;
 +claim_eq(remill_please_dont_use_this_temp_name23,  ($(INST_NEXT_PTR)-remill_insn_size) + (BD8_VLE << 1));
 + export *[ram]:4 reloc;
 +   }
-+ 
-+addrBD15: reloc	is BD15_VLE 	 ; remill_insn_size [ reloc = inst_start + (BD15_VLE << 1);] { 
++
++addrBD15: reloc	is BD15_VLE 	 ; remill_insn_size [ reloc = inst_start + (BD15_VLE << 1);] {
 +remill_please_dont_use_this_temp_name26:$(REGISTER_SIZE)=reloc;
 +claim_eq(remill_please_dont_use_this_temp_name26,  ($(INST_NEXT_PTR)-remill_insn_size) + (BD15_VLE << 1));
 + export *[ram]:4 reloc;
 +   }
-+ 
-+addrBD24: reloc	is BD24_VLE 	 ; remill_insn_size [ reloc = inst_start + (BD24_VLE << 1);] { 
++
++addrBD24: reloc	is BD24_VLE 	 ; remill_insn_size [ reloc = inst_start + (BD24_VLE << 1);] {
 +remill_please_dont_use_this_temp_name29:$(REGISTER_SIZE)=reloc;
 +claim_eq(remill_please_dont_use_this_temp_name29,  ($(INST_NEXT_PTR)-remill_insn_size) + (BD24_VLE << 1));
 + export *[ram]:4 reloc;
 +   }
-+ 
++
  
  d8PlusRaAddress: S8IMM(A)					is S8IMM & A			{tmp:$(REGISTER_SIZE) = A+S8IMM; export tmp;  }
  d8PlusRaOrZeroAddress: S8IMM(RA_OR_ZERO)	is S8IMM & RA_OR_ZERO	{tmp:$(REGISTER_SIZE) = RA_OR_ZERO+S8IMM; export tmp; }
@@ -44,7 +44,7 @@ index 3b6283470..6b174c491 100644
  }
  
 -:e_bl addrBD24					is $(ISVLE) & OP=30 & BIT_25=0 & LK=1 & addrBD24 {
-+:e_bl addrBD24					is $(ISVLE) & OP=30 & BIT_25=0 & LK=1 & addrBD24  ; remill_insn_size  { 
++:e_bl addrBD24					is $(ISVLE) & OP=30 & BIT_25=0 & LK=1 & addrBD24  ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name3a:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name3a, $(INST_NEXT_PTR));
  	LR = inst_next;
@@ -53,14 +53,14 @@ index 3b6283470..6b174c491 100644
 -}
 +
 +  }
-+ 
++
  
  :se_b addrBD8					is $(ISVLE) & OP6_VLE=58 & BIT9_VLE=0 & LK8_VLE=0 & addrBD8 {
  	goto addrBD8;
  }
  
 -:se_bl addrBD8					is $(ISVLE) & OP6_VLE=58 & BIT9_VLE=0 & LK8_VLE=1 & addrBD8 {
-+:se_bl addrBD8					is $(ISVLE) & OP6_VLE=58 & BIT9_VLE=0 & LK8_VLE=1 & addrBD8  ; remill_insn_size  { 
++:se_bl addrBD8					is $(ISVLE) & OP6_VLE=58 & BIT9_VLE=0 & LK8_VLE=1 & addrBD8  ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name3e:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name3e, $(INST_NEXT_PTR));
  	LR = inst_next;
@@ -69,13 +69,13 @@ index 3b6283470..6b174c491 100644
 -}
 +
 +  }
-+ 
++
  
  # NOTE: For the conditional branches, the "official" mnemonics have just bc and bcl.
  # We use extended mnemonics so the display is understandable without having to cross-
  # reference multiple tables.
 -:e_b^CC32 addrBD15				is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=0 & addrBD15 & CC32 {
-+:e_b^CC32 addrBD15				is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=0 & addrBD15 & CC32  ; remill_insn_size  { 
++:e_b^CC32 addrBD15				is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=0 & addrBD15 & CC32  ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name40:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name40, $(INST_NEXT_PTR));
  	if (CC32 == 0) goto inst_next;
@@ -85,9 +85,9 @@ index 3b6283470..6b174c491 100644
  
 -:e_b^CC32^"l" addrBD15			is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=1 & addrBD15 & CC32 {
 +  }
-+ 
 +
-+:e_b^CC32^"l" addrBD15			is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=1 & addrBD15 & CC32  ; remill_insn_size  { 
++
++:e_b^CC32^"l" addrBD15			is $(ISVLE) & OP=30 & XOP_VLE=8 & LK=1 & addrBD15 & CC32  ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name42:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name42, $(INST_NEXT_PTR));
  	if (CC32 == 0) goto inst_next;
@@ -100,9 +100,9 @@ index 3b6283470..6b174c491 100644
  
 -:se_b^CC16 addrBD8				is $(ISVLE) & OP5_VLE=28 & addrBD8 & CC16 {
 +  }
-+ 
 +
-+:se_b^CC16 addrBD8				is $(ISVLE) & OP5_VLE=28 & addrBD8 & CC16  ; remill_insn_size  { 
++
++:se_b^CC16 addrBD8				is $(ISVLE) & OP5_VLE=28 & addrBD8 & CC16  ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name44:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name44, $(INST_NEXT_PTR));
  	if (CC16 == 0) goto inst_next;
@@ -111,10 +111,10 @@ index 3b6283470..6b174c491 100644
 -}
 +
 +  }
-+ 
++
  #######
  
  :se_bctr						is $(ISVLE) & OP15_VLE=3 & LK0_VLE=0 {
 -- 
-2.39.2 (Apple Git-143)
+2.34.1
 

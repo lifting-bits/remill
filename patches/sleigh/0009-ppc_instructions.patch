@@ -1,14 +1,14 @@
-From d2a32d5da79f0d7f5ed9c6cf8e8ea4fe54c04313 Mon Sep 17 00:00:00 2001
+From 9b78cadbee4c0fa7b2ca9056dc0bbc5ba0872505 Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
 Date: Mon, 24 Apr 2023 13:29:42 -0400
-Subject: [PATCH] ppc_instructions
+Subject: [PATCH 09/13] ppc_instructions
 
 ---
  .../data/languages/ppc_instructions.sinc      | 88 ++++++++++++++-----
  1 file changed, 68 insertions(+), 20 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_instructions.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_instructions.sinc
-index b9ca56c0f..647b789d0 100644
+index b9ca56c0ff..7decec6831 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_instructions.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_instructions.sinc
 @@ -368,10 +368,15 @@
@@ -16,7 +16,7 @@ index b9ca56c0f..647b789d0 100644
  #bl (Load LR) 
  :bl addressBD 		is $(NOTVLE) & OP=16 & addressBD & REL_ABS & BO_0=1 & BO_2=1 & BD=1 & LK=1
 -{
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name45:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name45, $(INST_NEXT_PTR));
  	LR = inst_next;
@@ -25,7 +25,7 @@ index b9ca56c0f..647b789d0 100644
 -}
 +
 +  }
-+ 
++
  
  
  
@@ -35,29 +35,29 @@ index b9ca56c0f..647b789d0 100644
  :b^CC^"ctr" 	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH=0 & LK=0 & BITS_13_15=0 & XOP_1_10=528
 -{
 -	if (!CC) goto inst_next; 
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name4f:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name4f, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
-+ 
++
  	goto [CTR];
 -}
 +
 +  }
-+ 
++
  :b^CC^"ctr" BH  	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH & BH_BITS!=0 & LK=0 & BITS_13_15=0 & XOP_1_10=528
 -{
 -	if (!CC) goto inst_next; 
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name51:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name51, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
-+ 
++
  	goto [CTR];
 -}
 +
 +  }
-+ 
++
  
  #bgectrl		0x4c 80 04 21
  :b^CC^"ctrl"  	is $(NOTVLE) & OP=19 & CC & BO_0=0 & BO_2=1 & BI_CR= 0 & BH=0 & LK=1 & BITS_13_15=0 & XOP_1_10=528
@@ -67,31 +67,31 @@ index b9ca56c0f..647b789d0 100644
  :b^CC^"ctr" BI_CR  		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH=0 & LK=0 & BITS_13_15=0 & XOP_1_10=528
 -{
 -	if (!CC) goto inst_next; 
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name53:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name53, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
-+ 
++
  	goto [CTR];
 -}
 +
 +  }
-+ 
++
  
  #bnectr cr2,#0x3 0x4c 8c 1c 20
  :b^CC^"ctr" BI_CR,BH  		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH & LK=0 & BITS_13_15=0 & XOP_1_10=528
 -{
 -	if (!CC) goto inst_next; 
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
 +remill_please_dont_use_this_temp_name55:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name55, $(INST_NEXT_PTR));
 +	if (!CC) goto inst_next;
-+ 
++
  	goto [CTR];
 -}
 +
 +  }
-+ 
++
  
  #bgectrl cr2,LAB_xxxx		0x4c 8c 04 21
  :b^CC^"ctrl" BI_CR 		is $(NOTVLE) & OP=19 & CC & BI_CR & BO_0=0 & BO_2=1 & BH=0 & LK=1 & BITS_13_15=0 & XOP_1_10=528
@@ -100,7 +100,7 @@ index b9ca56c0f..647b789d0 100644
  #fsel f0r,fr0,fr0,fr0	0xfc 00 00 2e
  :fsel fD,fA,fC,fB	is $(NOTVLE) & OP=63 & fD & fA & fB & fC & XOP_1_5=23 & Rc=0
 -{
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
  	local tmpfA = fA;
 +
  	local tmpfB = fB;
@@ -117,7 +117,7 @@ index b9ca56c0f..647b789d0 100644
 -}
 +
 +  }
-+ 
++
  
  #fsel. fr0,fr0,fr0,fr0	0xfc 00 00 2f
  :fsel. fD,fA,fC,fB	is $(NOTVLE) & OP=63 & fD & fA & fB & fC & XOP_1_5=23 & Rc=1
@@ -126,7 +126,7 @@ index b9ca56c0f..647b789d0 100644
  #stdcx. r0,8(0)	0x7c 00 01 AD	
  :stdcx. S,RA_OR_ZERO,B 	is OP=31 & S & RA_OR_ZERO & B & XOP_1_10=214 & BIT_0=1
 -{
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
  	EA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
 +remill_please_dont_use_this_temp_name265:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name265, $(INST_NEXT_PTR));
@@ -140,7 +140,7 @@ index b9ca56c0f..647b789d0 100644
 -}
 +
 +  }
-+ 
++
  
  #stdu r0,8(0)	0xf8 00 00 01	
  #stdu r0,8(r2)	0xf8 02 00 01	
@@ -149,7 +149,7 @@ index b9ca56c0f..647b789d0 100644
  #stwcx. r0,8(0)	0x7c 00 01 2D	
  :stwcx. S,RA_OR_ZERO,B 	is OP=31 & S & RA_OR_ZERO & B & XOP_1_10=150 & BIT_0=1
 -{
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
  	EA:$(REGISTER_SIZE) = RA_OR_ZERO + B;
 +remill_please_dont_use_this_temp_name28b:$(REGISTER_SIZE)=inst_next;
 +claim_eq(remill_please_dont_use_this_temp_name28b, $(INST_NEXT_PTR));
@@ -163,10 +163,10 @@ index b9ca56c0f..647b789d0 100644
 -}
 +
 +  }
-+ 
++
  
  #stwu r0,r0			0x94 00 00 00
  :stwu S,dPlusRaAddress		is $(NOTVLE) & OP=37 & S & A & dPlusRaAddress
 -- 
-2.39.2 (Apple Git-143)
+2.34.1
 

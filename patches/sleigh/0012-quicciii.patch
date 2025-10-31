@@ -1,14 +1,14 @@
-From 15929962669ffa1a719594606c4ec33c00b1542e Mon Sep 17 00:00:00 2001
+From 1d942a786a841bd3a0725e3b5279985ef45aafe3 Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
 Date: Mon, 24 Apr 2023 13:29:42 -0400
-Subject: [PATCH] quicciii
+Subject: [PATCH 12/13] quicciii
 
 ---
  .../Processors/PowerPC/data/languages/quicciii.sinc  | 12 ++++++++++--
  1 file changed, 10 insertions(+), 2 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc b/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
-index 8b7977bce..9029b616b 100644
+index 8b7977bce2..b0ffbb754d 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/quicciii.sinc
 @@ -62,13 +62,21 @@ define pcodeop invalidateTLB;
@@ -16,7 +16,7 @@ index 8b7977bce..9029b616b 100644
  
  :isel^CC_X_OPm D,RA_OR_ZERO,B,CC_X_OP  is OP=31 & D & RA_OR_ZERO & B & CC_X_OP & CC_X_OPm & XOP_1_5=15
 -{
-+ ; remill_insn_size  { 
++ ; remill_insn_size  {
  	local tmp:$(REGISTER_SIZE) = RA_OR_ZERO;
 +
  	D = B;
@@ -31,10 +31,10 @@ index 8b7977bce..9029b616b 100644
 -}
 +
 +  }
-+ 
++
  
  @ifndef IS_ISA
  #mbar 0         #FIXME
 -- 
-2.39.2 (Apple Git-143)
+2.34.1
 

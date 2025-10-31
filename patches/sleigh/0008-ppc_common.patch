@@ -1,14 +1,14 @@
-From 85949f749c4cd31a03edfc181dc4cbed57ebf7c3 Mon Sep 17 00:00:00 2001
+From 1e54d8a6734348789b561489a84da5a7e45315ea Mon Sep 17 00:00:00 2001
 From: 2over12 <ian.smith@trailofbits.com>
 Date: Mon, 24 Apr 2023 13:29:41 -0400
-Subject: [PATCH] ppc_common
+Subject: [PATCH 08/13] ppc_common
 
 ---
  .../PowerPC/data/languages/ppc_common.sinc    | 21 +++++++++++++++++--
  1 file changed, 19 insertions(+), 2 deletions(-)
 
 diff --git a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
-index aaa76cc4a..4625bbe5e 100644
+index 46aa86c74c..60c96058eb 100644
 --- a/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
 +++ b/Ghidra/Processors/PowerPC/data/languages/ppc_common.sinc
 @@ -3,6 +3,10 @@
@@ -27,7 +27,7 @@ index aaa76cc4a..4625bbe5e 100644
        v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 ];
        
 +
-+remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:$(REGISTER_SIZE)=calculated_size; 
++remill_insn_size: calculated_size is epsilon [calculated_size= inst_next-inst_start; ] { local insn_size_hinted:$(REGISTER_SIZE)=calculated_size;
 + export insn_size_hinted; }
  vrD: vrDD	is vrDD & vrDR { export vrDR; }      
  vrA: vrAD	is vrAD & vrAR { export vrAR; }      
@@ -37,23 +37,23 @@ index aaa76cc4a..4625bbe5e 100644
  REL_ABS:			is AA = 0 {}
  
 -addressLI: reloc		is LI & AA=0 	[ reloc = inst_start + LI*4;] 	{ export *[ram]:4 reloc; }
-+addressLI: reloc		is LI & AA=0 	 ; remill_insn_size [ reloc = inst_start + LI*4;] { 
++addressLI: reloc		is LI & AA=0 	 ; remill_insn_size [ reloc = inst_start + LI*4;] {
 +remill_please_dont_use_this_temp_named:$(REGISTER_SIZE)=reloc;
 +claim_eq(remill_please_dont_use_this_temp_named,  ($(INST_NEXT_PTR)-remill_insn_size) + LI*4);
 + export *[ram]:4 reloc;
 +   }
-+ 
++
  addressLI: reloc 	is LI & AA=1		[ reloc = LI*4; ]				{ export *[ram]:4 reloc; }
 -addressBD: reloc		is BD & AA=0		[ reloc = inst_start + BD*4; ]	{ export *[ram]:4 reloc; }
-+addressBD: reloc		is BD & AA=0		 ; remill_insn_size [ reloc = inst_start + BD*4; ] { 
++addressBD: reloc		is BD & AA=0		 ; remill_insn_size [ reloc = inst_start + BD*4; ] {
 +remill_please_dont_use_this_temp_name12:$(REGISTER_SIZE)=reloc;
 +claim_eq(remill_please_dont_use_this_temp_name12,  ($(INST_NEXT_PTR)-remill_insn_size) + BD*4);
 + export *[ram]:4 reloc;
 +   }
-+ 
++
  addressBD: reloc		is BD & AA=1		[ reloc = BD*4; ]				{ export *[ram]:4 reloc; }
  
  OFF16SH: val		is D0 & D1 & D2 [ val = ((D0 << 6) | (D1 << 1) | D2) << 16; ] { export *[const]:4 val;}
 -- 
-2.39.2 (Apple Git-143)
+2.34.1
 
