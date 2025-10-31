@@ -26,92 +26,84 @@ static_assert(4 == sizeof(float32_t), "Invalid `float32_t` size.");
 typedef double float64_t;
 static_assert(8 == sizeof(float64_t), "Invalid `float64_t` size.");
 
+// TODO: this is 100% incorrect
 typedef double float128_t;
 static_assert(8 == sizeof(float128_t), "Invalid `float128_t` size.");
 
 // a long double can be anything from a 128-bit float (on AArch64/Linux) to a 64-bit double (AArch64 MacOS)
 // to an 80-bit precision wrapped with padding (x86/x86-64). We do not do a static assert on the size
-// since there are too  many options.
+// since there are too many options.
 
 // A "native_float80_t" is a native type that is closes to approximating
 // an x86 80-bit float.
 // when building against CUDA, default to 64-bit float80s
-#if !defined(__CUDACC__) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
+#if !defined(__CUDACC__) && !defined(_WIN32) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
   #if defined(__float80)
   typedef __float80 native_float80_t;
   #else
   typedef long double native_float80_t;
   #endif
-static_assert(10 <= sizeof(native_float80_t), "Invalid `native_float80_t` size.");
+static_assert(sizeof(native_float80_t) >= 10, "Invalid `native_float80_t` size.");
 #else
   typedef double native_float80_t;
-  static_assert(8 == sizeof(native_float80_t), "Invalid `native_float80_t` size.");
+  static_assert(sizeof(native_float80_t) == 8, "Invalid `native_float80_t` size.");
 #endif
-
-static const int kEightyBitsInBytes = 10;
-union union_ld {
-  struct {
-    uint8_t data[kEightyBitsInBytes];
-    // when building against CUDA, default to 64-bit float80s
-#if !defined(__CUDACC__) && (defined(__x86_64__) || defined(__i386__) || defined(_M_X86))
-    // We are doing x86 on x86, so we have native x86 FP80s, but they
-    // are not available in raw 80-bit native form.
-    //
-    // To get to the internal FP80 representation, we have to use a
-    // `long double` which is (usually! but not always)
-    //  an FP80 padded to a 12 or 16 byte boundary
-    //
-    uint8_t padding[sizeof(native_float80_t) - kEightyBitsInBytes];
-#else
-    // The closest native FP type that we can easily deal with is a 64-bit double
-    // this is less than the size of an FP80, so the data variable above will already
-    // enclose it. No extra padding is needed
-#endif
-  } lds __attribute__((packed));
-  native_float80_t ld;
-} __attribute__((packed));
-
-static void *memset_impl(void *b, int c, std::size_t len) {
-  auto *p = static_cast<int *>(b);
-  for (std::size_t i = 0; i < len; ++i) {
-    p[i] = c;
-  }
-  return b;
-}
-
-static void *memcpy_impl(void *dst, const void *src, std::size_t n) {
-  auto *d = static_cast<int *>(dst);
-  const auto *s = static_cast<const int *>(src);
-  for (std::size_t i = 0; i < n; ++i) {
-    d[i] = s[i];
-  }
-  return dst;
-}
 
 struct float80_t final {
-  uint8_t data[kEightyBitsInBytes];
+  uint8_t data[10];
 
-  inline ~float80_t(void) = default;
-  inline float80_t(void) : data{0,} {}
-
+  ~float80_t() = default;
+  float80_t() = default;
   float80_t(const float80_t &) = default;
   float80_t &operator=(const float80_t &) = default;
 
-  inline float80_t(native_float80_t ld) {
-    union_ld ldu;
-    memset_impl(&ldu, 0, sizeof(ldu)); // zero out ldu to make padding consistent
-    ldu.ld = ld; // assign native value
-    // copy the representation to this object
-    memcpy_impl(&data[0], &ldu.lds.data[0], sizeof(data));
+  float80_t(native_float80_t ld) {
+    if constexpr (sizeof(ld) < sizeof(data)) {
+      // Native floats are smaller than 80 bits, add padding
+      memcpy_impl(data, &ld, sizeof(ld));
+      memset_impl(data + sizeof(ld), 0, sizeof(data) - sizeof(ld));
+    } else {
+      // Native floats are bigger than 80 bits, truncate
+      memcpy_impl(data, &ld, sizeof(data));
+    }
   }
 
   operator native_float80_t() {
-    union_ld ldu;
-    memset_impl(&ldu, 0, sizeof(ldu)); // zero out ldu to make padding consistent
-    // copy the internal representation into the union
-    memcpy_impl(&ldu.lds.data[0], &data[0], sizeof(data));
-    // extract the native backing type from it
-    return ldu.ld;
+    native_float80_t nf;
+    if constexpr (sizeof(nf) < sizeof(data)) {
+      // Native floats are smaller than 80 bits, truncate
+      memcpy_impl(&nf, data, sizeof(nf));
+    } else {
+      // Native floats are bigger than 80 bits, add padding
+      memcpy_impl((unsigned char*)&nf, data, sizeof(data));
+      memset_impl((unsigned char*)&nf + sizeof(data), 0, sizeof(nf) - sizeof(data));
+    }
+    return nf;
+  }
+
+  static void *memset_impl(void *b, int c, std::size_t len) {
+#if defined(__clang__) || defined(__GNUC__)
+    return __builtin_memset(b, c, len);
+#else
+    auto *p = static_cast<int *>(b);
+    for (std::size_t i = 0; i < len; ++i) {
+      p[i] = c;
+    }
+    return b;
+#endif
+  }
+
+  static void *memcpy_impl(void *dst, const void *src, std::size_t n) {
+#if defined(__clang__) || defined(__GNUC__)
+    return __builtin_memcpy(dst, src, n);
+#else
+    auto *d = static_cast<int *>(dst);
+    const auto *s = static_cast<const int *>(src);
+    for (std::size_t i = 0; i < n; ++i) {
+      d[i] = s[i];
+    }
+    return dst;
+#endif
   }
 } __attribute__((packed));
 
@@ -147,10 +139,10 @@ union nan80_t {
   float80_t d;
   struct {
     uint64_t payload : 62;
-    uint64_t  is_quiet_nan : 1;
-    uint64_t  interger_bit : 1;
-    uint64_t exponent : 15;
-    uint64_t is_negative : 1;
+    uint64_t is_quiet_nan : 1;
+    uint64_t interger_bit : 1;
+    uint16_t exponent : 15;
+    uint16_t is_negative : 1;
   } __attribute__((packed));
 } __attribute__((packed));
 

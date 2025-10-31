@@ -19,7 +19,7 @@
 
 #define PUSH_X87_STACK(x) \
   do { \
-    auto __x = x; \
+    native_float80_t __x = x; \
     state.st.elems[7].val = state.st.elems[6].val; \
     state.st.elems[6].val = state.st.elems[5].val; \
     state.st.elems[5].val = state.st.elems[4].val; \
@@ -37,7 +37,7 @@
 // but this more closely mimics the ring nature of the x87 stack.
 #define POP_X87_STACK() \
   ({ \
-    auto __x = state.st.elems[0].val; \
+    native_float80_t __x = state.st.elems[0].val; \
     state.st.elems[0].val = state.st.elems[1].val; \
     state.st.elems[1].val = state.st.elems[2].val; \
     state.st.elems[2].val = state.st.elems[3].val; \
