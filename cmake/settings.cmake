@@ -1,6 +1,12 @@
 # This is only executed once; use a macro (and not a function) so that
 # everything defined here does not end up in a separate namespace
 macro(main)
+  # Set default build type to Debug for single-config generators
+  if(NOT CMAKE_BUILD_TYPE AND NOT GENERATOR_IS_MULTI_CONFIG)
+      set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+      message(STATUS "CMAKE_BUILD_TYPE not specified, defaulting to Debug")
+  endif()
+
   # overwrite the default install prefix
   if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     if(DEFINED WIN32)
