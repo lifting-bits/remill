@@ -34,157 +34,82 @@ Remill's Linux version can also be built via Docker for quicker testing.
 
 ## Dependencies
 
-Most of Remill's dependencies can be provided by the [cxx-common](https://github.com/lifting-bits/cxx-common) repository. Trail of Bits hosts downloadable, pre-built versions of cxx-common, which makes it substantially easier to get up and running with Remill. Nonetheless, the following table represents most of Remill's dependencies.
+Remill uses the following dependencies:
 
 | Name | Version |
 | ---- | ------- |
 | [Git](https://git-scm.com/) | Latest |
-| [CMake](https://cmake.org/) | 3.14+ |
-| [Google Flags](https://github.com/google/glog) | Latest |
-| [Google Log](https://github.com/google/glog) | Latest |
-| [Google Test](https://github.com/google/googletest) | Latest |
+| [CMake](https://cmake.org/) | 3.21+ |
+| [Ninja](https://ninja.build) | 1+ |
+| [Google Flags](https://github.com/google/glog) | `52e94563` |
+| [Google Log](https://github.com/google/glog) | v0.7.1 |
+| [Google Test](https://github.com/google/googletest) | v1.17.0 |
 | [LLVM](http://llvm.org/) | 15+ |
-| [Clang](http://clang.llvm.org/) | 15 |
-| [Intel XED](https://software.intel.com/en-us/articles/xed-x86-encoder-decoder-software-library) | Latest |
-| [Python](https://www.python.org/) | 2.7 |
-| Unzip | Latest |
-| [ccache](https://ccache.dev/) | Latest |
+| [Clang](http://clang.llvm.org/) | 15+ |
+| [Intel XED](https://github.com/intelxed/xed) | v2022.04.17 |
+| [Python](https://www.python.org/) | 3+ |
 
 ## Getting and Building the Code
 
-### Docker Build
+We will build the project using the superbuild in `dependencies/`. For more details on the dependency management system, see [Remill Dependency Management](docs/DEPENDENCIES.md).
 
-Remill now comes with a Dockerfile for easier testing. This Dockerfile references the [cxx-common](https://github.com/lifting-bits/cxx-common) container to have all pre-requisite libraries available.
+### Clone the repository
 
-The Dockerfile allows for quick builds of multiple supported LLVM, and Ubuntu configurations.
-
-> [!IMPORTANT]
-> Not all LLVM and Ubuntu configurations are supported---Please refer to the CI results to get an idea about configurations that are tested and supported. The Docker image should build on both x86_64 and ARM64, but we only test x86_64 in CI. ARM64 _should build_, but if it doesn't, please open an issue.
-
-Quickstart (builds Remill against LLVM 17 on Ubuntu 22.04).
-
-Clone Remill:
-
-```shell
-git clone https://github.com/lifting-bits/remill.git
+```bash
+git clone https://github.com/lifting-bits/remill
 cd remill
 ```
 
-Build Remill Docker container:
+### Linux/macOS
 
-```shell
-docker build . -t remill \
-     -f Dockerfile \
-     --build-arg UBUNTU_VERSION=22.04 \
-     --build-arg LLVM_VERSION=17
+```bash
+# Step 1: Build dependencies (including LLVM)
+cmake -G Ninja -S dependencies -B dependencies/build
+cmake --build dependencies/build
+
+# Step 2: Build remill
+cmake -G Ninja -B build -DCMAKE_PREFIX_PATH=$(pwd)/dependencies/install -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-Ensure remill works:
+### Windows (requires clang or clang-cl)
 
-Decode some AMD64 instructions to LLVM:
+**Note**: This requires running from a Visual Studio developer prompt.
 
-```shell
-docker run --rm -it remill \
-     --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+```bash
+# Step 1: Build dependencies
+cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+cmake --build dependencies/build
+
+# Step 2: Build remill
+cmake -G Ninja -B build -DCMAKE_PREFIX_PATH=%CD%/dependencies/install -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-Decode some AArch64 instructions to LLVM:
+### macOS with Homebrew LLVM:
 
-```shell
-docker run --rm -it remill \
-     --arch aarch64 --address 0x400544 --ir_out /dev/stdout \
-     --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+```bash
+# Install LLVM via Homebrew
+brew install llvm@17
+LLVM_PREFIX=$(brew --prefix llvm@17)
+
+# Build dependencies with external LLVM
+cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX"
+cmake --build dependencies/build
+
+# Build remill
+cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$(pwd)/dependencies/install" -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-### On Linux
+### Linux with system LLVM:
 
-First, update aptitude and get install the baseline dependencies.
+```bash
+# Build dependencies with external LLVM
+cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON
+cmake --build dependencies/build
 
-```shell
-sudo dpkg --add-architecture i386
-sudo apt-get update
-sudo apt-get upgrade
-
-sudo apt-get install \
-     git \
-     python3 \
-     wget \
-     curl \
-     build-essential \
-     lsb-release \
-     ccache \
-     libc6-dev:i386 \
-     'libstdc++-*-dev:i386' \
-     g++-multilib \
-     rpm
+# Build remill
+cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$(pwd)/dependencies/install" -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
-
-Next, clone the repository. This will clone the code into the `remill` directory.
-
-```shell
-git clone https://github.com/lifting-bits/remill.git
-```
-
-Next, we build Remill. This script will create another directory, `remill-build`,
-in the current working directory. All remaining dependencies needed
-by Remill will be built in the `remill-build` directory.
-
-```shell
-./remill/scripts/build.sh
-```
-
-Next, we can install Remill. Remill itself is a library, and so there is no real way
-to try it. However, you can head on over to the [McSema](https://github.com/lifting-bits/mcsema) repository, which uses Remill for lifting instructions.
-
-```shell
-cd ./remill-build
-sudo make install
-```
-
-We can also build and run Remill's test suite.
-
-```shell
-cd ./remill-build
-make test_dependencies
-make test
-```
-
-### Full Source Builds
-
-Sometimes, you want to build everything from source, including the [cxx-common](https://github.com/lifting-bits/cxx-common) libraries remill depends on. To build against a custom cxx-common location, you can use the following `cmake` invocation:
-
-```sh
-mkdir build
-cd build
-cmake  \
-  -DCMAKE_INSTALL_PREFIX="<path where remill will install>" \
-  -DCMAKE_TOOLCHAIN_FILE="<path to cxx-common directory>/vcpkg/scripts/buildsystems/vcpkg.cmake"  \
-  -G Ninja  \
-  ..
-cmake --build .
-cmake --build . --target install
-```
-
-The output may produce some CMake warnings about policy CMP0003. These warnings are safe to ignore.
-
-### Common Build Issues
-
-If you see errors similar to the following:
-
-```
-fatal error: 'bits/c++config.h' file not found
-```
-
-Then you need to install 32-bit libstdc++ headers and libraries. On a Debian/Ubuntu based distribution, You would want to do something like this:
-
-```sh
-sudo dpkg --add-architecture i386
-sudo apt-get update
-sudo apt-get install libc6-dev:i386 libstdc++-10-dev:i386 g++-multilib
-```
-
-This error happens because the SPARC32 runtime semantics (the bitcode library which lives in `<install directory>/share/remill/<version>/semantics/sparc32.bc`) are built as 32-bit code, but 32-bit development libraries are not installed by default.
-
-A similar situation occurs when building remill on arm64 Linux. In that case, you want to follow a similar workflow, except the architecture used in `dpkg` and `apt-get` commands  would be `armhf` instead of `i386`.
-
-Another alternative is to disable SPARC32 runtime semantics. To do that, use the `-DREMILL_BUILD_SPARC32_RUNTIME=False` option when invoking `cmake`.
