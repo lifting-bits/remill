@@ -23,9 +23,13 @@ set(DEFAULT_BC_COMPILER_FLAGS
   -std=c++17
 )
 
-find_package(Clang CONFIG REQUIRED)
-get_target_property(CLANG_PATH clang LOCATION)
 get_target_property(LLVMLINK_PATH llvm-link LOCATION)
+if(NOT EXISTS "${LLVMLINK_PATH}")
+  message(FATAL_ERROR "llvm-link not found")
+endif()
+
+get_filename_component(LLVMLINK_PATH_DIR ${LLVMLINK_PATH} DIRECTORY)
+find_program(CLANG_PATH NAMES clang++ clang PATHS ${LLVMLINK_PATH_DIR} NO_DEFAULT_PATH REQUIRED)
 
 file(WRITE "${CMAKE_BINARY_DIR}/emitllvm.test.cpp" "int main(int argc, char* argv[]){return 0;}\n\n")
 

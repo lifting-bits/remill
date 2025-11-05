@@ -29,6 +29,7 @@ compile_commands.json
 deps/*
 third_party/*
 build*/
+install*/
 remill-build/*
 generated/*
 gtest_build/*
@@ -40,6 +41,7 @@ tools/remill_disass.egg-info/*
 tools/remill_disass/CFG.proto
 tools/remill_disass/CFG_pb2.py
 
+.venv/
 dist/*
 remill_disass.egg-info/*
 

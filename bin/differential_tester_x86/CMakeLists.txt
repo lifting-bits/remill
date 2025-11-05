@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(Python COMPONENTS Interpreter)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 add_executable(
   lift-and-compare
   LiftAndCompare.cpp
@@ -31,4 +31,4 @@ target_link_libraries(
 set_property(TARGET lift-and-compare PROPERTY ENABLE_EXPORTS ON)
 enable_testing()
 
-add_test(NAME "small_diff_test" COMMAND "${Python_EXECUTABLE}" ${REMILL_SOURCE_DIR}/scripts/diff_tester_export_insns/diff_tester_export_insns/ci_runner.py --required_success_rate 1.0 --difftester_bin ${CMAKE_BINARY_DIR}/bin/differential_tester_x86/lift-and-compare --workdir ${CMAKE_BINARY_DIR} ${REMILL_SOURCE_DIR}/bin/differential_tester_x86/data/small_test/ --whitelist_file ${REMILL_SOURCE_DIR}/bin/differential_tester_x86/whitelist.json)
+add_test(NAME "small_diff_test" COMMAND "${Python3_EXECUTABLE}" ${REMILL_SOURCE_DIR}/scripts/diff_tester_export_insns/diff_tester_export_insns/ci_runner.py --required_success_rate 1.0 --difftester_bin ${CMAKE_BINARY_DIR}/bin/differential_tester_x86/lift-and-compare --workdir ${CMAKE_BINARY_DIR} ${REMILL_SOURCE_DIR}/bin/differential_tester_x86/data/small_test/ --whitelist_file ${REMILL_SOURCE_DIR}/bin/differential_tester_x86/whitelist.json)
