@@ -1,0 +1,146 @@
+name: Build
+on: [push, pull_request]
+
+# Automatically cancel previous runs of this workflow on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    # Skip building pull requests from the same repository
+    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    runs-on: ubuntu-22.04
+    # We use a clean container to avoid LLVM conflicts on the GH runner images
+    container:
+      image: ubuntu:22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm:
+          - "15"
+          - "16"
+          - "17"
+          - "18"
+          - "19"
+          - "20"
+          - "21"
+    steps:
+        - name: Install LLVM and build tools
+          run: |
+            apt update
+            apt install --no-install-recommends -y \
+              lsb-release \
+              wget \
+              software-properties-common \
+              gnupg \
+              cmake \
+              ninja-build \
+              python-is-python3 \
+              python3-pip \
+              python3-setuptools \
+              python3-venv \
+              git
+            wget https://apt.llvm.org/llvm.sh
+            chmod +x llvm.sh
+            ./llvm.sh ${{ matrix.llvm }}
+            apt install --no-install-recommends -y \
+              llvm-${{ matrix.llvm }}-dev
+            echo "LLVM_PREFIX=$$(llvm-config-${{ matrix.llvm }} --prefix)" >> $GITHUB_ENV
+            echo "CC=clang-${{ matrix.llvm }}" >> $GITHUB_ENV
+            echo "CXX=clang++-${{ matrix.llvm }}" >> $GITHUB_ENV
+
+        - name: Checkout
+          uses: actions/checkout@v5
+
+        - name: Add workspace as safe directory (necessary for docker)
+          run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+        - name: Build dependencies
+          run: |
+            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX"
+            cmake --build dependencies/build
+
+        - name: Python venv for tests
+          run: |
+            python3 -m venv .venv
+            .venv/bin/pip install scripts/diff_tester_export_insns
+        
+        - name: Build remill
+          run: |
+            . .venv/bin/activate
+            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$PWD/dependencies/install" "-DCMAKE_INSTALL_PREFIX=$PWD/install"
+            cmake --build build
+
+        - name: Install remill
+          run: |
+            cmake --install build
+
+        - name: Smoketests with installed executable
+          run: |
+            install/bin/remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+            install/bin/remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+            install/bin/remill-lift-${{ matrix.llvm }} --arch aarch32 -ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
+
+        - name: Test remill
+          run: |
+            cmake --build build --target test_dependencies
+            env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
+
+  macos:
+    # Skip building pull requests from the same repository
+    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm:
+          - "15"
+          - "16"
+          - "17"
+          - "18"
+          - "19"
+          - "20"
+          - "21"
+    steps:
+        - name: Install LLVM
+          run: |
+            brew install llvm@${{ matrix.llvm }}
+            LLVM_PREFIX=$(brew --prefix llvm@${{ matrix.llvm }})
+            echo "LLVM_PREFIX=$LLVM_PREFIX" >> $GITHUB_ENV
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+
+        - name: Checkout
+          uses: actions/checkout@v5
+
+        - name: Build dependencies
+          run: |
+            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX"
+            cmake --build dependencies/build
+
+        - name: Python venv for tests
+          run: |
+            python3 -m venv .venv
+            .venv/bin/pip install scripts/diff_tester_export_insns
+        
+        - name: Build remill
+          run: |
+            . .venv/bin/activate
+            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$PWD/dependencies/install" "-DCMAKE_INSTALL_PREFIX=$PWD/install"
+            cmake --build build
+
+        - name: Install remill
+          run: |
+            cmake --install build
+
+        - name: Smoketests with installed executable
+          run: |
+            install/bin/remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
+            install/bin/remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+            install/bin/remill-lift-${{ matrix.llvm }} --arch aarch32 -ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
+
+        - name: Test remill
+          run: |
+            cmake --build build --target test_dependencies
+            env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
