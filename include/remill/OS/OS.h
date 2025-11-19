@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 #ifndef REMILL_OS
@@ -58,7 +59,7 @@ class Triple;
 }  // namespace llvm
 namespace remill {
 
-enum OSName : uint32_t {
+enum OSName : std::uint32_t {
   kOSInvalid,
   kOSmacOS,
   kOSLinux,
