@@ -10,7 +10,7 @@ Remill focuses on accurately lifting instructions. It is meant to be used as a l
 
 ## Build Status
 
-[![Build Status](https://img.shields.io/github/workflow/status/lifting-bits/remill/CI/master)](https://github.com/lifting-bits/remill/actions?query=workflow%3ACI)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/lifting-bits/remill/.github/workflows/build.yml)](https://github.com/lifting-bits/remill/actions/workflows/build.yml)
 
 ## Documentation
 
