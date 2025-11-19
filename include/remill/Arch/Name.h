@@ -90,6 +90,7 @@
 #  endif
 #endif
 
+#include <cstdint>
 #include <string_view>
 
 namespace llvm {
@@ -97,7 +98,7 @@ class Triple;
 }  // namespace llvm
 namespace remill {
 
-enum ArchName : uint32_t {
+enum ArchName : std::uint32_t {
   kArchInvalid,
 
   kArchX86,
