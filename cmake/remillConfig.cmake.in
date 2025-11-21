@@ -16,10 +16,13 @@
 
 set(REMILL_LLVM_VERSION @REMILL_LLVM_VERSION@)
 
+set(GFLAGS_USE_TARGET_NAMESPACE ON)
+
 # External libs
 include(CMakeFindDependencyMacro)
 find_dependency(XED)
 find_dependency(glog)
+find_dependency(gflags)
 find_dependency(LLVM)
 find_dependency(sleigh COMPONENTS Support Specs)
 
