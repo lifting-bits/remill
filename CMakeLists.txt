@@ -347,3 +347,9 @@ if(REMILL_ENABLE_TESTING)
     add_subdirectory(tests/AArch64)
   endif()
 endif()
+
+#
+# Documentation
+#
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/doxygen.cmake")
