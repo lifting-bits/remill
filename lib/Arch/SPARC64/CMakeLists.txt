@@ -31,7 +31,7 @@ add_library(remill_arch_sparc64 STATIC
   Extract.cpp
 )
 
-target_link_libraries(remill_arch_sparc64 LINK_PUBLIC
+target_link_libraries(remill_arch_sparc64 PUBLIC
   remill_settings
 )
 

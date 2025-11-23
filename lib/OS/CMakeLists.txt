@@ -21,7 +21,7 @@ add_library(remill_os STATIC
   OS.cpp
 )
 
-target_link_libraries(remill_os LINK_PRIVATE
+target_link_libraries(remill_os PUBLIC
   remill_settings
 )
 
