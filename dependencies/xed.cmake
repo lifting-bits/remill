@@ -52,7 +52,7 @@ ExternalProject_Add(mbuild
     GIT_REPOSITORY
         "https://github.com/intelxed/mbuild"
     GIT_TAG
-        "v2022.04.17"
+        "v2024.11.04"
     GIT_PROGRESS
         ON
     CONFIGURE_COMMAND
@@ -69,7 +69,7 @@ ExternalProject_Add(xed
     GIT_REPOSITORY
         "https://github.com/intelxed/xed"
     GIT_TAG
-        "v2022.04.17"
+        "v2025.06.08"
     GIT_PROGRESS
         ON
     CMAKE_CACHE_ARGS
