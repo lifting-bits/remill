@@ -1,7 +1,13 @@
 # https://alexreinking.com/blog/how-to-use-cmake-without-the-agonizing-pain-part-1.html
 cmake_minimum_required(VERSION 3.21)
 
-project(cxx-common)
+# Default to a Release config. Required before project() because Windows defaults to Debug
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
+if(CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif()
+
+project(dependencies)
 
 option(USE_EXTERNAL_LLVM "Do not compile LLVM as part of the superbuild, use an external one instead" OFF)
 option(USE_SANITIZERS "Use ASan and UBSan" OFF)
@@ -18,7 +24,7 @@ if(USE_EXTERNAL_LLVM)
             set(CMAKE_PREFIX_PATH "${BREW_LLVM_PREFIX}")
             message(STATUS "Found LLVM keg installed by Homebrew at ${BREW_LLVM_PREFIX}")
         else()
-            message(FATAL_ERROR "LLVM not found, to install: brew install llvm")
+            message(WARNING "LLVM not found, to install: brew install llvm")
         endif()
     endif()
     find_package(LLVM CONFIG REQUIRED)

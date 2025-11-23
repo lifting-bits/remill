@@ -11,12 +11,9 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
 	message(FATAL_ERROR "In-tree builds are not supported. Run CMake from a separate directory: cmake -B build")
 endif()
 
-# Default to a Release config
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 if(CMAKE_BUILD_TYPE STREQUAL "")
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+    message(FATAL_ERROR "CMAKE_BUILD_TYPE is not set")
 endif()
-
 message(STATUS "Configuration: ${CMAKE_BUILD_TYPE}")
 
 # Default to build/install (setting this variable is not recommended and might cause conflicts)
