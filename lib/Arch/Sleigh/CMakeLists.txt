@@ -65,7 +65,7 @@ add_library(remill_arch_sleigh STATIC
 
 add_dependencies(remill_arch_sleigh sleigh_custom_specs)
 
-target_link_libraries(remill_arch_sleigh LINK_PUBLIC
+target_link_libraries(remill_arch_sleigh PUBLIC
   remill_settings
 )
 

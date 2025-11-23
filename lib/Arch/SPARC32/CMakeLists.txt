@@ -33,7 +33,7 @@ if(${REMILL_BUILD_SPARC32_RUNTIME})
   add_subdirectory(Runtime)
 endif()
 
-target_link_libraries(remill_arch_sparc32 LINK_PUBLIC
+target_link_libraries(remill_arch_sparc32 PUBLIC
   remill_settings
 )
 
