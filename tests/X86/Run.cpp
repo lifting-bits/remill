@@ -186,14 +186,14 @@ MAKE_RW_FP_MEMORY(64)
 MAKE_RW_FP_MEMORY(128)
 
 NEVER_INLINE Memory *__remill_read_memory_f80(Memory *, addr_t addr,
-                                              native_float80_t &out) {
-  out = AccessMemory<native_float80_t>(addr);
+                                              float80_t &out) {
+  out = AccessMemory<float80_t>(addr);
   return nullptr;
 }
 
 NEVER_INLINE Memory *__remill_write_memory_f80(Memory *, addr_t addr,
-                                               const native_float80_t &in) {
-  AccessMemory<native_float80_t>(addr) = in;
+                                               const float80_t &in) {
+  AccessMemory<float80_t>(addr) = in;
   return nullptr;
 }
 

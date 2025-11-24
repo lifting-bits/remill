@@ -173,13 +173,13 @@ MAKE_MREAD(64, 64, float, f64)
 #undef MAKE_MREAD
 
 ALWAYS_INLINE static float80_t _Read(Memory *&memory, Mn<float80_t> op) {
-  native_float80_t val;
+  float80_t val;
   memory = __remill_read_memory_f80(memory, op.addr, val);
   return val;
 }
 
 ALWAYS_INLINE static float80_t _Read(Memory *&memory, MnW<float80_t> op) {
-  native_float80_t val;
+  float80_t val;
   memory = __remill_read_memory_f80(memory, op.addr, val);
   return val;
 }
