@@ -359,6 +359,19 @@ static bool DecodeXED(xed_decoded_inst_t *xedd, const xed_state_t *mode,
   auto bytes = reinterpret_cast<const uint8_t *>(inst_bytes.data());
   xed_decoded_inst_zero_set_mode(xedd, mode);
   xed_decoded_inst_set_input_chip(xedd, XED_CHIP_INVALID);
+
+  // Enable LZCNT/TZCNT instructions (required for XED v2025+)
+  // in reference the made in this 
+  // commit: https://github.com/intelxed/xed/commit/1bdc793f5f64cf207f6776f4c0e442e39fa47903
+  // - Backward compatibility for decoder initialization of several ISA features has
+  // been deprecated. Previously default-on features like `P4` (PAUSE), `LZCNT`
+  // (replacing BSR), and `TZCNT` (replacing BSF) are now disabled by default unless
+  // explicitly enabled by users through the raw XED setter APIs or the
+  // chip/chip-features APIs.
+   xed3_operand_set_lzcnt(xedd, 1);
+   xed3_operand_set_tzcnt(xedd, 1);
+   xed3_operand_set_p4(xedd, 1);  // Enable PAUSE as well
+
   auto err = xed_decode(xedd, bytes, static_cast<uint32_t>(num_bytes));
 
   if (XED_ERROR_NONE != err) {
