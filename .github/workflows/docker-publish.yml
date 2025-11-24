@@ -1,0 +1,85 @@
+name: Build and Publish Docker Images
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Automatically cancel previous runs of this workflow on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: ["19", "21"]
+        ubuntu: ["22.04"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=llvm${{ matrix.llvm }}-ubuntu${{ matrix.ubuntu }}-amd64,enable={{is_default_branch}}
+            type=raw,value=llvm${{ matrix.llvm }},enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ matrix.llvm == '21' && github.ref == 'refs/heads/main' }}
+            type=sha,prefix=llvm${{ matrix.llvm }}-
+            type=ref,event=tag,suffix=-llvm${{ matrix.llvm }}
+            type=ref,event=pr,suffix=-llvm${{ matrix.llvm }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            LLVM_VERSION=${{ matrix.llvm }}
+            UBUNTU_VERSION=${{ matrix.ubuntu }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Test Docker image
+        if: github.event_name == 'pull_request'
+        run: |
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:llvm${{ matrix.llvm }} \
+            remill-lift-${{ matrix.llvm }} --version
+
