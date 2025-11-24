@@ -402,7 +402,13 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/BITBYTE/BTS.S"
 #include "tests/X86/BITBYTE/LZCNT.S"
 #include "tests/X86/BITBYTE/SETcc.S"
-#include "tests/X86/BITBYTE/TZCNT.S"
+
+#include "tests/X86/BMI/ANDN.S"
+#include "tests/X86/BMI/BEXTR.S"
+#include "tests/X86/BMI/BLSI.S"
+#include "tests/X86/BMI/BLSMSK.S"
+#include "tests/X86/BMI/BLSR.S"
+#include "tests/X86/BMI/TZCNT.S"
 
 #include "tests/X86/CMOV/CMOVB.S"
 #include "tests/X86/CMOV/CMOVBE.S"
