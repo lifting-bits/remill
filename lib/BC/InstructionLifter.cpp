@@ -593,7 +593,16 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
     auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);
 
     if (val_size < arg_size) {
+      // Because of using the latest version of Intex XED we support (which is currently v2025.06.08),
+      // it reports XMM/YMM registers as vectors instead of integers. When remills tries to extend/truncate
+      // these values we'll bitcast those vectors into integers 
       if (arg_type->isIntegerTy()) {
+        if (val_type->isVectorTy()) {
+          auto int_type = llvm::Type::getIntNTy(module->getContext(), val_size);
+          val = new llvm::BitCastInst(val, int_type, llvm::Twine::createNull(), block);
+
+          val_type = int_type;
+        }
         CHECK(val_type->isIntegerTy())
             << "Expected " << arch_reg.name << " to be an integral type ("
             << "val_type: " << LLVMThingToString(val_type) << ", "
@@ -616,6 +625,13 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
 
     } else if (val_size > arg_size) {
       if (arg_type->isIntegerTy()) {
+        if (val_type->isVectorTy()) {
+          auto int_type = llvm::Type::getIntNTy(module->getContext(), val_size);
+          val = new llvm::BitCastInst(val, int_type, llvm::Twine::createNull(), block);
+
+          val_type = int_type;
+        }
+
         CHECK(val_type->isIntegerTy())
             << "Expected " << arch_reg.name << " to be an integral type ("
             << "val_type: " << LLVMThingToString(val_type) << ", "
