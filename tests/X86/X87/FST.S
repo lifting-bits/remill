@@ -78,6 +78,19 @@ FST_INPUTS
     fstp QWORD PTR [rsp]
 TEST_END_64
 
+TEST_BEGIN_64(FSTPm80, 1)
+TEST_INPUTS(0x0123456789ABCDEF)
+    sub rsp, 16
+    mov QWORD PTR [rsp], ARG1_64
+    mov WORD PTR [rsp + 8], 0x1337
+    fld TBYTE PTR [rsp]
+    mov WORD PTR [rsp + 8], 0x0
+    fstp TBYTE PTR [rsp]
+    mov rax, QWORD PTR [rsp]
+    movzx rbx, WORD PTR [rsp + 8]
+    add rsp, 16
+TEST_END_64
+
 TEST_BEGIN_64(FSTPst, 1)
 FST_INPUTS
 
