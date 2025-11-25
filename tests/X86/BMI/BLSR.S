@@ -24,18 +24,8 @@ TEST_BEGIN(BLSRr32r32_zero, 1)
 TEST_IGNORE_FLAGS(AF PF)
 TEST_INPUTS(0)
 
-    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
-    mov eax, 0x00000007
-    mov ecx, 0x0
-    cpuid
-    and ebx, 0x00000008
-    jz blsr_nop1
-
-    // BLSR with zero: result=0, CF=1, ZF=1
     mov eax, ARG1_32
     blsr edx, eax
-
-blsr_nop1: nop
 
 TEST_END
 
@@ -51,17 +41,8 @@ TEST_INPUTS(
     0x40000000,  // Result: 0, CF=0, ZF=1
     0x80000000)  // Result: 0, CF=0, ZF=1 (MSB)
 
-    // Check CPU for BMI1 support
-    mov eax, 0x00000007
-    mov ecx, 0x0
-    cpuid
-    and ebx, 0x00000008
-    jz blsr_nop2
-
     mov eax, ARG1_32
     blsr edx, eax
-
-blsr_nop2: nop
 
 TEST_END
 
@@ -79,17 +60,8 @@ TEST_INPUTS(
     0x80000001,  // Clear bit 0, result: 0x80000000 (SF=1)
     0x7FFFFFFF)  // Clear bit 0, result: 0x7FFFFFFE
 
-    // Check CPU for BMI1 support
-    mov eax, 0x00000007
-    mov ecx, 0x0
-    cpuid
-    and ebx, 0x00000008
-    jz blsr_nop3
-
     mov eax, ARG1_32
     blsr edx, eax
-
-blsr_nop3: nop
 
 TEST_END
 
@@ -97,18 +69,8 @@ TEST_BEGIN_64(BLSRr64r64_zero, 1)
 TEST_IGNORE_FLAGS(AF PF)
 TEST_INPUTS(0)
 
-    // Check CPU for BMI1 support
-    mov eax, 0x00000007
-    mov ecx, 0x0
-    cpuid
-    and ebx, 0x00000008
-    jz blsr_nop4
-
-    // Result: 0, CF=1, ZF=1
     mov rax, ARG1_64
     blsr rdx, rax
-
-blsr_nop4: nop
 
 TEST_END_64
 
@@ -123,17 +85,8 @@ TEST_INPUTS(
     0x4000000000000000,
     0x8000000000000000)  // MSB
 
-    // Check CPU for BMI1 support
-    mov eax, 0x00000007
-    mov ecx, 0x0
-    cpuid
-    and ebx, 0x00000008
-    jz blsr_nop5
-
     mov rax, ARG1_64
     blsr rdx, rax
-
-blsr_nop5: nop
 
 TEST_END_64
 
@@ -151,17 +104,8 @@ TEST_INPUTS(
     0x8000000000000001,  // Clear bit 0, result: 0x8000000000000000 (SF=1)
     0x7FFFFFFFFFFFFFFF)  // Clear bit 0, result: 0x7FFFFFFFFFFFFFFE
 
-    // Check CPU for BMI1 support
-    mov eax, 0x00000007
-    mov ecx, 0x0
-    cpuid
-    and ebx, 0x00000008
-    jz blsr_nop6
-
     mov rax, ARG1_64
     blsr rdx, rax
-
-blsr_nop6: nop
 
 TEST_END_64
 
@@ -173,18 +117,9 @@ TEST_INPUTS(
     0xFFFFFFFF,
     0x12345678)
 
-    // Check CPU for BMI1 support
-    mov eax, 0x00000007
-    mov ecx, 0x0
-    cpuid
-    and ebx, 0x00000008
-    jz blsr_nop7
-
     push ARG1_64
     blsr edx, DWORD PTR [rsp]
     add rsp, 8
-
-blsr_nop7: nop
 
 TEST_END
 
@@ -196,17 +131,8 @@ TEST_INPUTS(
     0xFFFFFFFFFFFFFFFF,
     0x123456789ABCDEF0)
 
-    // Check CPU for BMI1 support
-    mov eax, 0x00000007
-    mov ecx, 0x0
-    cpuid
-    and ebx, 0x00000008
-    jz blsr_nop8
-
     push ARG1_64
     blsr rdx, QWORD PTR [rsp]
     add rsp, 8
-
-blsr_nop8: nop
 
 TEST_END_64
