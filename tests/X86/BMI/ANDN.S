@@ -14,12 +14,6 @@
  * limitations under the License.
  */
 
-/* ANDN - Logical AND NOT
- * Format: ANDN r32, r32, r/m32
- * Operation: dest = (~src1) & src2
- * Flags: SF, ZF set; CF, OF cleared; AF, PF undefined
- */
-
 #if HAS_FEATURE_AVX
 
 TEST_BEGIN(ANDNr32r32r32_basic, 2)
@@ -34,9 +28,19 @@ TEST_INPUTS(
     0x80000000, 0x80000000,  // Sign bit: (~0x80000000) & 0x80000000 = 0
     0x7FFFFFFF, 0xFFFFFFFF)  // (~0x7FFFFFFF) & 0xFFFFFFFF = 0x80000000 (SF=1)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz andn_nop1
+
+    // ANDN supported, proceed with test:
     mov eax, ARG1_32
     mov edx, ARG2_32
     andn ecx, eax, edx
+
+andn_nop1: nop
 
 TEST_END
 
@@ -52,9 +56,19 @@ TEST_INPUTS(
     0x8000000000000000, 0x8000000000000000,  // Sign bit
     0x7FFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF)  // Result: 0x8000000000000000 (SF=1)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz andn_nop2
+
+    // ANDN supported, proceed with test:
     mov rax, ARG1_64
     mov rdx, ARG2_64
     andn rcx, rax, rdx
+
+andn_nop2: nop
 
 TEST_END_64
 
@@ -65,10 +79,20 @@ TEST_INPUTS(
     0x00000000, 0xABCDEF01,
     0x55555555, 0xAAAAAAAA)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz andn_nop3
+
+    // ANDN supported, proceed with test:
     push ARG2_64
     mov eax, ARG1_32
     andn ecx, eax, DWORD PTR [rsp]
     add rsp, 8
+
+andn_nop3: nop
 
 TEST_END
 
@@ -79,10 +103,20 @@ TEST_INPUTS(
     0x0000000000000000, 0xFEDCBA9876543210,
     0xAAAAAAAAAAAAAAAA, 0x5555555555555555)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz andn_nop4
+
+    // ANDN supported, proceed with test:
     push ARG2_64
     mov rax, ARG1_64
     andn rcx, rax, QWORD PTR [rsp]
     add rsp, 8
+
+andn_nop4: nop
 
 TEST_END_64
 

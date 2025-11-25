@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-/* BLSR - Reset Lowest Set Bit
- * Format: BLSR r32, r/m32
- * Operation: dest = (src - 1) & src
- * Flags: CF set if src==0; ZF, SF set based on result; OF cleared; AF, PF undefined
- */
-
 #if HAS_FEATURE_AVX
 
 TEST_BEGIN(BLSRr32r32_zero, 1)
 TEST_IGNORE_FLAGS(AF PF)
 TEST_INPUTS(0)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsr_nop1
+
+    // BLSR supported, proceed with test:
     mov eax, ARG1_32
     blsr edx, eax
+
+blsr_nop1: nop
 
 TEST_END
 
@@ -43,8 +47,17 @@ TEST_INPUTS(
     0x40000000,  // Result: 0, CF=0, ZF=1
     0x80000000)  // Result: 0, CF=0, ZF=1 (MSB)
 
+    // Check CPU for BMI1 support
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsr_nop2
+
     mov eax, ARG1_32
     blsr edx, eax
+
+blsr_nop2: nop
 
 TEST_END
 
@@ -62,8 +75,18 @@ TEST_INPUTS(
     0x80000001,  // Clear bit 0, result: 0x80000000 (SF=1)
     0x7FFFFFFF)  // Clear bit 0, result: 0x7FFFFFFE
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsr_nop3
+
+    // BLSR supported, proceed with test:
     mov eax, ARG1_32
     blsr edx, eax
+
+blsr_nop3: nop
 
 TEST_END
 
@@ -71,8 +94,18 @@ TEST_BEGIN_64(BLSRr64r64_zero, 1)
 TEST_IGNORE_FLAGS(AF PF)
 TEST_INPUTS(0)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsr_nop4
+
+    // BLSR supported, proceed with test:
     mov rax, ARG1_64
     blsr rdx, rax
+
+blsr_nop4: nop
 
 TEST_END_64
 
@@ -87,8 +120,18 @@ TEST_INPUTS(
     0x4000000000000000,
     0x8000000000000000)  // MSB
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsr_nop5
+
+    // BLSR supported, proceed with test:
     mov rax, ARG1_64
     blsr rdx, rax
+
+blsr_nop5: nop
 
 TEST_END_64
 
@@ -106,8 +149,18 @@ TEST_INPUTS(
     0x8000000000000001,  // Clear bit 0, result: 0x8000000000000000 (SF=1)
     0x7FFFFFFFFFFFFFFF)  // Clear bit 0, result: 0x7FFFFFFFFFFFFFFE
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsr_nop6
+
+    // BLSR supported, proceed with test:
     mov rax, ARG1_64
     blsr rdx, rax
+
+blsr_nop6: nop
 
 TEST_END_64
 
@@ -119,9 +172,19 @@ TEST_INPUTS(
     0xFFFFFFFF,
     0x12345678)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsr_nop7
+
+    // BLSR supported, proceed with test:
     push ARG1_64
     blsr edx, DWORD PTR [rsp]
     add rsp, 8
+
+blsr_nop7: nop
 
 TEST_END
 
@@ -133,9 +196,19 @@ TEST_INPUTS(
     0xFFFFFFFFFFFFFFFF,
     0x123456789ABCDEF0)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsr_nop8
+
+    // BLSR supported, proceed with test:
     push ARG1_64
     blsr rdx, QWORD PTR [rsp]
     add rsp, 8
+
+blsr_nop8: nop
 
 TEST_END_64
 

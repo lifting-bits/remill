@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-/* BLSI - Extract Lowest Set Isolated Bit
- * Format: BLSI r32, r/m32
- * Operation: dest = (-src) & src
- * Flags: CF set if src!=0; ZF, SF set based on result; OF cleared; AF, PF undefined
- */
-
 #if HAS_FEATURE_AVX
 
 TEST_BEGIN(BLSIr32r32_zero, 1)
 TEST_IGNORE_FLAGS(AF PF)
 TEST_INPUTS(0)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsi_nop1
+
+    // BLSI supported, proceed with test:
     mov eax, ARG1_32
     blsi edx, eax
+
+blsi_nop1: nop
 
 TEST_END
 
@@ -45,8 +49,18 @@ TEST_INPUTS(
     0xAAAAAAAA,  // Alternating bits: result=2, CF=1
     0x55555555)  // Alternating bits: result=1, CF=1
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsi_nop2
+
+    // BLSI supported, proceed with test:
     mov eax, ARG1_32
     blsi edx, eax
+
+blsi_nop2: nop
 
 TEST_END
 
@@ -61,8 +75,18 @@ TEST_INPUTS(
     0x40000000,  // 2^30
     0x80000000)  // 2^31 (sign bit)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsi_nop3
+
+    // BLSI supported, proceed with test:
     mov eax, ARG1_32
     blsi edx, eax
+
+blsi_nop3: nop
 
 TEST_END
 
@@ -70,8 +94,18 @@ TEST_BEGIN_64(BLSIr64r64_zero, 1)
 TEST_IGNORE_FLAGS(AF PF)
 TEST_INPUTS(0)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsi_nop4
+
+    // BLSI supported, proceed with test:
     mov rax, ARG1_64
     blsi rdx, rax
+
+blsi_nop4: nop
 
 TEST_END_64
 
@@ -89,8 +123,18 @@ TEST_INPUTS(
     0xAAAAAAAAAAAAAAAA,  // Result: 2
     0x5555555555555555)  // Result: 1
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsi_nop5
+
+    // BLSI supported, proceed with test:
     mov rax, ARG1_64
     blsi rdx, rax
+
+blsi_nop5: nop
 
 TEST_END_64
 
@@ -101,9 +145,19 @@ TEST_INPUTS(
     0xFFFFFFFF,
     0x12345678)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsi_nop6
+
+    // BLSI supported, proceed with test:
     push ARG1_64
     blsi edx, DWORD PTR [rsp]
     add rsp, 8
+
+blsi_nop6: nop
 
 TEST_END
 
@@ -114,9 +168,19 @@ TEST_INPUTS(
     0xFFFFFFFFFFFFFFFF,
     0x123456789ABCDEF0)
 
+    // Check CPU for BMI1 support (cpuid fn 0x00000007, bit 3 of ebx)
+    mov eax, 0x00000007
+    mov ecx, 0x0
+    cpuid
+    and ebx, 0x00000008
+    jz blsi_nop7
+
+    // BLSI supported, proceed with test:
     push ARG1_64
     blsi rdx, QWORD PTR [rsp]
     add rsp, 8
+
+blsi_nop7: nop
 
 TEST_END_64
 
