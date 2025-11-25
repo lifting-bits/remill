@@ -20,6 +20,8 @@
  * Flags: CF set if src!=0; ZF, SF set based on result; OF cleared; AF, PF undefined
  */
 
+#if HAS_FEATURE_AVX
+
 TEST_BEGIN(BLSIr32r32_zero, 1)
 TEST_IGNORE_FLAGS(AF PF)
 TEST_INPUTS(0)
@@ -117,3 +119,5 @@ TEST_INPUTS(
     add rsp, 8
 
 TEST_END_64
+
+#endif  // HAS_FEATURE_AVX

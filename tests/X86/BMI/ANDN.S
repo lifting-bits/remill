@@ -20,6 +20,8 @@
  * Flags: SF, ZF set; CF, OF cleared; AF, PF undefined
  */
 
+#if HAS_FEATURE_AVX
+
 TEST_BEGIN(ANDNr32r32r32_basic, 2)
 TEST_IGNORE_FLAGS(AF PF)
 TEST_INPUTS(
@@ -83,3 +85,5 @@ TEST_INPUTS(
     add rsp, 8
 
 TEST_END_64
+
+#endif  // HAS_FEATURE_AVX

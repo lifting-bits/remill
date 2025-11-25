@@ -19,6 +19,8 @@
  * Control operand format: [15:8] = length, [7:0] = start
  */
 
+#if HAS_FEATURE_AVX
+
 TEST_BEGIN(BEXTRr32r32r32_basic, 2)
 TEST_IGNORE_FLAGS(AF SF PF)
 TEST_INPUTS(
@@ -108,3 +110,5 @@ TEST_INPUTS(
     add rsp, 8
 
 TEST_END_64
+
+#endif  // HAS_FEATURE_AVX
