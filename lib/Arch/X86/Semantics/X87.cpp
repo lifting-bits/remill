@@ -559,6 +559,20 @@ DEF_FPU_SEM(FADDmem, RF80W dst, RF80W src1, T src2) {
 }
 
 template <typename T>
+DEF_FPU_SEM(FADDmem_ST0_implicit, T src) {
+  SetFPUIpOp();
+  SetFPUDp(src);
+  auto st0 = Read(X87_ST0);
+  auto result = CheckedFloatBinOp(state, FAdd80, st0, Float80(Read(src)));
+  Write(X87_ST0, result);
+
+  state.sw.c0 = UUndefined8();
+  state.sw.c2 = UUndefined8();
+  state.sw.c3 = UUndefined8();
+  return memory;
+}
+
+template <typename T>
 DEF_FPU_SEM(FADDP, RF80W dst, RF80W src1, T src2) {
   memory = FADD<T>(memory, state, dst, src1, src2, pc, fop);
   (void) POP_X87_STACK();
@@ -583,6 +597,9 @@ DEF_ISEL(FADD_X87_ST0) = FADD<RF80W>;
 DEF_ISEL(FADDP_X87_ST0) = FADDP<RF80W>;
 DEF_ISEL(FIADD_ST0_MEMmem32int) = FIADD<M32>;
 DEF_ISEL(FIADD_ST0_MEMmem16int) = FIADD<M16>;
+
+DEF_ISEL(FADD_MEMmem32real) = FADDmem_ST0_implicit<MF32>;
+DEF_ISEL(FADD_MEMm64real) = FADDmem_ST0_implicit<MF64>;
 
 namespace {
 
