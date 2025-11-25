@@ -23,7 +23,7 @@ TEST_INPUTS(
     0xFFFFFFFF, 0xFFFF,
     0xFFFFFFFF, 0xFFFFFFFF)
 
-    mov ecx, ARG1_32
+    mov edx, ARG1_32
     mov ebx, ARG2_32
 
     mulx edx, eax, ebx
@@ -40,7 +40,7 @@ TEST_INPUTS(
     0xFFFFFFFFFFFFFFFF, 0xFFFFFFFF,
     0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF)
 
-    mov rcx, ARG1_64
+    mov rdx, ARG1_64
     mov rbx, ARG2_64
 
     mulx rdx, rax, rbx
