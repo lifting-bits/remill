@@ -1638,7 +1638,7 @@ IF_AVX(DEF_ISEL(VMOVDDUP_XMMdq_XMMq) = MOVDDUP<VV128W, V128>;)
 namespace {
 
 template <typename D, typename S1>
-DEF_SEM(SQRTSS, D dst, S1 src1) {
+DEF_SEM(SQRTSS, D dst, D _nop_read, S1 src1) {
 
   // Extract a "single-precision" (32-bit) float from [31:0] of src1 vector:
   auto src_float = FExtractV32(FReadV32(src1), 0);
@@ -1654,7 +1654,7 @@ DEF_SEM(SQRTSS, D dst, S1 src1) {
 }
 
 template <typename D, typename S1>
-DEF_SEM(RSQRTSS, D dst, S1 src1) {
+DEF_SEM(RSQRTSS, D dst, D _nop_read, S1 src1) {
 
   // Extract a "single-precision" (32-bit) float from [31:0] of src1 vector:
   auto src_float = FExtractV32(FReadV32(src1), 0);
@@ -1757,7 +1757,7 @@ DEF_HELPER(SquareRoot64, float64_t src_float)->float64_t {
 }
 
 template <typename D, typename S1>
-DEF_SEM(SQRTSD, D dst, S1 src1) {
+DEF_SEM(SQRTSD, D dst, D _nop_read, S1 src1) {
 
   // Extract a "double-precision" (64-bit) float from [63:0] of src1 vector:
   auto src_float = FExtractV64(FReadV64(src1), 0);

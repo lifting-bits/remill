@@ -46,7 +46,7 @@ Remill uses the following dependencies:
 | [Google Test](https://github.com/google/googletest) | v1.17.0 |
 | [LLVM](http://llvm.org/) | 15+ |
 | [Clang](http://clang.llvm.org/) | 15+ |
-| [Intel XED](https://github.com/intelxed/xed) | v2022.04.17 |
+| [Intel XED](https://github.com/intelxed/xed) | v2025.06.08 |
 | [Python](https://www.python.org/) | 3+ |
 
 ## Getting and Building the Code

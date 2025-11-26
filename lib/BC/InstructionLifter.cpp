@@ -593,7 +593,31 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
     auto arg_size = data_layout.getTypeAllocSizeInBits(arg_type);
 
     if (val_size < arg_size) {
+      // NOTE(xed2025): XED 2025 reports XMM/YMM/ZMM registers as LLVM vector types
+      // (e.g., <4 x float>) instead of integers. When remill needs to zero-extend
+      // these values to a larger integer type, we must first bitcast the vector
+      // to an integer of the same bit width, then perform the extension.
       if (arg_type->isIntegerTy()) {
+        if (val_type->isVectorTy()) {
+          // Vector types can be directly bitcast to integers of the same size.
+          auto int_type = llvm::Type::getIntNTy(module->getContext(), val_size);
+          val = new llvm::BitCastInst(val, int_type, llvm::Twine::createNull(), block);
+
+          val_type = int_type;
+        } else if (val_type->isArrayTy()) {
+          // NOTE(xed2025): Some register types in remill's State structure are
+          // represented as arrays (e.g., X87 FPU stack entries as [10 x i8]).
+          // LLVM does not allow direct bitcast of array types to integers.
+          // Workaround: store array to stack, bitcast the pointer to int*, then load.
+          // This gets optimized away by LLVM but satisfies the type system.
+          auto int_type = llvm::Type::getIntNTy(module->getContext(), val_size);
+          auto temp_alloca = new llvm::AllocaInst(val_type, 0, llvm::Twine::createNull(), block);
+          new llvm::StoreInst(val, temp_alloca, block);
+          auto int_ptr = new llvm::BitCastInst(temp_alloca, llvm::PointerType::get(int_type, 0),
+                                                llvm::Twine::createNull(), block);
+          val = new llvm::LoadInst(int_type, int_ptr, llvm::Twine::createNull(), block);
+          val_type = int_type;
+        }
         CHECK(val_type->isIntegerTy())
             << "Expected " << arch_reg.name << " to be an integral type ("
             << "val_type: " << LLVMThingToString(val_type) << ", "
@@ -615,7 +639,27 @@ llvm::Value *InstructionLifter::LiftRegisterOperand(Instruction &inst,
       }
 
     } else if (val_size > arg_size) {
+      // NOTE(xed2025): Same type conversion issue as above, but for truncation.
+      // XED 2025 may report registers as vectors/arrays that need conversion
+      // to integers before we can truncate them to the smaller argument size.
       if (arg_type->isIntegerTy()) {
+        if (val_type->isVectorTy()) {
+          // Vector types can be directly bitcast to integers of the same size.
+          auto int_type = llvm::Type::getIntNTy(module->getContext(), val_size);
+          val = new llvm::BitCastInst(val, int_type, llvm::Twine::createNull(), block);
+
+          val_type = int_type;
+        } else if (val_type->isArrayTy()) {
+          // Array types require store-bitcast-load pattern (see comment above).
+          auto int_type = llvm::Type::getIntNTy(module->getContext(), val_size);
+          auto temp_alloca = new llvm::AllocaInst(val_type, 0, llvm::Twine::createNull(), block);
+          new llvm::StoreInst(val, temp_alloca, block);
+          auto int_ptr = new llvm::BitCastInst(temp_alloca, llvm::PointerType::get(int_type, 0),
+                                                llvm::Twine::createNull(), block);
+          val = new llvm::LoadInst(int_type, int_ptr, llvm::Twine::createNull(), block);
+          val_type = int_type;
+        }
+
         CHECK(val_type->isIntegerTy())
             << "Expected " << arch_reg.name << " to be an integral type ("
             << "val_type: " << LLVMThingToString(val_type) << ", "

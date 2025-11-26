@@ -359,6 +359,19 @@ static bool DecodeXED(xed_decoded_inst_t *xedd, const xed_state_t *mode,
   auto bytes = reinterpret_cast<const uint8_t *>(inst_bytes.data());
   xed_decoded_inst_zero_set_mode(xedd, mode);
   xed_decoded_inst_set_input_chip(xedd, XED_CHIP_INVALID);
+
+  // Enable LZCNT/TZCNT instructions (required for XED v2025+)
+  // in reference the made in this 
+  // commit: https://github.com/intelxed/xed/commit/1bdc793f5f64cf207f6776f4c0e442e39fa47903
+  // - Backward compatibility for decoder initialization of several ISA features has
+  // been deprecated. Previously default-on features like `P4` (PAUSE), `LZCNT`
+  // (replacing BSR), and `TZCNT` (replacing BSF) are now disabled by default unless
+  // explicitly enabled by users through the raw XED setter APIs or the
+  // chip/chip-features APIs.
+   xed3_operand_set_lzcnt(xedd, 1);
+   xed3_operand_set_tzcnt(xedd, 1);
+   xed3_operand_set_p4(xedd, 1);  // Enable PAUSE as well
+
   auto err = xed_decode(xedd, bytes, static_cast<uint32_t>(num_bytes));
 
   if (XED_ERROR_NONE != err) {
@@ -835,7 +848,8 @@ static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
     case XED_ISA_SET_AVX512BW_128N:
     case XED_ISA_SET_AVX512BW_256:
     case XED_ISA_SET_AVX512BW_512:
-    case XED_ISA_SET_AVX512BW_KOP:
+    case XED_ISA_SET_AVX512BW_KOPD:
+    case XED_ISA_SET_AVX512BW_KOPQ:
     case XED_ISA_SET_AVX512CD_128:
     case XED_ISA_SET_AVX512CD_256:
     case XED_ISA_SET_AVX512CD_512:
@@ -843,7 +857,8 @@ static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
     case XED_ISA_SET_AVX512DQ_128N:
     case XED_ISA_SET_AVX512DQ_256:
     case XED_ISA_SET_AVX512DQ_512:
-    case XED_ISA_SET_AVX512DQ_KOP:
+    case XED_ISA_SET_AVX512DQ_KOPB:
+    case XED_ISA_SET_AVX512DQ_KOPW:
     case XED_ISA_SET_AVX512DQ_SCALAR:
     case XED_ISA_SET_AVX512ER_512:
     case XED_ISA_SET_AVX512ER_SCALAR:
@@ -851,7 +866,7 @@ static bool IsAVX512(xed_isa_set_enum_t isa_set, xed_category_enum_t category) {
     case XED_ISA_SET_AVX512F_128N:
     case XED_ISA_SET_AVX512F_256:
     case XED_ISA_SET_AVX512F_512:
-    case XED_ISA_SET_AVX512F_KOP:
+    case XED_ISA_SET_AVX512F_KOPW:
     case XED_ISA_SET_AVX512F_SCALAR:
     case XED_ISA_SET_AVX512PF_512:
     case XED_ISA_SET_AVX512_4FMAPS_512:
