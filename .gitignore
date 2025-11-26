@@ -101,3 +101,6 @@ obj-intel64/*
 
 #VERSION files from CI
 VERSION
+
+# Doxygen generated documentation
+docs/doxygen/

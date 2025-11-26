@@ -22,6 +22,25 @@ To understand how Remill works you can take a look at the following resources:
 
 If you would like to contribute you can check out: [How to contribute](docs/CONTRIBUTING.md)
 
+### API Documentation
+
+Generate detailed API documentation using Doxygen:
+
+```bash
+# Install Doxygen (macOS)
+brew install doxygen graphviz
+
+# Install Doxygen (Ubuntu/Debian)
+sudo apt-get install doxygen graphviz
+
+# Generate documentation
+doxygen
+
+# Open docs/doxygen/html/index.html in your browser
+```
+
+See [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) for more details on documentation style and contributing.
+
 ## Getting Help
 
 If you are experiencing undocumented problems with Remill then ask for help in the `#binary-lifting` channel of the [Empire Hacking Slack](https://slack.empirehacking.nyc/).
