@@ -1,5 +1,7 @@
 build
 remill-build
+dependencies/build
+dependencies/install
 Dockerfile*
 .travis.yml
 .github*

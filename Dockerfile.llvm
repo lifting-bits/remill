@@ -1,0 +1,111 @@
+# Dockerfile for building remill with specific LLVM versions from apt.llvm.org
+# This approach supports newer LLVM versions (19, 22, etc.)
+
+ARG LLVM_VERSION=22
+ARG UBUNTU_VERSION=22.04
+
+FROM ubuntu:${UBUNTU_VERSION} AS builder
+
+ARG LLVM_VERSION
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    lsb-release \
+    wget \
+    software-properties-common \
+    gnupg \
+    cmake \
+    ninja-build \
+    python-is-python3 \
+    python3-pip \
+    python3-setuptools \
+    python3-venv \
+    git \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install LLVM from apt.llvm.org
+RUN wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && \
+    ./llvm.sh ${LLVM_VERSION} && \
+    apt-get install -y --no-install-recommends llvm-${LLVM_VERSION}-dev && \
+    rm -rf /var/lib/apt/lists/* llvm.sh
+
+# Set environment variables for build
+ENV LLVM_VERSION=${LLVM_VERSION}
+ENV CC=clang-${LLVM_VERSION}
+ENV CXX=clang++-${LLVM_VERSION}
+
+WORKDIR /remill
+
+# Copy source code
+COPY . .
+
+# Configure git (needed for version detection)
+RUN git config --global user.email "docker@remill.local" && \
+    git config --global user.name "Docker Build" && \
+    git config --global --add safe.directory /remill
+
+# Get LLVM prefix
+RUN echo "LLVM_PREFIX=$(llvm-config-${LLVM_VERSION} --prefix)" > /tmp/llvm_env
+
+# Build dependencies (XED, etc.)
+RUN . /tmp/llvm_env && \
+    cmake -G Ninja -S dependencies -B dependencies/build \
+        -DUSE_EXTERNAL_LLVM=ON \
+        "-DCMAKE_PREFIX_PATH=${LLVM_PREFIX}" && \
+    cmake --build dependencies/build
+
+# Setup Python venv for tests
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir scripts/diff_tester_export_insns
+
+# Build remill
+RUN . /tmp/llvm_env && \
+    . /opt/venv/bin/activate && \
+    cmake -G Ninja -B build \
+        "-DCMAKE_PREFIX_PATH=${LLVM_PREFIX};/remill/dependencies/install" \
+        "-DCMAKE_INSTALL_PREFIX=/opt/remill" \
+        -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build
+
+# Run tests
+RUN cmake --build build --target test_dependencies && \
+    env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
+
+# Install
+RUN cmake --install build
+
+# Runtime image
+FROM ubuntu:${UBUNTU_VERSION} AS runtime
+
+ARG LLVM_VERSION
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    gnupg \
+    lsb-release \
+    software-properties-common \
+    ca-certificates \
+    && wget https://apt.llvm.org/llvm.sh \
+    && chmod +x llvm.sh \
+    && ./llvm.sh ${LLVM_VERSION} \
+    && apt-get install -y --no-install-recommends llvm-${LLVM_VERSION} \
+    && rm -rf /var/lib/apt/lists/* llvm.sh
+
+# Copy remill installation
+COPY --from=builder /opt/remill /opt/remill
+
+# Set environment
+ENV LLVM_VERSION=${LLVM_VERSION}
+ENV PATH="/opt/remill/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/lib/llvm-${LLVM_VERSION}/lib:${LD_LIBRARY_PATH}"
+
+# Create entrypoint script
+RUN echo '#!/bin/sh\nexec remill-lift-'${LLVM_VERSION}' "$@"' > /usr/local/bin/entrypoint.sh && \
+    chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
