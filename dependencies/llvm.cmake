@@ -21,6 +21,29 @@ set(LLVM_ARGS
     "-DLLVM_LINK_LLVM_DYLIB:STRING=${BUILD_SHARED_LIBS}"
 )
 
+# LLVM has a bug on Windows where using clang.exe as the compiler fails to detect
+# the host target triple, so we have to specify it manually.
+# Reference: https://github.com/lifting-bits/remill/issues/735#issuecomment-3590986077
+if(WIN32)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT MATCHES "^MSVC$")
+        message(WARNING
+            "Using clang.exe as the compiler on Windows is not well supported.\n"
+            "If you run into issues, use clang-cl instead:\n"
+            "  cmake -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl ...\n"
+        )
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
+                set(LLVM_ARCH "aarch64")
+            else()
+                set(LLVM_ARCH "x86_64")
+            endif()
+        else()
+            set(LLVM_ARCH "i686")
+        endif()
+        list(APPEND LLVM_ARGS "-DLLVM_HOST_TRIPLE:STRING=${LLVM_ARCH}-pc-windows-msvc")
+    endif()
+endif()
+
 if(USE_SANITIZERS)
     list(APPEND LLVM_ARGS "-DLLVM_USE_SANITIZER:STRING=Address;Undefined")
 endif()
