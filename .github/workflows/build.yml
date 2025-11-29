@@ -44,6 +44,7 @@ jobs:
             wget https://apt.llvm.org/llvm.sh
             chmod +x llvm.sh
             ./llvm.sh ${{ matrix.llvm }}
+            apt update
             apt install --no-install-recommends -y \
               llvm-${{ matrix.llvm }}-dev
             echo "LLVM_PREFIX=$$(llvm-config-${{ matrix.llvm }} --prefix)" >> $GITHUB_ENV
@@ -58,7 +59,7 @@ jobs:
 
         - name: Build dependencies
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX"
+            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:PATH=$LLVM_PREFIX"
             cmake --build dependencies/build
 
         - name: Python venv for tests
@@ -69,7 +70,7 @@ jobs:
         - name: Build remill
           run: |
             . .venv/bin/activate
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$PWD/dependencies/install" "-DCMAKE_INSTALL_PREFIX=$PWD/install"
+            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:PATH=$PWD/dependencies/install" "-DCMAKE_INSTALL_PREFIX=$PWD/install"
             cmake --build build
 
         - name: Install remill
@@ -116,7 +117,7 @@ jobs:
 
         - name: Build dependencies
           run: |
-            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX"
+            cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:PATH=$LLVM_PREFIX"
             cmake --build dependencies/build
 
         - name: Python venv for tests
@@ -127,7 +128,7 @@ jobs:
         - name: Build remill
           run: |
             . .venv/bin/activate
-            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$PWD/dependencies/install" "-DCMAKE_INSTALL_PREFIX=$PWD/install"
+            cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:PATH=$PWD/dependencies/install" "-DCMAKE_INSTALL_PREFIX=$PWD/install"
             cmake --build build
 
         - name: Install remill
