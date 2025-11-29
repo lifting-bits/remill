@@ -20,11 +20,37 @@ message(STATUS "Configuration: ${CMAKE_BUILD_TYPE}")
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/../install" CACHE PATH "Install prefix" FORCE)
 endif()
+cmake_path(ABSOLUTE_PATH CMAKE_INSTALL_PREFIX NORMALIZE)
+set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}" CACHE PATH "Install prefix" FORCE)
 message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
 
-# Save the host platform in the install prefix
-make_directory(${CMAKE_INSTALL_PREFIX})
-file(TOUCH ${CMAKE_INSTALL_PREFIX}/${CMAKE_SYSTEM}.build)
+# Verify build configuration hasn't changed
+set(BUILD_CONFIG_FILE "${CMAKE_INSTALL_PREFIX}/.build_config")
+string(JOIN "\n" CURRENT_BUILD_CONFIG
+    "CMAKE_SYSTEM=${CMAKE_SYSTEM}"
+    "CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}"
+    "CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID}"
+    "CMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+    "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
+)
+
+if(EXISTS "${BUILD_CONFIG_FILE}")
+    file(READ "${BUILD_CONFIG_FILE}" PREVIOUS_BUILD_CONFIG)
+    if(NOT PREVIOUS_BUILD_CONFIG STREQUAL CURRENT_BUILD_CONFIG)
+        message(FATAL_ERROR
+            "Build configuration changed!\n"
+            "[previous]\n${PREVIOUS_BUILD_CONFIG}\n"
+            "[current]\n${CURRENT_BUILD_CONFIG}\n"
+            "\n"
+            "Please delete the build and install directories, then reconfigure:\n"
+            "  cmake -E rm -rf \"${CMAKE_BINARY_DIR}\"\n"
+            "  cmake -E rm -rf \"${CMAKE_INSTALL_PREFIX}\"\n"
+        )
+    endif()
+else()
+    file(MAKE_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
+    file(WRITE "${BUILD_CONFIG_FILE}" "${CURRENT_BUILD_CONFIG}")
+endif()
 
 # Git is necessary for submodules
 find_package(Git REQUIRED)
@@ -95,7 +121,16 @@ list(APPEND CMAKE_ARGS
     "-DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}"
     "-DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS} ${ADDITIONAL_FLAGS}"
     "-DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS} ${ADDITIONAL_FLAGS}"
+    "-DCMAKE_POSITION_INDEPENDENT_CODE:STRING=ON"
+    "-DCMAKE_ERROR_DEPRECATED:STRING=OFF"
+    "-DCMAKE_ERROR_DEVELOPER_WARNINGS:STRING=OFF"
 )
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0")
+    list(APPEND CMAKE_ARGS
+        "-DCMAKE_POLICY_VERSION_MINIMUM:STRING=${CMAKE_MINIMUM_REQUIRED_VERSION}"
+    )
+endif()
 
 if(CMAKE_C_COMPILER_LAUNCHER)
     list(APPEND CMAKE_ARGS "-DCMAKE_C_COMPILER_LAUNCHER:STRING=${CMAKE_C_COMPILER_LAUNCHER}")
