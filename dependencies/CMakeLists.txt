@@ -51,6 +51,22 @@ simple_git(https://github.com/google/googletest v1.17.0
 
 include(xed.cmake)
 
-if(NOT USE_EXTERNAL_LLVM)
+set(LLVM_CONFIG "${CMAKE_INSTALL_PREFIX}/lib/cmake/llvm/LLVMConfig.cmake")
+if(USE_EXTERNAL_LLVM)
+    # Create a forwarding LLVMConfig.cmake file that adds the external LLVM to CMAKE_PREFIX_PATH
+    # and then includes the external LLVMConfig.cmake
+    if(NOT EXISTS "${LLVM_DIR}/LLVMConfig.cmake")
+        message(FATAL_ERROR "LLVMConfig.cmake not found in LLVM_DIR (${LLVM_DIR})")
+    endif()
+    file(WRITE "${CMAKE_INSTALL_PREFIX}/lib/cmake/llvm/LLVMConfig.cmake"
+        "if(NOT \"${LLVM_INSTALL_PREFIX}\" IN_LIST CMAKE_PREFIX_PATH)\n"
+        "  list(PREPEND CMAKE_PREFIX_PATH \"${LLVM_INSTALL_PREFIX}\")\n"
+        "  set(CMAKE_PREFIX_PATH \"\${CMAKE_PREFIX_PATH}\" CACHE PATH \"\" FORCE)\n"
+        "  message(STATUS \"Updating CMAKE_PREFIX_PATH: \${CMAKE_PREFIX_PATH}\")\n"
+        "endif()\n"
+        "include(\"${LLVM_DIR}/LLVMConfig.cmake\")\n"
+    )
+else()
+    file(REMOVE "${LLVM_CONFIG}")
     include(llvm.cmake)
 endif()

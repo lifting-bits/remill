@@ -68,21 +68,21 @@ cmake -G Ninja -S dependencies -B dependencies/build
 cmake --build dependencies/build
 
 # Step 2: Build remill
-cmake -G Ninja -B build -DCMAKE_PREFIX_PATH=$(pwd)/dependencies/install -DCMAKE_BUILD_TYPE=Release
+cmake -G Ninja -B build -DCMAKE_PREFIX_PATH:PATH=$(pwd)/dependencies/install -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-### Windows (requires clang or clang-cl)
+### Windows (requires clang-cl)
 
 **Note**: This requires running from a Visual Studio developer prompt.
 
 ```bash
 # Step 1: Build dependencies
-cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+cmake -G Ninja -S dependencies -B dependencies/build -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl
 cmake --build dependencies/build
 
 # Step 2: Build remill
-cmake -G Ninja -B build -DCMAKE_PREFIX_PATH=%CD%/dependencies/install -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release
+cmake -G Ninja -B build -DCMAKE_PREFIX_PATH:PATH=%CD%/dependencies/install -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
@@ -94,11 +94,11 @@ brew install llvm@17
 LLVM_PREFIX=$(brew --prefix llvm@17)
 
 # Build dependencies with external LLVM
-cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX"
+cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON "-DCMAKE_PREFIX_PATH:PATH=$LLVM_PREFIX"
 cmake --build dependencies/build
 
 # Build remill
-cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$(pwd)/dependencies/install" -DCMAKE_BUILD_TYPE=Release
+cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:PATH=$(pwd)/dependencies/install" -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
@@ -110,6 +110,6 @@ cmake -G Ninja -S dependencies -B dependencies/build -DUSE_EXTERNAL_LLVM=ON
 cmake --build dependencies/build
 
 # Build remill
-cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH=$LLVM_PREFIX;$(pwd)/dependencies/install" -DCMAKE_BUILD_TYPE=Release
+cmake -G Ninja -B build "-DCMAKE_PREFIX_PATH:PATH=$(pwd)/dependencies/install" -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
