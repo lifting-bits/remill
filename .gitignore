@@ -17,6 +17,7 @@ Makefile
 
 CMakeLists.txt.user
 .vscode
+.vs
 .idea
 .DS_Store
 .cproject
