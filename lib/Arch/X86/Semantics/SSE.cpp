@@ -2126,33 +2126,33 @@ IF_AVX(DEF_ISEL(VSTMXCSR_MEMd) = STMXCSR;)
 
 namespace {
 
-#define MAKE_PMOVSXx(prefix, suffix, src_width, dst_width, dst_base_type, \
-                     no_elements) \
+#define MAKE_PMOVSXx(prefix, suffix, sWidth, dWidth, elementNum) \
   template <typename D, typename S> \
   DEF_SEM(prefix##PMOVSX##suffix, D dst, S src) { \
-    auto src_vec = SReadV##src_width(src); \
-    auto dst_vec = SClearV##dst_width(SReadV##dst_width(dst)); \
-    _Pragma("unroll") for (auto i = 0u; i < no_elements; i++) { \
-      auto v = SExtTo<dst_base_type>(SExtractV##src_width(src_vec, i)); \
-      dst_vec = SInsertV##dst_width(dst_vec, i, v); \
+    auto src_vec = SReadV##sWidth(src); \
+    auto dst_vec = SClearV##dWidth(SReadV##dWidth(dst)); \
+    _Pragma("unroll") for (auto i = 0u; i < elementNum; i++) { \
+      auto v = SExtTo<int##dWidth##_t, int##sWidth##_t>( \
+          SExtractV##sWidth(src_vec, i)); \
+      dst_vec = SInsertV##dWidth(dst_vec, i, v); \
     } \
-    SWriteV##dst_width(dst, dst_vec); \
+    SWriteV##dWidth(dst, dst_vec); \
     return memory; \
   }
 
-MAKE_PMOVSXx(, BW, 8, 16, int16_t, 8);
-MAKE_PMOVSXx(, BD, 8, 32, int32_t, 4);
-MAKE_PMOVSXx(, BQ, 8, 64, int64_t, 2);
-MAKE_PMOVSXx(, WD, 16, 32, int32_t, 4);
-MAKE_PMOVSXx(, WQ, 16, 64, int64_t, 2);
-MAKE_PMOVSXx(, DQ, 32, 64, int64_t, 2);
+MAKE_PMOVSXx(, BW, 8, 16, 8);
+MAKE_PMOVSXx(, BD, 8, 32, 4);
+MAKE_PMOVSXx(, BQ, 8, 64, 2);
+MAKE_PMOVSXx(, WD, 16, 32, 4);
+MAKE_PMOVSXx(, WQ, 16, 64, 2);
+MAKE_PMOVSXx(, DQ, 32, 64, 2);
 #if HAS_FEATURE_AVX
-MAKE_PMOVSXx(V, BW, 8, 16, int16_t, 16);
-MAKE_PMOVSXx(V, BD, 8, 32, int32_t, 8);
-MAKE_PMOVSXx(V, BQ, 8, 64, int64_t, 4);
-MAKE_PMOVSXx(V, WD, 16, 32, int32_t, 8);
-MAKE_PMOVSXx(V, WQ, 16, 64, int64_t, 4);
-MAKE_PMOVSXx(V, DQ, 32, 64, int64_t, 4);
+MAKE_PMOVSXx(V, BW, 8, 16, 16);
+MAKE_PMOVSXx(V, BD, 8, 32, 8);
+MAKE_PMOVSXx(V, BQ, 8, 64, 4);
+MAKE_PMOVSXx(V, WD, 16, 32, 8);
+MAKE_PMOVSXx(V, WQ, 16, 64, 4);
+MAKE_PMOVSXx(V, DQ, 32, 64, 4);
 
 #endif  // HAS_FEATURE_AVX
 
@@ -2204,33 +2204,33 @@ IF_AVX(DEF_ISEL(VPMOVSXDQ_YMMqq_MEMdq) = VPMOVSXDQ<VV256W, MV128>;)
 
 namespace {
 
-#define MAKE_PMOVZXx(prefix, suffix, src_width, dst_width, dst_base_type, \
-                     no_elements) \
+#define MAKE_PMOVZXx(prefix, suffix, sWidth, dWidth, elementNum) \
   template <typename D, typename S> \
   DEF_SEM(prefix##PMOVZX##suffix, D dst, S src) { \
-    auto src_vec = SReadV##src_width(src); \
-    auto dst_vec = SClearV##dst_width(SReadV##dst_width(dst)); \
-    _Pragma("unroll") for (auto i = 0u; i < no_elements; i++) { \
-      auto v = ZExtTo<dst_base_type>(SExtractV##src_width(src_vec, i)); \
-      dst_vec = SInsertV##dst_width(dst_vec, i, v); \
+    auto src_vec = SReadV##sWidth(src); \
+    auto dst_vec = UClearV##dWidth(UReadV##dWidth(dst)); \
+    _Pragma("unroll") for (auto i = 0u; i < elementNum; i++) { \
+      auto v = ZExtTo<int##dWidth##_t, int##sWidth##_t>( \
+          SExtractV##sWidth(src_vec, i)); \
+      dst_vec = UInsertV##dWidth(dst_vec, i, v); \
     } \
-    SWriteV##dst_width(dst, dst_vec); \
+    UWriteV##dWidth(dst, dst_vec); \
     return memory; \
   }
 
-MAKE_PMOVZXx(, BW, 8, 16, int16_t, 8);
-MAKE_PMOVZXx(, BD, 8, 32, int32_t, 4);
-MAKE_PMOVZXx(, BQ, 8, 64, int64_t, 2);
-MAKE_PMOVZXx(, WD, 16, 32, int32_t, 4);
-MAKE_PMOVZXx(, WQ, 16, 64, int64_t, 2);
-MAKE_PMOVZXx(, DQ, 32, 64, int64_t, 2);
+MAKE_PMOVZXx(, BW, 8, 16, 8);
+MAKE_PMOVZXx(, BD, 8, 32, 4);
+MAKE_PMOVZXx(, BQ, 8, 64, 2);
+MAKE_PMOVZXx(, WD, 16, 32, 4);
+MAKE_PMOVZXx(, WQ, 16, 64, 2);
+MAKE_PMOVZXx(, DQ, 32, 64, 2);
 #if HAS_FEATURE_AVX
-MAKE_PMOVZXx(V, BW, 8, 16, int16_t, 16);
-MAKE_PMOVZXx(V, BD, 8, 32, int32_t, 8);
-MAKE_PMOVZXx(V, BQ, 8, 64, int64_t, 4);
-MAKE_PMOVZXx(V, WD, 16, 32, int32_t, 8);
-MAKE_PMOVZXx(V, WQ, 16, 64, int64_t, 4);
-MAKE_PMOVZXx(V, DQ, 32, 64, int64_t, 4);
+MAKE_PMOVZXx(V, BW, 8, 16, 16);
+MAKE_PMOVZXx(V, BD, 8, 32, 8);
+MAKE_PMOVZXx(V, BQ, 8, 64, 4);
+MAKE_PMOVZXx(V, WD, 16, 32, 8);
+MAKE_PMOVZXx(V, WQ, 16, 64, 4);
+MAKE_PMOVZXx(V, DQ, 32, 64, 4);
 
 #endif  // HAS_FEATURE_AVX
 
