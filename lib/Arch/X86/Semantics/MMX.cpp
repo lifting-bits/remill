@@ -364,7 +364,7 @@ DEF_SEM(PADDUSB, D dst, S1 src1, S2 src2) {
     auto v2 = UExtractV8(src2_vec, i);
     uint8_t v_sum = v1 + v2;
     v_sum = Select(v_sum < v1, static_cast<uint8_t>(-1), v_sum);
-    dst_vec = SInsertV8(dst_vec, i, v_sum);
+    dst_vec = UInsertV8(dst_vec, i, v_sum);
   }
   UWriteV8(dst, dst_vec);
   return memory;
@@ -386,7 +386,7 @@ DEF_SEM(PADDUSW, D dst, S1 src1, S2 src2) {
     auto v2 = UExtractV16(src2_vec, i);
     uint16_t v_sum = v1 + v2;
     v_sum = Select(v_sum < v1, static_cast<uint16_t>(-1), v_sum);
-    dst_vec = SInsertV16(dst_vec, i, v_sum);
+    dst_vec = UInsertV16(dst_vec, i, v_sum);
   }
   UWriteV16(dst, dst_vec);
   return memory;
@@ -431,15 +431,15 @@ DEF_SEM(PHADDW, D dst, S1 src1, S2 src2) {
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV16(lhs_vec, index);
     auto v2 = SExtractV16(lhs_vec, index + 1);
-    auto off = Select(index < tmp_vec_count, 0, 4);
-    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
+    auto off = (size_t) Select(index < tmp_vec_count, 0, 4);
+    auto i = index / 2 + off;
     dst_vec = SInsertV16(dst_vec, i, SAdd(v1, v2));
   }
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV16(rhs_vec, index);
     auto v2 = SExtractV16(rhs_vec, index + 1);
-    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
-    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
+    size_t off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    size_t i = (index + off) / 2;
     dst_vec = SInsertV16(dst_vec, i, SAdd(v1, v2));
   }
   SWriteV16(dst, dst_vec);
@@ -467,15 +467,15 @@ DEF_SEM(PHADDD, D dst, S1 src1, S2 src2) {
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV32(lhs_vec, index);
     auto v2 = SExtractV32(lhs_vec, index + 1);
-    auto off = Select(index < tmp_vec_count, 0, 2);
-    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
+    size_t off = (size_t) Select(index < tmp_vec_count, 0, 2);
+    size_t i = index / 2 + off;
     dst_vec = SInsertV32(dst_vec, i, SAdd(v1, v2));
   }
   _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
     auto v1 = SExtractV32(rhs_vec, index);
     auto v2 = SExtractV32(rhs_vec, index + 1);
-    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
-    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
+    size_t off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    size_t i = (index + off) / 2;
     dst_vec = SInsertV32(dst_vec, i, SAdd(v1, v2));
   }
   SWriteV32(dst, dst_vec);
@@ -534,8 +534,8 @@ DEF_SEM(PHADDSW, D dst, S1 src1, S2 src2) {
     auto value =
         Select(SCmpLt(SAnd(SNot(add_elem), and_elem), decltype(add_elem)(0)),
                decltype(add_elem)(0x8000), tmp);
-    auto off = Select(index < tmp_vec_count, 0, 4);
-    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
+    size_t off = (size_t) Select(index < tmp_vec_count, 0, 4);
+    size_t i = (index / 2) + off;
     dst_vec = SInsertV16(dst_vec, i, value);
   }
 
@@ -552,8 +552,8 @@ DEF_SEM(PHADDSW, D dst, S1 src1, S2 src2) {
     auto value =
         Select(SCmpLt(SAnd(SNot(add_elem), and_elem), decltype(add_elem)(0)),
                decltype(add_elem)(0x8000), tmp);
-    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
-    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
+    size_t off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    size_t i = (index + off) / 2;
     dst_vec = SInsertV16(dst_vec, i, value);
   }
   SWriteV16(dst, dst_vec);
