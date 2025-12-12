@@ -25,11 +25,10 @@ TEST_INPUTS(
     0x0080,
     0x0800)
 
-    // check CPU for TZCNT support first. (cpuid fn 0x00000007, bit 3 of ebx)
-    mov eax, 0x00000007
-    mov ecx, 0x0
+    // Check CPU for ABM support (cpuid fn 0x80000001, bit 5 of ecx)
+    mov eax, 0x80000001
     cpuid
-    and ebx, 0x00000008
+    and ecx, 0x00000020
     jz tzcnt_nop1
 
     // TZCNT supported, proceed with test:
@@ -51,11 +50,10 @@ TEST_INPUTS(
     0x00000080,
     0x08000000)
 
-    // check CPU for TZCNT support first. (cpuid fn 0x00000007, bit 3 of ebx)
-    mov eax, 0x00000007
-    mov ecx, 0x0
+    // Check CPU for ABM support (cpuid fn 0x80000001, bit 5 of ecx)
+    mov eax, 0x80000001
     cpuid
-    and ebx, 0x00000008
+    and ecx, 0x00000020
     jz tzcnt_nop2
 
     // TZCNT supported, proceed with test:
@@ -77,11 +75,10 @@ TEST_INPUTS(
     0x0000000000000080,
     0x0800000000000000)
 
-    // check CPU for TZCNT support first. (cpuid fn 0x00000007, bit 3 of ebx)
-    mov eax, 0x00000007
-    mov ecx, 0x0
+    // Check CPU for ABM support (cpuid fn 0x80000001, bit 5 of ecx)
+    mov eax, 0x80000001
     cpuid
-    and ebx, 0x00000008
+    and ecx, 0x00000020
     jz tzcnt_nop3
 
     // TZCNT supported, proceed with test:

@@ -302,17 +302,6 @@ DEF_SEM(BSWAP_64, R64W dst, R64 src) {
 #endif  // 64 == ADDRESS_SIZE_BITS
 
 template <typename D, typename S>
-DEF_SEM(TZCNT, D dst, S src) {
-  auto val = Read(src);
-  auto count = CountTrailingZeros(val);
-  ClearArithFlags();
-  Write(FLAG_ZF, UCmpEq(UAnd(val, 1), 1));
-  Write(FLAG_CF, ZeroFlag(val));
-  WriteZExt(dst, Select(FLAG_CF, BitSizeOf(src), count));
-  return memory;
-}
-
-template <typename D, typename S>
 DEF_SEM(LZCNT, D dst, S src) {
   auto val = Read(src);
   auto count = CountLeadingZeros(val);
@@ -328,9 +317,6 @@ DEF_SEM(LZCNT, D dst, S src) {
 DEF_ISEL(BSWAP_GPRv_16) = BSWAP_16;
 DEF_ISEL(BSWAP_GPRv_32) = BSWAP_32;
 IF_64BIT(DEF_ISEL(BSWAP_GPRv_64) = BSWAP_64;)
-
-DEF_ISEL_RnW_Mn(TZCNT_GPRv_MEMv, TZCNT);
-DEF_ISEL_RnW_Rn(TZCNT_GPRv_GPRv, TZCNT);
 
 DEF_ISEL_RnW_Mn(LZCNT_GPRv_MEMv, LZCNT);
 DEF_ISEL_RnW_Rn(LZCNT_GPRv_GPRv, LZCNT);
