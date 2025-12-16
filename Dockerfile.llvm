@@ -102,7 +102,6 @@ COPY --from=builder /opt/remill /opt/remill
 # Set environment
 ENV LLVM_VERSION=${LLVM_VERSION}
 ENV PATH="/opt/remill/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/usr/lib/llvm-${LLVM_VERSION}/lib:${LD_LIBRARY_PATH}"
 
 # Create entrypoint script
 RUN echo '#!/bin/sh\nexec remill-lift-'${LLVM_VERSION}' "$@"' > /usr/local/bin/entrypoint.sh && \
