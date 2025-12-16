@@ -27,7 +27,7 @@
 #ifndef _WIN32
 #  include <sys/stat.h>
 #  include <unistd.h>
-#endif
+#endif  // _WIN32
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringExtras.h>
@@ -60,7 +60,7 @@
 namespace {
 #ifdef _WIN32
 extern "C" std::uint32_t GetProcessId(std::uint32_t handle);
-#endif
+#endif  // _WIN32
 
 // We are avoiding the `getpid` name here to make sure we don't
 // conflict with the (deprecated) getpid function from the Windows
@@ -70,7 +70,7 @@ std::uint32_t nativeGetProcessID(void) {
   return GetProcessId(0);
 #else
   return getpid();
-#endif
+#endif  // _WIN32
 }
 }  // namespace
 
@@ -403,8 +403,10 @@ std::unique_ptr<llvm::Module>
 LoadArchSemantics(const Arch *arch,
                   const std::vector<std::filesystem::path> &sem_dirs) {
   auto arch_name = GetArchName(arch->arch_name);
+
   // If `sem_dirs` does not contain the dir, fallback to compiled in paths.
   auto path = FindSemanticsBitcodeFile(arch_name, sem_dirs, true);
+
   // TODO(lukas): We can propagate error up, but we should first check each callsite
   //              properly checks for possible error (this could not return pointer
   //              without value before).
@@ -890,7 +892,7 @@ static llvm::Type *RecontextualizeType(llvm::Type *type,
     case llvm::Type::MetadataTyID: return llvm::Type::getMetadataTy(context);
 #if LLVM_VERSION_MAJOR <= 19
     case llvm::Type::X86_MMXTyID: return llvm::Type::getX86_MMXTy(context);
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
     case llvm::Type::TokenTyID: return llvm::Type::getTokenTy(context);
     case llvm::Type::IntegerTyID: {
       auto int_type = llvm::dyn_cast<llvm::IntegerType>(type);
@@ -1165,7 +1167,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
       case llvm::Instruction::Xor: {
         auto ret = llvm::ConstantExpr::getXor(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1186,7 +1188,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
 #if LLVM_VERSION_MAJOR <= 17
       case llvm::Instruction::ZExt: {
         auto ret = llvm::ConstantExpr::getZExt(
@@ -1196,7 +1198,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
 #if LLVM_VERSION_MAJOR <= 17
       case llvm::Instruction::SExt: {
         auto ret = llvm::ConstantExpr::getSExt(
@@ -1206,7 +1208,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
       case llvm::Instruction::Trunc: {
         auto ret = llvm::ConstantExpr::getTrunc(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1227,7 +1229,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-#endif
+#endif  // LLVM_VERSION_MAJOR
 #if LLVM_VERSION_MAJOR <= 17
       case llvm::Instruction::LShr: {
         const auto b = llvm::dyn_cast<llvm::LShrOperator>(ce);
@@ -1251,7 +1253,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
 #if LLVM_VERSION_MAJOR <= 20
       case llvm::Instruction::Mul: {
         const auto b = llvm::dyn_cast<llvm::MulOperator>(ce);
@@ -1264,7 +1266,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         moved_c = ret;
         return ret;
       }
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
       case llvm::Instruction::IntToPtr: {
         auto ret = llvm::ConstantExpr::getIntToPtr(
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1311,7 +1313,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
         auto in_range = g->getInRange();
 #else
         auto in_range = g->getInRangeIndex();
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
         auto ret = llvm::ConstantExpr::getGetElementPtr(
             source_type,
             MoveConstantIntoModule(ce->getOperand(0), dest_module, value_map,
@@ -1332,7 +1334,8 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
           return ret;
 
         } else if (auto uop = llvm::dyn_cast<llvm::UnaryOperator>(ce)) {
-#if LLVM_VERSION_NUMBER < LLVM_VERSION(16, 0)
+#if LLVM_VERSION_MAJOR < 16
+
           // In LLVM 16, cast is the only unary constexpr.
           if (!uop->isCast()) {
             auto ret = llvm::ConstantExpr::get(
@@ -1342,7 +1345,7 @@ MoveConstantIntoModule(llvm::Constant *c, llvm::Module *dest_module,
             moved_c = ret;
             return ret;
           }
-#endif
+#endif  // LLVM_VERSION_MAJOR
           CHECK(uop->isCast());
           auto ret = llvm::ConstantExpr::getCast(
               ce->getOpcode(),
@@ -1535,7 +1538,7 @@ static void MoveInstructionIntoModule(llvm::Instruction *inst,
       phi->setIncomingBlock(i, incoming_block);
     }
 
-    // Substitute the called function.
+  // Substitute the called function.
   } else if (auto call = llvm::dyn_cast<llvm::CallInst>(inst)) {
     if (auto callee_func = call->getCalledFunction()) {
       if (callee_func->getParent() != dest_module) {
@@ -1617,7 +1620,7 @@ llvm::Metadata *CloneMetadataInto(llvm::Module *source_mod,
     }
     mapped_md = llvm::MDTuple::get(dest_context, mapped_ops);
 
-    // Not supported.
+  // Not supported.
   } else {
     return nullptr;
   }
@@ -1856,7 +1859,7 @@ void MoveFunctionIntoModule(llvm::Function *func, llvm::Module *dest_module) {
     func->setName(func_name);
     dest_module->getFunctionList().push_back(func);
 
-    // TODO(pag): Probably clone it into the destination module.
+  // TODO(pag): Probably clone it into the destination module.
   } else {
     LOG(FATAL) << "TODO: Not yet supported.";
   }
@@ -1931,8 +1934,13 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
   switch (type->getTypeID()) {
     case llvm::Type::HalfTyID: {
       llvm::Type *types[] = {llvm::Type::getFloatTy(context)};
+#if LLVM_VERSION_MAJOR >= 21
+      auto converter = llvm::Intrinsic::getOrInsertDeclaration(
+          module, llvm::Intrinsic::convert_from_fp16, types);
+#else
       auto converter = llvm::Intrinsic::getDeclaration(
           module, llvm::Intrinsic::convert_from_fp16, types);
+#endif  // LLVM_VERSION_MAJOR
       llvm::Value *conv_args[] = {
           ir.CreateCall(intrinsics.read_memory_16, args_2)};
       return ir.CreateFPTrunc(ir.CreateCall(converter, conv_args), type);
@@ -1955,7 +1963,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
     case llvm::Type::X86_MMXTyID:
       return ir.CreateBitCast(ir.CreateCall(intrinsics.read_memory_64, args_2),
                               type);
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
 
     case llvm::Type::IntegerTyID:
       switch (dl.getTypeAllocSize(type)) {
@@ -1978,6 +1986,7 @@ llvm::Value *LoadFromMemory(const IntrinsicTable &intrinsics,
           ir.CreateBitCast(res, llvm::PointerType::get(context, 0));
 
       auto gep_zero = llvm::ConstantInt::get(index_type, 0, false);
+
       // Load one byte at a time from memory, and store it into
       // `res`.
       for (auto i = 0U; i < size; ++i) {
@@ -2108,8 +2117,13 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
   switch (type->getTypeID()) {
     case llvm::Type::HalfTyID: {
       llvm::Type *types[] = {llvm::Type::getFloatTy(context)};
+#if LLVM_VERSION_MAJOR >= 21
+      auto converter = llvm::Intrinsic::getOrInsertDeclaration(
+          module, llvm::Intrinsic::convert_to_fp16, types);
+#else
       auto converter = llvm::Intrinsic::getDeclaration(
           module, llvm::Intrinsic::convert_to_fp16, types);
+#endif  // LLVM_VERSION_MAJOR
       llvm::Value *conv_args[] = {
           ir.CreateFPExt(val_to_store, llvm::Type::getFloatTy(context))};
       args_3[2] = ir.CreateCall(converter, conv_args);
@@ -2138,7 +2152,7 @@ llvm::Value *StoreToMemory(const IntrinsicTable &intrinsics,
       args_3[2] = ir.CreateBitCast(val_to_store, i64_type);
       return ir.CreateCall(intrinsics.write_memory_64, args_3);
     }
-#endif // LLVM_VERSION_MAJOR
+#endif  // LLVM_VERSION_MAJOR
 
     case llvm::Type::IntegerTyID:
       switch (dl.getTypeAllocSize(type)) {
@@ -2299,18 +2313,18 @@ BuildIndexes(const llvm::DataLayout &dl, llvm::Type *type, size_t offset,
         prev_elem_type = elem_type;
         continue;
 
-        // Indexing into the `i`th element.
+      // Indexing into the `i`th element.
       } else if ((offset + elem_offset) <= goal_offset) {
         indexes_out.push_back(llvm::ConstantInt::get(index_type, i, false));
         return BuildIndexes(dl, elem_type, offset + elem_offset, goal_offset,
                             indexes_out);
 
-        // We're indexing into some padding before the current element.
+      // We're indexing into some padding before the current element.
       } else if (i) {
         indexes_out.push_back(llvm::ConstantInt::get(index_type, i - 1, false));
         return {offset + prev_elem_offset, prev_elem_type};
 
-        // We're indexing into some padding at the beginning of this structure.
+      // We're indexing into some padding at the beginning of this structure.
       } else {
         return {offset, type};
       }

@@ -95,10 +95,16 @@ static llvm::Value *ExtractOverflowBitFromCallToIntrinsic(
     llvm::Intrinsic::IndependentIntrinsics intrinsic, llvm::Value *lhs,
     llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
   llvm::Type *overloaded_types[1] = {lhs->getType()};
+#if LLVM_VERSION_MAJOR >= 21
+  llvm::Function *target_instrinsic = llvm::Intrinsic::getOrInsertDeclaration(
+      bldr.GetInsertBlock()->getModule(), intrinsic, overloaded_types);
+#else
   llvm::Function *target_instrinsic = llvm::Intrinsic::getDeclaration(
       bldr.GetInsertBlock()->getModule(), intrinsic, overloaded_types);
+#endif  // LLVM_VERSION_MAJOR
   std::array<llvm::Value *, 2> intrinsic_args = {lhs, rhs};
   llvm::Value *res_val = bldr.CreateCall(target_instrinsic, intrinsic_args);
+
   // The value at index 1 is the overflow bit.
   return bldr.CreateExtractValue(res_val, {1});
 }
@@ -442,6 +448,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
   UniqueRegSpace unknown_regs;
 
   ConstantReplacementContext replacement_cont;
+
   // Generic sleigh arch
   std::vector<std::string> user_op_names;
 
@@ -509,6 +516,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
   ParamPtr CreateMemoryAddress(llvm::Value *offset, VarnodeData vnode) {
     const auto mem_ptr_ref = this->insn_lifter_parent.LoadRegAddress(
         this->target_block, this->state_pointer, kMemoryVariableName);
+
     // compute pointer into memory at offset
 
 
@@ -533,6 +541,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     }
 
     if (this->insn_lifter_parent.ArchHasRegByName(reg_name)) {
+
       // TODO(Ian): will probably need to adjust the pointer here in certain circumstances
       auto reg_ptr = this->insn_lifter_parent.LoadRegAddress(
           bldr.GetInsertBlock(), this->state_pointer, reg_name);
@@ -571,7 +580,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         reg_ptr, llvm::IntegerType::get(this->context, 8 * target_vnode.size));
   }
 
-  //TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
+  // TODO(Ian): Maybe this should be a failable function that returns an unsupported insn in certain failures
   // So the times we need to replace an offset via a context are 3 fold.
   // 1. in Branches where the offset is retrieved directly from the varnode. This isnt handled here.
   // 2. In ram offsets
@@ -579,6 +588,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
   ParamPtr LiftParamPtr(llvm::IRBuilder<> &bldr, VarnodeData vnode) {
     auto space_name = vnode.getAddr().getSpace()->getName();
     if (space_name == "ram") {
+
       // compute pointer into memory at offset
 
       auto constant_offset = this->replacement_cont.LiftOffsetOrReplace(
@@ -599,6 +609,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
       return ConstantValue::CreatConstant(cst_v);
     } else if (space_name == "unique") {
+
       // Uniques must be allocated in the entry block
       llvm::IRBuilder<> entry_bldr(entry_block);
 
@@ -669,9 +680,15 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     }
 
     llvm::Value *intrinsic_args[] = {*inval};
+#if LLVM_VERSION_MAJOR >= 21
+    llvm::Function *intrinsic = llvm::Intrinsic::getOrInsertDeclaration(
+        bldr.GetInsertBlock()->getModule(), intrinsic_id,
+        {(*inval)->getType()});
+#else
     llvm::Function *intrinsic =
         llvm::Intrinsic::getDeclaration(bldr.GetInsertBlock()->getModule(),
                                         intrinsic_id, {(*inval)->getType()});
+#endif  // LLVM_VERSION_MAJOR
     return this->LiftStoreIntoOutParam(
         bldr,
         this->CastFloatResult(bldr, *outvar,
@@ -723,6 +740,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       case OpCode::CPUI_FLOAT_NAN: {
         auto nan_inval = this->LiftFloatInParam(bldr, input_var);
         if (nan_inval.has_value()) {
+
           // LLVM trunk has an `isnan` intrinsic but to support older versions, I think we need to do this.
           auto isnan_check = bldr.CreateZExt(
               bldr.CreateNot(bldr.CreateFCmpORD(*nan_inval, *nan_inval)),
@@ -745,6 +763,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         auto float2float_inval = this->LiftFloatInParam(bldr, input_var);
         auto new_float_type = this->GetFloatTypeOfByteSize(input_var.size);
         if (float2float_inval.has_value() && new_float_type) {
+
           // This is a no-op until we make a helper to select an appropriate float type for a given node size.
           return this->LiftStoreIntoOutParam(
               bldr,
@@ -758,6 +777,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       case OpCode::CPUI_FLOAT_TRUNC: {
         auto trunc_inval = this->LiftFloatInParam(bldr, input_var);
         if (trunc_inval.has_value()) {
+
           // Should this be UI?
           auto converted = bldr.CreateFPToSI(
               *trunc_inval,
@@ -788,6 +808,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         auto bneg_inval = this->LiftInParam(bldr, input_var, byte_type);
         ;
         if (bneg_inval.has_value()) {
+
           // TODO(Ian): is there a more optimization friendly way to get logical not on a byte?
           return this->LiftStoreIntoOutParam(
               bldr,
@@ -812,6 +833,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
       case OpCode::CPUI_BRANCH:
       case OpCode::CPUI_CALL: {
+
         // directs dont read the address of the variable, the offset is the jump
         // TODO(Ian): handle other address spaces
         if (isVarnodeInConstantSpace(input_var)) {
@@ -871,9 +893,16 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         auto ctpop_inval = this->LiftIntegerInParam(bldr, input_var);
         if (ctpop_inval.has_value()) {
           llvm::Type *overloaded_types[1] = {(*ctpop_inval)->getType()};
+#if LLVM_VERSION_MAJOR >= 21
+          llvm::Function *ctpop_intrinsic =
+              llvm::Intrinsic::getOrInsertDeclaration(
+                  bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::ctpop,
+                  overloaded_types);
+#else
           llvm::Function *ctpop_intrinsic = llvm::Intrinsic::getDeclaration(
               bldr.GetInsertBlock()->getModule(), llvm::Intrinsic::ctpop,
               overloaded_types);
+#endif  // LLVM_VERSION_MAJOR
 
           std::array<llvm::Value *, 1> ctpop_args = {*ctpop_inval};
           llvm::Value *ctpop_val = this->FixResultForOutVarnode(
@@ -964,10 +993,11 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     }
 
     auto i1 = llvm::IntegerType::get(this->context, 1);
+
     // TODO(Ian): this should probably technically be != 0
-    auto trunc_should_branch = bldr.CreateTrunc(
-        *should_branch, i1 );
+    auto trunc_should_branch = bldr.CreateTrunc(*should_branch, i1);
     if (!isVarnodeInConstantSpace(lhs)) {
+
       // directs dont read the address of the variable, the offset is the jump
       // TODO(Ian): handle other address spaces
       auto jump_addr = this->replacement_cont.LiftOffsetOrReplace(
@@ -975,7 +1005,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
 
       auto orig_pc_value = this->GetNextPc(bldr);
-      //CHECK(pc_reg_param.has_value());
+
+      // CHECK(pc_reg_param.has_value());
       auto next_pc_value =
           bldr.CreateSelect(trunc_should_branch, jump_addr, orig_pc_value);
 
@@ -1003,6 +1034,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                    << remill::LLVMThingToString(*lifted_rhs);
         auto orig_res = op_func(*lifted_lhs, *lifted_rhs, bldr);
         if (INTEGER_COMP_OPS.find(opc) != INTEGER_COMP_OPS.end()) {
+
           // Comparison operators always return a byte
           if (orig_res->getType()->getIntegerBitWidth() != 8) {
             orig_res = bldr.CreateZExt(
@@ -1222,6 +1254,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           bldr, rhs, llvm::IntegerType::get(this->context, rhs.size * 8));
 
       if (lifted_lhs.has_value() && lifted_rhs.has_value()) {
+
         // Widen the most significant operand and then left shift it to make room for the least significant operand.
         auto ms_operand = bldr.CreateZExt(
             *lifted_lhs, llvm::IntegerType::get(this->context, outvar->size));
@@ -1258,12 +1291,14 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     }
 
     if (opc == OpCode::CPUI_INDIRECT && outvar) {
+
       // TODO(alex): This isn't clear to me from the documentation.
       // I'll probably need to find some code that generates this op in order to understand how to handle it.
       return LiftStatus::kLiftedUnsupportedInstruction;
     }
 
     if (opc == OpCode::CPUI_NEW && outvar) {
+
       // NOTE(alex): We shouldn't encounter this op as it only get generated when lifting Java or
       // Dalvik bytecode
       return LiftStatus::kLiftedUnsupportedInstruction;
@@ -1329,6 +1364,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                             std::optional<VarnodeData> outvar,
                             VarnodeData *vars, int4 isize) {
     switch (opc) {
+
       // We shouldnt encounter this afaik MULTIEQUAL is a decompiler concept?
       case OpCode::CPUI_MULTIEQUAL: {
         llvm::Type *phi_type =
@@ -1348,6 +1384,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         return this->LiftStoreIntoOutParam(bldr, phi_node, outvar);
       }
       case OpCode::CPUI_CPOOLREF: {
+
         // NOTE(alex): We shouldn't encounter this op as it only get generated when lifting Java or
         // Dalvik bytecode
         return LiftStatus::kLiftedUnsupportedInstruction;
@@ -1447,6 +1484,7 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
   void LiftPcodeOp(llvm::IRBuilder<> &bldr, OpCode opc,
                    std::optional<VarnodeData> outvar, VarnodeData *vars,
                    int4 isize) {
+
     // The MULTIEQUAL op has variadic operands
     if (opc == OpCode::CPUI_MULTIEQUAL || opc == OpCode::CPUI_CPOOLREF) {
       this->UpdateStatus(this->LiftVariadicOp(bldr, opc, outvar, vars, isize),
@@ -1731,7 +1769,7 @@ SleighLifter::LiftIntoInternalBlockWithSleighState(
       exit_builder.GetInsertBlock(), *this->GetIntrinsicTable()));
 
 
-  //TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
+  // TODO(Ian): make a safe to use sleighinstruction context that wraps a context with an arch to preform reset reinits
 
 
   auto cfg = sleigh::CreateCFG(pcode_record.ops);
@@ -1803,11 +1841,14 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
       intoblock_builer.CreateLoad(this->GetWordType(), next_pc_ref);
 
 
-  intoblock_builer.CreateStore(intoblock_builer.CreateZExtOrTrunc( this->decoder.LiftPcFromCurrPc(
-                                   intoblock_builer, next_pc, inst.bytes.size(),
-                                   DecodingContext(context_values)), pc_ref_type),
-                               pc_ref);
-                               
+  intoblock_builer.CreateStore(
+      intoblock_builer.CreateZExtOrTrunc(
+          this->decoder.LiftPcFromCurrPc(intoblock_builer, next_pc,
+                                         inst.bytes.size(),
+                                         DecodingContext(context_values)),
+          pc_ref_type),
+      pc_ref);
+
   intoblock_builer.CreateStore(
       intoblock_builer.CreateAdd(
           next_pc,
@@ -1828,7 +1869,7 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
   intoblock_builer.CreateStore(intoblock_builer.CreateCall(target_func, args),
                                remill::LoadMemoryPointerRef(block));
 
-  //NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
+  // NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   DLOG(INFO) << res.first;
 
   return res.first;
