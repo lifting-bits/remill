@@ -1794,7 +1794,7 @@ DEF_HELPER(SquareRoot64, float64_t src_float)->float64_t {
       uint64_t indef_qnan = 0xFFF8000000000000ULL;
       square_root = reinterpret_cast<float64_t &>(indef_qnan);
     } else {
-      square_root = std::sqrt(src_float);
+      square_root = __builtin_sqrt(src_float);
     }
   }
 
