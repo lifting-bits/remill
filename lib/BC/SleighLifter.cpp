@@ -1659,12 +1659,12 @@ std::map<OpCode, SleighLifter::PcodeToLLVMEmitIntoBlock::BinaryOperator>
          }},
         {OpCode::CPUI_INT_LESSEQUAL,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           return bldr.CreateZExt(bldr.CreateICmpSLE(lhs, rhs),
+           return bldr.CreateZExt(bldr.CreateICmpULE(lhs, rhs),
                                   llvm::IntegerType::get(bldr.getContext(), 8));
          }},
         {OpCode::CPUI_INT_SLESSEQUAL,
          [](llvm::Value *lhs, llvm::Value *rhs, llvm::IRBuilder<> &bldr) {
-           return bldr.CreateZExt(bldr.CreateICmpULE(lhs, rhs),
+           return bldr.CreateZExt(bldr.CreateICmpSLE(lhs, rhs),
                                   llvm::IntegerType::get(bldr.getContext(), 8));
          }},
         {OpCode::CPUI_INT_CARRY,
