@@ -30,6 +30,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <remill/Arch/Arch.h>
+#include <remill/Arch/Runtime/State.h>
 #include <remill/Arch/Runtime/HyperCall.h>
 #include <remill/BC/InstructionLifter.h>
 #include <remill/BC/IntrinsicTable.h>
@@ -188,10 +189,27 @@ MemoryHandler *__remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
 
 struct State;
 
-// PowerPC syscalls leave a `__remill_sync_hyper_call` invocation.
-// Create an empty stub implementation so we can still execute our LLVM code.
-MemoryHandler *__remill_sync_hyper_call(State &state, MemoryHandler *mem,
+// Some instruction sets leave a `__remill_sync_hyper_call` invocation.
+// Provide a minimal stub so we can still execute lifted code.
+MemoryHandler *__remill_sync_hyper_call(ArchState &state, MemoryHandler *mem,
                                         SyncHyperCall::Name call) {
+  switch (call) {
+    case SyncHyperCall::kRISCVEmulateInstruction:
+    case SyncHyperCall::kAssertPrivileged:
+      state.hyper_call = AsyncHyperCall::kRISCVEmulateInstruction;
+      break;
+
+    case SyncHyperCall::kRISCVSysCall:
+      state.hyper_call = AsyncHyperCall::kRISCVSysCall;
+      break;
+
+    case SyncHyperCall::kRISCVBreak:
+      state.hyper_call = AsyncHyperCall::kRISCVBreak;
+      break;
+
+    default:
+      break;
+  }
   return mem;
 }
 }

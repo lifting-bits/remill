@@ -1439,6 +1439,50 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
         return kLiftedInstruction;
       }
+
+      if (insn.arch_name == ArchName::kArchRISCV32 ||
+          insn.arch_name == ArchName::kArchRISCV64) {
+        if (other_func_name == kSysCallName || other_func_name == "ecall") {
+          DLOG(INFO) << "Invoking RISC-V ecall hypercall";
+
+          const auto mem_ptr_ref = LoadMemoryPointerRef(bldr.GetInsertBlock());
+          auto mem_ptr =
+              bldr.CreateLoad(insn_lifter_parent.GetMemoryType(), mem_ptr_ref);
+
+          const auto hyper_call_int =
+              static_cast<uint32_t>(SyncHyperCall::Name::kRISCVSysCall);
+          auto hyper_call = llvm::ConstantInt::get(
+              llvm::IntegerType::get(this->context, 32), hyper_call_int);
+          std::array<llvm::Value *, 3> args = {state_pointer, mem_ptr,
+                                               hyper_call};
+
+          auto new_mem_ptr = bldr.CreateCall(
+              insn_lifter_parent.GetIntrinsicTable()->sync_hyper_call, args);
+          bldr.CreateStore(new_mem_ptr, mem_ptr_ref);
+          return kLiftedInstruction;
+        }
+
+        if (other_func_name == "ebreak" || other_func_name == "break" ||
+            other_func_name == "breakpoint") {
+          DLOG(INFO) << "Invoking RISC-V ebreak hypercall";
+
+          const auto mem_ptr_ref = LoadMemoryPointerRef(bldr.GetInsertBlock());
+          auto mem_ptr =
+              bldr.CreateLoad(insn_lifter_parent.GetMemoryType(), mem_ptr_ref);
+
+          const auto hyper_call_int =
+              static_cast<uint32_t>(SyncHyperCall::Name::kRISCVBreak);
+          auto hyper_call = llvm::ConstantInt::get(
+              llvm::IntegerType::get(this->context, 32), hyper_call_int);
+          std::array<llvm::Value *, 3> args = {state_pointer, mem_ptr,
+                                               hyper_call};
+
+          auto new_mem_ptr = bldr.CreateCall(
+              insn_lifter_parent.GetIntrinsicTable()->sync_hyper_call, args);
+          bldr.CreateStore(new_mem_ptr, mem_ptr_ref);
+          return kLiftedInstruction;
+        }
+      }
       DLOG(ERROR) << "Unsupported pcode intrinsic: " << *other_func_name;
     }
     return kLiftedUnsupportedInstruction;
@@ -1869,8 +1913,22 @@ LiftStatus SleighLifter::LiftIntoBlockWithSleighState(
       remill::LoadBranchTakenRef(block),
       remill::LoadNextProgramCounterRef(block)};
 
-  intoblock_builer.CreateStore(intoblock_builer.CreateCall(target_func, args),
-                               remill::LoadMemoryPointerRef(block));
+  const bool is_riscv = inst.arch_name == ArchName::kArchRISCV32 ||
+                        inst.arch_name == ArchName::kArchRISCV64;
+  if (is_riscv) {
+    const auto [x0_ref, x0_ref_type] = LoadRegAddress(block, state_ptr, "X0");
+    intoblock_builer.CreateStore(llvm::ConstantInt::get(x0_ref_type, 0),
+                                 x0_ref);
+  }
+
+  auto *const call_res = intoblock_builer.CreateCall(target_func, args);
+  intoblock_builer.CreateStore(call_res, remill::LoadMemoryPointerRef(block));
+
+  if (is_riscv) {
+    const auto [x0_ref, x0_ref_type] = LoadRegAddress(block, state_ptr, "X0");
+    intoblock_builer.CreateStore(llvm::ConstantInt::get(x0_ref_type, 0),
+                                 x0_ref);
+  }
 
   // NOTE(Ian): If we made it past decoding we should be able to decode the bytes again
   DLOG(INFO) << res.first;
