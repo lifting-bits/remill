@@ -157,15 +157,42 @@ void ExecuteLiftedFunction(
   // expect traditional remill lifted insn
   assert(func->arg_size() == 3);
 
-  auto returned =
-      (void *(*) (T *, uint32_t, void *) ) engine->getFunctionAddress(
-          target->getName().str());
-
-  assert(returned != nullptr);
   auto orig_pc = program_counter_fetch(state);
+
+  auto *const ftype = target->getFunctionType();
+  CHECK_NOTNULL(ftype);
+  CHECK_EQ(ftype->getNumParams(), 3u);
+
+  auto *const pc_type = ftype->getParamType(1u);
+  auto *const pc_int_type = llvm::dyn_cast<llvm::IntegerType>(pc_type);
+  CHECK_NOTNULL(pc_int_type);
+  const unsigned pc_bit_width = pc_int_type->getBitWidth();
+
+  const auto fn_addr = engine->getFunctionAddress(target->getName().str());
+  CHECK_NE(fn_addr, 0u);
+
+  using LiftedFn32 = void *(*) (T *, uint32_t, void *);
+  using LiftedFn64 = void *(*) (T *, uint64_t, void *);
+
+  LiftedFn32 fn32 = nullptr;
+  LiftedFn64 fn64 = nullptr;
+
+  if (pc_bit_width == 32) {
+    fn32 = reinterpret_cast<LiftedFn32>(fn_addr);
+  } else if (pc_bit_width == 64) {
+    fn64 = reinterpret_cast<LiftedFn64>(fn_addr);
+  } else {
+    LOG(FATAL) << "Unexpected PC width in lifted function: " << pc_bit_width;
+  }
+
   // run until we terminate and exit pc
   while (program_counter_fetch(state) == orig_pc) {
-    returned(state, program_counter_fetch(state), handler);
+    const auto pc = program_counter_fetch(state);
+    if (fn32) {
+      (void) fn32(state, static_cast<uint32_t>(pc), handler);
+    } else {
+      (void) fn64(state, pc, handler);
+    }
   }
 }
 
