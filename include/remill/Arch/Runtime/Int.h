@@ -74,6 +74,9 @@ typedef __int128_t int128_t;
 #elif defined(__sparc__)
 typedef __uint128_t uint128_t;
 typedef __int128_t int128_t;
+#elif defined(__SIZEOF_INT128__) && (__SIZEOF_INT128__ == 16)
+typedef unsigned __int128 uint128_t;
+typedef __int128 int128_t;
 #elif defined(__is_identifier) && __is_identifier(_BitInt)
 typedef unsigned _BitInt(128) uint128_t;
 typedef signed _BitInt(128) int128_t;
