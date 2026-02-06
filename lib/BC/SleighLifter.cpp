@@ -1422,17 +1422,20 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         DLOG(INFO) << "Invoking syscall";
 
         const auto mem_ptr_ref = LoadMemoryPointerRef(bldr.GetInsertBlock());
+        auto mem_ptr =
+            bldr.CreateLoad(insn_lifter_parent.GetMemoryType(), mem_ptr_ref);
 
         // Get a LLVM value for the sync hyper call enumeration.
         auto hyper_call_int =
             static_cast<uint32_t>(SyncHyperCall::Name::kPPCSysCall);
         auto hyper_call = llvm::ConstantInt::get(
             llvm::IntegerType::get(this->context, 32), hyper_call_int);
-        std::array<llvm::Value *, 3> args = {state_pointer, mem_ptr_ref,
+        std::array<llvm::Value *, 3> args = {state_pointer, mem_ptr,
                                              hyper_call};
 
-        bldr.CreateCall(insn_lifter_parent.GetIntrinsicTable()->sync_hyper_call,
-                        args);
+        auto new_mem_ptr = bldr.CreateCall(
+            insn_lifter_parent.GetIntrinsicTable()->sync_hyper_call, args);
+        bldr.CreateStore(new_mem_ptr, mem_ptr_ref);
 
         return kLiftedInstruction;
       }
