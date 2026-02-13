@@ -149,7 +149,6 @@ target_include_directories(remill_settings INTERFACE
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND MSVC)
   # warnings and compiler settings
   target_compile_options(remill_settings INTERFACE
-    "$<$<CONFIG:Debug>:/MDd>$<$<CONFIG:Release>:/MD>"
     /nologo /W3 /EHsc /wd4141 /wd4146 /wd4180 /wd4244
     /wd4258 /wd4267 /wd4291 /wd4345 /wd4351 /wd4355 /wd4456
     /wd4457 /wd4458 /wd4459 /wd4503 /wd4624 /wd4722 /wd4800
