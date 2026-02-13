@@ -247,7 +247,7 @@ class TestSpecRunner {
       prec(*mem_hand);
     }
 
-    test_runner::ExecuteLiftedFunction<AArch32State, uint32_t>(
+    test_runner::ExecuteLiftedFunction<AArch32State>(
         new_func, test.target_bytes.length(), &st, mem_hand.get(),
         [](AArch32State *st) { return st->gpr.r15.dword; });
 

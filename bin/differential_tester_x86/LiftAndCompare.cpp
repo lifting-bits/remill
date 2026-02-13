@@ -267,11 +267,11 @@ class ComparisonRunner {
     auto mem_handler =
         std::make_unique<test_runner::MemoryHandler>(this->endian);
     auto pc_fetch = [](X86State *st) { return st->gpr.rip.qword; };
-    test_runner::ExecuteLiftedFunction<X86State, uint64_t>(
-        f1, insn_length, &func1_state, mem_handler.get(), pc_fetch);
+    test_runner::ExecuteLiftedFunction<X86State>(f1, insn_length, &func1_state,
+                                                 mem_handler.get(), pc_fetch);
     auto second_handler = std::make_unique<test_runner::MemoryHandler>(
         this->endian, mem_handler->GetUninitializedReads());
-    test_runner::ExecuteLiftedFunction<X86State, uint64_t>(
+    test_runner::ExecuteLiftedFunction<X86State>(
         f2, insn_length, &func2_state, second_handler.get(), pc_fetch);
 
 

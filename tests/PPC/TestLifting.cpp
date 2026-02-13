@@ -223,9 +223,9 @@ class TestSpecRunner {
       prec(*mem_hand);
     }
 
-    test_runner::ExecuteLiftedFunction<S, uint64_t>(
-        new_func, test.target_bytes.length(), &st, mem_hand.get(),
-        [](S *st) { return st->pc.qword; });
+    test_runner::ExecuteLiftedFunction<S>(new_func, test.target_bytes.length(),
+                                          &st, mem_hand.get(),
+                                          [](S *st) { return st->pc.qword; });
 
     LOG(INFO) << "Pc after execute " << st.pc.qword;
     test.CheckResultingState(st);

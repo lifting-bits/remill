@@ -106,7 +106,7 @@ CopyFunctionIntoNewModule(llvm::Module *target, const llvm::Function *old_func,
 
 void *MissingFunctionStub(const std::string &name);
 
-template <typename T, typename P>
+template <typename T>
 void ExecuteLiftedFunction(
     llvm::Function *func, size_t insn_length, T *state,
     test_runner::MemoryHandler *handler,
