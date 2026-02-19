@@ -17,18 +17,16 @@
 #include <gtest/gtest.h>
 #include <llvm/IR/LLVMContext.h>
 #include <remill/Arch/Name.h>
-#include <remill/OS/OS.h>
-#include <test_runner/TestRunner.h>
 
 #include <cstdint>
 
-#include "TestHarness.h"
+#include "RISCVTestSpec.h"
 #include "TestUtil.h"
 
 TEST(RISCV64, LrScD_Success) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV64);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+  auto &lifter = runner.GetLifter();
 
   test_runner::MemoryHandler mem(llvm::endianness::little);
   const uint64_t data_addr = 0x4000;
@@ -44,8 +42,7 @@ TEST(RISCV64, LrScD_Success) {
   // lr.d x3, (x1)
   const auto lr = riscv::EncodeLrD(/*rd=*/3, /*rs1=*/1);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV64>(
-      lifter, "riscv64_lr_d_x3_x1", riscv::Bytes32(lr), /*addr=*/0x1000, &st,
-      &mem);
+      lifter, "riscv64_lr_d_x3_x1", riscv::Bytes32(lr), 0x1000, &st, &mem);
 
   EXPECT_EQ(st.gpr.x3.qword, old_val);
   EXPECT_EQ(st.reserve_address.qword, data_addr);
@@ -56,8 +53,7 @@ TEST(RISCV64, LrScD_Success) {
   // sc.d x4, x2, (x1)
   const auto sc = riscv::EncodeScD(/*rd=*/4, /*rs2=*/2, /*rs1=*/1);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV64>(
-      lifter, "riscv64_sc_d_x4_x2_x1", riscv::Bytes32(sc), /*addr=*/0x1004, &st,
-      &mem);
+      lifter, "riscv64_sc_d_x4_x2_x1", riscv::Bytes32(sc), 0x1004, &st, &mem);
 
   EXPECT_EQ(st.gpr.x4.qword, 0u);
   EXPECT_EQ(mem.ReadMemory<uint64_t>(data_addr), new_val);
@@ -69,8 +65,8 @@ TEST(RISCV64, LrScD_Success) {
 
 TEST(RISCV64, AmoswapD_ReturnsOldAndStoresNew) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV64);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+  auto &lifter = runner.GetLifter();
 
   test_runner::MemoryHandler mem(llvm::endianness::little);
   const uint64_t data_addr = 0x6000;
@@ -86,14 +82,13 @@ TEST(RISCV64, AmoswapD_ReturnsOldAndStoresNew) {
 
   // amoswap.d x5, x2, (x1)
   const auto amoswap = riscv::EncodeAmo(/*funct5=*/0x1U, /*aq=*/false,
-                                       /*rl=*/false, /*rd=*/5,
-                                       /*funct3=*/0x3U, /*rs1=*/1, /*rs2=*/2);
+                                         /*rl=*/false, /*rd=*/5,
+                                         /*funct3=*/0x3U, /*rs1=*/1, /*rs2=*/2);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV64>(
-      lifter, "riscv64_amoswap_d_x5_x2_x1", riscv::Bytes32(amoswap),
-      /*addr=*/0x2000, &st, &mem);
+      lifter, "riscv64_amoswap_d_x5_x2_x1", riscv::Bytes32(amoswap), 0x2000,
+      &st, &mem);
 
   EXPECT_EQ(st.gpr.x5.qword, old_val);
   EXPECT_EQ(mem.ReadMemory<uint64_t>(data_addr), new_val);
   EXPECT_EQ(st.pc.qword, 0x2004);
 }
-

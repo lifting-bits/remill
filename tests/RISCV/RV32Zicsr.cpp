@@ -17,18 +17,14 @@
 #include <gtest/gtest.h>
 #include <llvm/IR/LLVMContext.h>
 #include <remill/Arch/Name.h>
-#include <remill/OS/OS.h>
-#include <test_runner/TestRunner.h>
 
-#include <cstdint>
-
-#include "TestHarness.h"
+#include "RISCVTestSpec.h"
 #include "TestUtil.h"
 
 TEST(RISCV32, Csrrw_Fcsr_WritesAndReturnsOld) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV32);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
 
   // csrrw x5, fcsr(0x003), x1
   const auto word =
@@ -42,8 +38,8 @@ TEST(RISCV32, Csrrw_Fcsr_WritesAndReturnsOld) {
 
   test_runner::MemoryHandler mem(llvm::endianness::little);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_csrrw_x5_fcsr_x1", riscv::Bytes32(word), /*addr=*/0x1000,
-      &st, &mem);
+      lifter, "riscv32_csrrw_x5_fcsr_x1", riscv::Bytes32(word), 0x1000, &st,
+      &mem);
 
   EXPECT_EQ(st.gpr.x5.dword, 0x1234u);
   EXPECT_EQ(st.fcsr.fcsr, 0xABCDu);
@@ -52,8 +48,8 @@ TEST(RISCV32, Csrrw_Fcsr_WritesAndReturnsOld) {
 
 TEST(RISCV32, Fsflags_WritesLow5BitsAndReturnsOld) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV32);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
 
   // fsflags x5, x1 (CSR=0x001)
   const auto word =
@@ -62,16 +58,15 @@ TEST(RISCV32, Fsflags_WritesLow5BitsAndReturnsOld) {
 
   RISCVState st = {};
   st.pc.dword = 0x2000u;
-  st.gpr.x1.dword = 0x2Au;  // low 5 bits -> 0x0A
+  st.gpr.x1.dword = 0x2Au;
   st.fcsr.fflags = 0x1Fu;
 
   test_runner::MemoryHandler mem(llvm::endianness::little);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_fsflags_x5_x1", riscv::Bytes32(word), /*addr=*/0x2000,
-      &st, &mem);
+      lifter, "riscv32_fsflags_x5_x1", riscv::Bytes32(word), 0x2000, &st,
+      &mem);
 
   EXPECT_EQ(st.gpr.x5.dword, 0x1Fu);
   EXPECT_EQ(st.fcsr.fflags, 0x0Au);
   EXPECT_EQ(st.pc.dword, 0x2004u);
 }
-

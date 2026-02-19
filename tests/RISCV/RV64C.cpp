@@ -16,103 +16,116 @@
 
 #include <gtest/gtest.h>
 #include <llvm/IR/LLVMContext.h>
+#include <remill/Arch/Instruction.h>
 #include <remill/Arch/Name.h>
-#include <remill/OS/OS.h>
-#include <test_runner/TestRunner.h>
 
 #include <cstdint>
 
-#include "TestHarness.h"
+#include "RISCVTestSpec.h"
 #include "TestUtil.h"
+
+TEST(RISCV64, CompressedAddi_IncrementsPcBy2) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0xD000;
+
+  // c.addi x1, 1
+  const auto half = riscv::EncodeCAddi(/*rd=*/1, /*imm6=*/1);
+
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes16(half),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)},
+       {"x1", uint64_t(41)}},
+      {{"pc", uint64_t(addr + 2)},
+       {"x1", uint64_t(42)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
 
 TEST(RISCV64, CompressedLw_SignExtendsToXlenAndSwStoresLow32Bits) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV64);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
 
-  test_runner::MemoryHandler mem(llvm::endianness::little);
   const uint64_t base = 0x5000;
-  const uint32_t load_val = 0x80000000u;
-  const uint32_t store_val = 0xA0B0C0D0u;
-  mem.WriteMemory<uint32_t>(base + 12u, load_val);
-  mem.WriteMemory<uint32_t>(base + 16u, 0u);
 
-  RISCVState st = {};
-  st.pc.qword = 0x1000;
-  st.gpr.x8.qword = base;
-
-  // c.lw x9, 12(x8)
+  // c.lw x9, 12(x8) => sign-extends 0x80000000 to 64 bits
   const auto clw = riscv::EncodeCLw(/*rd=*/9, /*rs1=*/8, /*uimm=*/12);
-  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV64>(
-      lifter, "riscv64_c_lw_x9_x8_12", riscv::Bytes16(clw), /*addr=*/0x1000,
-      &st, &mem);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        0x1000, riscv::Bytes16(clw),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(0x1000)},
+         {"x8", uint64_t(base)}},
+        {{"pc", uint64_t(0x1002)},
+         {"x9", uint64_t(0xFFFF'FFFF'8000'0000ULL)}},
+        kRV64RegAccessors);
+    spec.AddPrecWrite<uint32_t>(base + 12, 0x8000'0000u);
+    runner.RunTestSpec(spec);
+  }
 
-  EXPECT_EQ(st.gpr.x9.qword, 0xFFFF'FFFF'8000'0000ULL);
-  EXPECT_EQ(st.pc.qword, 0x1002);
-
-  st.gpr.x9.qword = static_cast<uint64_t>(store_val);
-
-  // c.sw x9, 16(x8)
+  // c.sw x9, 16(x8) => stores low 32 bits
+  const uint32_t store_val = 0xA0B0C0D0u;
   const auto csw = riscv::EncodeCSw(/*rs2=*/9, /*rs1=*/8, /*uimm=*/16);
-  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV64>(
-      lifter, "riscv64_c_sw_x9_x8_16", riscv::Bytes16(csw), /*addr=*/0x1002,
-      &st, &mem);
-
-  EXPECT_EQ(mem.ReadMemory<uint32_t>(base + 16u), store_val);
-  EXPECT_EQ(st.pc.qword, 0x1004);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        0x1002, riscv::Bytes16(csw),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(0x1002)},
+         {"x8", uint64_t(base)},
+         {"x9", uint64_t(store_val)}},
+        {{"pc", uint64_t(0x1004)}},
+        kRV64RegAccessors);
+    spec.AddPostRead<uint32_t>(base + 16, store_val);
+    runner.RunTestSpec(spec);
+  }
 }
 
 TEST(RISCV64, CompressedJ_JumpsRelative) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV64);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
 
   // c.j +8
   const auto halfword = riscv::EncodeCJ(/*imm12=*/8);
 
-  RISCVState st = {};
-  st.pc.qword = 0x2000;
-
-  test_runner::MemoryHandler mem(llvm::endianness::little);
-  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV64>(
-      lifter, "riscv64_c_j_8", riscv::Bytes16(halfword), /*addr=*/0x2000, &st,
-      &mem);
-
-  EXPECT_EQ(st.pc.qword, 0x2008);
+  test_runner::TestOutputSpec<RISCVState> spec(
+      0x2000, riscv::Bytes16(halfword),
+      remill::Instruction::Category::kCategoryDirectJump,
+      {{"pc", uint64_t(0x2000)}},
+      {{"pc", uint64_t(0x2008)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
 }
 
 TEST(RISCV64, CompressedBeqz_TakenAndNotTaken) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV64);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
 
   // c.beqz x8, +8
   const auto halfword = riscv::EncodeCBeqz(/*rs1=*/8, /*imm9=*/8);
 
-  test_runner::MemoryHandler mem(llvm::endianness::little);
-
+  // Taken: x8 == 0
   {
-    RISCVState st = {};
-    st.pc.qword = 0x3000;
-    st.gpr.x8.qword = 0u;
-
-    riscv::test::ExecuteOne<remill::ArchName::kArchRISCV64>(
-        lifter, "riscv64_c_beqz_taken", riscv::Bytes16(halfword),
-        /*addr=*/0x3000, &st, &mem);
-
-    EXPECT_EQ(st.pc.qword, 0x3008);
+    test_runner::TestOutputSpec<RISCVState> spec(
+        0x3000, riscv::Bytes16(halfword),
+        remill::Instruction::Category::kCategoryConditionalBranch,
+        {{"pc", uint64_t(0x3000)},
+         {"x8", uint64_t(0)}},
+        {{"pc", uint64_t(0x3008)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
   }
 
+  // Not taken: x8 != 0
   {
-    RISCVState st = {};
-    st.pc.qword = 0x3000;
-    st.gpr.x8.qword = 1u;
-
-    riscv::test::ExecuteOne<remill::ArchName::kArchRISCV64>(
-        lifter, "riscv64_c_beqz_not_taken", riscv::Bytes16(halfword),
-        /*addr=*/0x3000, &st, &mem);
-
-    EXPECT_EQ(st.pc.qword, 0x3002);
+    test_runner::TestOutputSpec<RISCVState> spec(
+        0x3000, riscv::Bytes16(halfword),
+        remill::Instruction::Category::kCategoryConditionalBranch,
+        {{"pc", uint64_t(0x3000)},
+         {"x8", uint64_t(1)}},
+        {{"pc", uint64_t(0x3002)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
   }
 }
-

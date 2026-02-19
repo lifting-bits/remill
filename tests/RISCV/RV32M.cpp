@@ -16,80 +16,92 @@
 
 #include <gtest/gtest.h>
 #include <llvm/IR/LLVMContext.h>
+#include <remill/Arch/Instruction.h>
 #include <remill/Arch/Name.h>
-#include <remill/OS/OS.h>
-#include <test_runner/TestRunner.h>
 
 #include <cstdint>
 
-#include "TestHarness.h"
+#include "RISCVTestSpec.h"
 #include "TestUtil.h"
 
 TEST(RISCV32, MulAndMulh_Basic) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV32);
-
-  test_runner::MemoryHandler mem(llvm::endianness::little);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
 
   const uint64_t addr = 0x1000;
-  RISCVState st = {};
-  st.pc.dword = static_cast<uint32_t>(addr);
-  st.gpr.x1.dword = 7u;
-  st.gpr.x2.dword = 9u;
 
-  // mul x3, x1, x2
+  // mul x3, x1, x2  (7 * 9 = 63)
   const auto mul_word =
       riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/3, /*funct3=*/0x0, /*rs1=*/1,
                      /*rs2=*/2, /*funct7=*/0x01);
-  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_mul_x3_x1_x2", riscv::Bytes32(mul_word), addr, &st,
-      &mem);
-  EXPECT_EQ(st.gpr.x3.dword, 63u);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr, riscv::Bytes32(mul_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr)},
+         {"x1", uint32_t(7)},
+         {"x2", uint32_t(9)}},
+        {{"pc", uint32_t(addr + 4)},
+         {"x3", uint32_t(63)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
 
-  // mulh x4, x1, x2 with (-2147483648 * 2) => high 32 bits are 0xFFFF'FFFF
+  // mulh x4, x1, x2  (-2^31 * 2 => high 32 bits = 0xFFFFFFFF)
   const auto mulh_word =
       riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/4, /*funct3=*/0x1, /*rs1=*/1,
                      /*rs2=*/2, /*funct7=*/0x01);
-  st.pc.dword = static_cast<uint32_t>(addr + 4);
-  st.gpr.x1.dword = 0x8000'0000u;
-  st.gpr.x2.dword = 2u;
-  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_mulh_x4_x1_x2", riscv::Bytes32(mulh_word), addr + 4,
-      &st, &mem);
-  EXPECT_EQ(st.gpr.x4.dword, 0xFFFF'FFFFu);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 4, riscv::Bytes32(mulh_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr + 4)},
+         {"x1", uint32_t(0x8000'0000u)},
+         {"x2", uint32_t(2)}},
+        {{"pc", uint32_t(addr + 8)},
+         {"x4", uint32_t(0xFFFF'FFFFu)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
 }
 
 TEST(RISCV32, DivAndRem_Basic) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV32);
-
-  test_runner::MemoryHandler mem(llvm::endianness::little);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
 
   const uint64_t addr = 0x2000;
-  RISCVState st = {};
-  st.pc.dword = static_cast<uint32_t>(addr);
-  st.gpr.x1.dword = static_cast<uint32_t>(-7);
-  st.gpr.x2.dword = 2u;
 
-  // div x3, x1, x2
+  // div x3, x1, x2  (-7 / 2 = -3)
   const auto div_word =
       riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/3, /*funct3=*/0x4, /*rs1=*/1,
                      /*rs2=*/2, /*funct7=*/0x01);
-  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_div_x3_x1_x2", riscv::Bytes32(div_word), addr, &st,
-      &mem);
-  EXPECT_EQ(st.gpr.x3.dword, static_cast<uint32_t>(-3));
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr, riscv::Bytes32(div_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr)},
+         {"x1", uint32_t(static_cast<uint32_t>(-7))},
+         {"x2", uint32_t(2)}},
+        {{"pc", uint32_t(addr + 4)},
+         {"x3", uint32_t(static_cast<uint32_t>(-3))}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
 
-  // rem x4, x1, x2
+  // rem x4, x1, x2  (-7 % 2 = -1)
   const auto rem_word =
       riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/4, /*funct3=*/0x6, /*rs1=*/1,
                      /*rs2=*/2, /*funct7=*/0x01);
-  st.pc.dword = static_cast<uint32_t>(addr + 4);
-  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_rem_x4_x1_x2", riscv::Bytes32(rem_word), addr + 4, &st,
-      &mem);
-  EXPECT_EQ(st.gpr.x4.dword, static_cast<uint32_t>(-1));
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 4, riscv::Bytes32(rem_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr + 4)},
+         {"x1", uint32_t(static_cast<uint32_t>(-7))},
+         {"x2", uint32_t(2)}},
+        {{"pc", uint32_t(addr + 8)},
+         {"x4", uint32_t(static_cast<uint32_t>(-1))}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
 }
-

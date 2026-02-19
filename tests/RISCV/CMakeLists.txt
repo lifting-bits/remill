@@ -17,20 +17,14 @@ list(APPEND PROJECT_LIBRARIES GTest::gtest)
 
 enable_testing()
 
-add_executable(
-  run-riscv32-tests
-  Main.cpp
+add_executable(run-riscv32-tests
   TestLifting32.cpp
+  RV32M.cpp
   RV32A.cpp
   RV32C.cpp
   RV32F.cpp
   RV32D.cpp
   RV32Zicsr.cpp
-  RV32I_Control.cpp
-  RV32I_Memory.cpp
-  RV32I_Shift.cpp
-  RV32I_UType.cpp
-  RV32M.cpp
 )
 
 add_test(NAME "riscv32-tests" COMMAND "run-riscv32-tests")
@@ -44,20 +38,14 @@ target_link_libraries(
 )
 set_property(TARGET run-riscv32-tests PROPERTY ENABLE_EXPORTS ON)
 
-add_executable(
-  run-riscv64-tests
-  Main.cpp
+add_executable(run-riscv64-tests
   TestLifting64.cpp
+  RV64M.cpp
   RV64A.cpp
   RV64C.cpp
   RV64F.cpp
   RV64D.cpp
   RV64Zicsr.cpp
-  RV64I_Control.cpp
-  RV64I_Memory.cpp
-  RV64I_UType.cpp
-  RV64I_WOps.cpp
-  RV64M.cpp
 )
 
 add_test(NAME "riscv64-tests" COMMAND "run-riscv64-tests")

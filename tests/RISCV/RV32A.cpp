@@ -17,18 +17,16 @@
 #include <gtest/gtest.h>
 #include <llvm/IR/LLVMContext.h>
 #include <remill/Arch/Name.h>
-#include <remill/OS/OS.h>
-#include <test_runner/TestRunner.h>
 
 #include <cstdint>
 
-#include "TestHarness.h"
+#include "RISCVTestSpec.h"
 #include "TestUtil.h"
 
 TEST(RISCV32, LrScW_Success) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV32);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
 
   test_runner::MemoryHandler mem(llvm::endianness::little);
   const uint64_t data_addr = 0x4000;
@@ -44,8 +42,7 @@ TEST(RISCV32, LrScW_Success) {
   // lr.w x3, (x1)
   const auto lr = riscv::EncodeLrW(/*rd=*/3, /*rs1=*/1);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_lr_w_x3_x1", riscv::Bytes32(lr), /*addr=*/0x1000, &st,
-      &mem);
+      lifter, "riscv32_lr_w_x3_x1", riscv::Bytes32(lr), 0x1000, &st, &mem);
 
   EXPECT_EQ(st.gpr.x3.dword, old_val);
   EXPECT_EQ(st.reserve_address.dword, static_cast<uint32_t>(data_addr));
@@ -56,8 +53,7 @@ TEST(RISCV32, LrScW_Success) {
   // sc.w x4, x2, (x1)
   const auto sc = riscv::EncodeScW(/*rd=*/4, /*rs2=*/2, /*rs1=*/1);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_sc_w_x4_x2_x1", riscv::Bytes32(sc), /*addr=*/0x1004,
-      &st, &mem);
+      lifter, "riscv32_sc_w_x4_x2_x1", riscv::Bytes32(sc), 0x1004, &st, &mem);
 
   EXPECT_EQ(st.gpr.x4.dword, 0u);
   EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), new_val);
@@ -69,8 +65,8 @@ TEST(RISCV32, LrScW_Success) {
 
 TEST(RISCV32, ScW_FailsWithoutReservation) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV32);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
 
   test_runner::MemoryHandler mem(llvm::endianness::little);
   const uint64_t data_addr = 0x4000;
@@ -83,11 +79,11 @@ TEST(RISCV32, ScW_FailsWithoutReservation) {
   st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
   st.gpr.x2.dword = new_val;
 
-  // sc.w x4, x2, (x1)
+  // sc.w x4, x2, (x1) without prior lr.w
   const auto sc = riscv::EncodeScW(/*rd=*/4, /*rs2=*/2, /*rs1=*/1);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_sc_w_fail_no_res", riscv::Bytes32(sc), /*addr=*/0x2000,
-      &st, &mem);
+      lifter, "riscv32_sc_w_fail_no_res", riscv::Bytes32(sc), 0x2000, &st,
+      &mem);
 
   EXPECT_EQ(st.gpr.x4.dword, 1u);
   EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), old_val);
@@ -96,8 +92,8 @@ TEST(RISCV32, ScW_FailsWithoutReservation) {
 
 TEST(RISCV32, ScW_FailsWithAddressMismatch) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV32);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
 
   test_runner::MemoryHandler mem(llvm::endianness::little);
   const uint64_t reserved_addr = 0x4000;
@@ -113,25 +109,23 @@ TEST(RISCV32, ScW_FailsWithAddressMismatch) {
   // lr.w x3, (x1)
   const auto lr = riscv::EncodeLrW(/*rd=*/3, /*rs1=*/1);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_lr_w_addr_mismatch", riscv::Bytes32(lr), /*addr=*/0x3000,
-      &st, &mem);
+      lifter, "riscv32_lr_w_addr_mismatch", riscv::Bytes32(lr), 0x3000, &st,
+      &mem);
 
   EXPECT_EQ(st.reserve, 1u);
   EXPECT_EQ(st.reserve_address.dword, static_cast<uint32_t>(reserved_addr));
   EXPECT_EQ(st.reserve_length, 4u);
   EXPECT_EQ(st.pc.dword, 0x3004u);
 
-  // sc.w x4, x2, (x1) but with a different address in x1.
+  // sc.w x4, x2, (x1) but x1 now points to a different address
   st.gpr.x1.dword = static_cast<uint32_t>(other_addr);
   const auto sc = riscv::EncodeScW(/*rd=*/4, /*rs2=*/2, /*rs1=*/1);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_sc_w_addr_mismatch", riscv::Bytes32(sc), /*addr=*/0x3004,
-      &st, &mem);
+      lifter, "riscv32_sc_w_addr_mismatch", riscv::Bytes32(sc), 0x3004, &st,
+      &mem);
 
   EXPECT_EQ(st.gpr.x4.dword, 1u);
   EXPECT_EQ(mem.ReadMemory<uint32_t>(other_addr), 0xDEADBEEFu);
-
-  // The spec keeps the reservation unchanged on failure.
   EXPECT_EQ(st.reserve, 1u);
   EXPECT_EQ(st.reserve_address.dword, static_cast<uint32_t>(reserved_addr));
   EXPECT_EQ(st.reserve_length, 4u);
@@ -140,8 +134,8 @@ TEST(RISCV32, ScW_FailsWithAddressMismatch) {
 
 TEST(RISCV32, AmoswapW_ReturnsOldAndStoresNew) {
   llvm::LLVMContext context;
-  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
-                                    remill::ArchName::kArchRISCV32);
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
 
   test_runner::MemoryHandler mem(llvm::endianness::little);
   const uint64_t data_addr = 0x6000;
@@ -157,14 +151,13 @@ TEST(RISCV32, AmoswapW_ReturnsOldAndStoresNew) {
 
   // amoswap.w x5, x2, (x1)
   const auto amoswap = riscv::EncodeAmo(/*funct5=*/0x1U, /*aq=*/false,
-                                       /*rl=*/false, /*rd=*/5,
-                                       /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+                                         /*rl=*/false, /*rd=*/5,
+                                         /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
   riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
-      lifter, "riscv32_amoswap_w_x5_x2_x1", riscv::Bytes32(amoswap),
-      /*addr=*/0x4000, &st, &mem);
+      lifter, "riscv32_amoswap_w_x5_x2_x1", riscv::Bytes32(amoswap), 0x4000,
+      &st, &mem);
 
   EXPECT_EQ(st.gpr.x5.dword, old_val);
   EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), new_val);
   EXPECT_EQ(st.pc.dword, 0x4004u);
 }
-
