@@ -187,6 +187,22 @@ MemoryHandler *__remill_write_memory_64(MemoryHandler *memory, uint64_t addr,
   return memory;
 }
 
+MemoryHandler *__remill_barrier_load_load(MemoryHandler *mem) {
+  return mem;
+}
+
+MemoryHandler *__remill_barrier_load_store(MemoryHandler *mem) {
+  return mem;
+}
+
+MemoryHandler *__remill_barrier_store_load(MemoryHandler *mem) {
+  return mem;
+}
+
+MemoryHandler *__remill_barrier_store_store(MemoryHandler *mem) {
+  return mem;
+}
+
 struct State;
 
 // Some instruction sets leave a `__remill_sync_hyper_call` invocation.

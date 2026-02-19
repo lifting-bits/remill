@@ -1462,6 +1462,20 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
           return kLiftedInstruction;
         }
 
+        if (other_func_name == "fence") {
+          DLOG(INFO) << "Handling RISC-V fence as full memory barrier";
+
+          const auto mem_ptr_ref = LoadMemoryPointerRef(bldr.GetInsertBlock());
+          auto mem_ptr =
+              bldr.CreateLoad(insn_lifter_parent.GetMemoryType(), mem_ptr_ref);
+
+          auto new_mem_ptr = bldr.CreateCall(
+              insn_lifter_parent.GetIntrinsicTable()->barrier_store_load,
+              {mem_ptr});
+          bldr.CreateStore(new_mem_ptr, mem_ptr_ref);
+          return kLiftedInstruction;
+        }
+
         if (other_func_name == "ebreak" || other_func_name == "break" ||
             other_func_name == "breakpoint") {
           DLOG(INFO) << "Invoking RISC-V ebreak hypercall";
