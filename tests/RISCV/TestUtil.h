@@ -37,6 +37,7 @@ constexpr uint32_t kOpcodeSystem = 0x73U;
 constexpr uint32_t kOpcodeOpFp = 0x53U;
 constexpr uint32_t kOpcodeOpImm32 = 0x1BU;
 constexpr uint32_t kOpcodeOp32 = 0x3BU;
+constexpr uint32_t kOpcodeMiscMem = 0x0FU;
 
 inline std::string Bytes16(uint16_t halfword) {
   std::string bytes;

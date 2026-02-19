@@ -212,6 +212,136 @@ TEST(RISCV32, Slt_Sltu_SignedVsUnsigned) {
   }
 }
 
+TEST(RISCV32, Slti_SignedCompareImmediate) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+
+  const uint64_t addr = 0x6100;
+
+  // slti x3, x1, 5  (signed: -1 < 5 => 1)
+  const auto word =
+      riscv::EncodeI(riscv::kOpcodeOpImm, /*rd=*/3, /*funct3=*/0x2,
+                     /*rs1=*/1, /*imm12=*/5);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr, riscv::Bytes32(word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr)},
+         {"x1", uint32_t(0xFFFF'FFFFu)}},
+        {{"x3", uint32_t(1u)},
+         {"pc", uint32_t(addr + 4)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+
+  // slti x3, x1, 5  (signed: 10 < 5 => 0)
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 4, riscv::Bytes32(word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr + 4)},
+         {"x1", uint32_t(10u)}},
+        {{"x3", uint32_t(0u)},
+         {"pc", uint32_t(addr + 8)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+}
+
+TEST(RISCV32, Sltiu_UnsignedCompareImmediate) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+
+  const uint64_t addr = 0x6200;
+
+  // sltiu x3, x1, 5  (unsigned: 0xFFFFFFFF > 5 => 0)
+  const auto word =
+      riscv::EncodeI(riscv::kOpcodeOpImm, /*rd=*/3, /*funct3=*/0x3,
+                     /*rs1=*/1, /*imm12=*/5);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr, riscv::Bytes32(word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr)},
+         {"x1", uint32_t(0xFFFF'FFFFu)}},
+        {{"x3", uint32_t(0u)},
+         {"pc", uint32_t(addr + 4)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+
+  // sltiu x3, x1, 5  (unsigned: 3 < 5 => 1)
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 4, riscv::Bytes32(word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr + 4)},
+         {"x1", uint32_t(3u)}},
+        {{"x3", uint32_t(1u)},
+         {"pc", uint32_t(addr + 8)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+}
+
+TEST(RISCV32, And_Or_Xor_Register) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+
+  const uint64_t addr = 0x6300;
+
+  // and x3, x1, x2
+  const auto and_word =
+      riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/3, /*funct3=*/0x7,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x00);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr, riscv::Bytes32(and_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr)},
+         {"x1", uint32_t(0xFF00'FF00u)},
+         {"x2", uint32_t(0x0F0F'0F0Fu)}},
+        {{"x3", uint32_t(0x0F00'0F00u)},
+         {"pc", uint32_t(addr + 4)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+
+  // or x4, x1, x2
+  const auto or_word =
+      riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/4, /*funct3=*/0x6,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x00);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 4, riscv::Bytes32(or_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr + 4)},
+         {"x1", uint32_t(0xFF00'FF00u)},
+         {"x2", uint32_t(0x0F0F'0F0Fu)}},
+        {{"x4", uint32_t(0xFF0F'FF0Fu)},
+         {"pc", uint32_t(addr + 8)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+
+  // xor x5, x1, x2
+  const auto xor_word =
+      riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/5, /*funct3=*/0x4,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x00);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 8, riscv::Bytes32(xor_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint32_t(addr + 8)},
+         {"x1", uint32_t(0xFF00'FF00u)},
+         {"x2", uint32_t(0x0F0F'0F0Fu)}},
+        {{"x5", uint32_t(0xF00F'F00Fu)},
+         {"pc", uint32_t(addr + 12)}},
+        kRV32RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+}
+
 // -- RV32I shifts -------------------------------------------------------------
 
 TEST(RISCV32, ShiftImmediate_SrliVsSrai) {
@@ -667,6 +797,24 @@ TEST(RISCV32, Branches_AllConditions_TakenAndNotTaken) {
         kRV32RegAccessors);
     runner.RunTestSpec(spec);
   }
+}
+
+// -- RV32I misc-mem -----------------------------------------------------------
+
+TEST(RISCV32, Fence_AdvancesPc) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+
+  const uint64_t addr = 0xD000;
+
+  // fence iorw, iorw => 0x0FF0000F
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(0x0FF0'000FU),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint32_t(addr)}},
+      {{"pc", uint32_t(addr + 4)}},
+      kRV32RegAccessors);
+  runner.RunTestSpec(spec);
 }
 
 // -- RV32I system (ecall/ebreak) ----------------------------------------------

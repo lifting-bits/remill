@@ -181,6 +181,129 @@ TEST(RISCV64, Slt_Sltu_SignedVsUnsigned) {
   }
 }
 
+TEST(RISCV64, Slti_SignedCompareImmediate) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x6100;
+
+  // slti x3, x1, 5  (signed: -1 < 5 => 1)
+  const auto word =
+      riscv::EncodeI(riscv::kOpcodeOpImm, /*rd=*/3, /*funct3=*/0x2,
+                     /*rs1=*/1, /*imm12=*/5);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr, riscv::Bytes32(word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(addr)},
+         {"x1", uint64_t(0xFFFF'FFFF'FFFF'FFFFULL)}},
+        {{"x3", uint64_t(1)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+
+  // slti x3, x1, 5  (signed: 10 < 5 => 0)
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 4, riscv::Bytes32(word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(addr + 4)},
+         {"x1", uint64_t(10)}},
+        {{"x3", uint64_t(0)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+}
+
+TEST(RISCV64, Sltiu_UnsignedCompareImmediate) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x6200;
+
+  // sltiu x3, x1, 5  (unsigned: MAX > 5 => 0)
+  const auto word =
+      riscv::EncodeI(riscv::kOpcodeOpImm, /*rd=*/3, /*funct3=*/0x3,
+                     /*rs1=*/1, /*imm12=*/5);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr, riscv::Bytes32(word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(addr)},
+         {"x1", uint64_t(0xFFFF'FFFF'FFFF'FFFFULL)}},
+        {{"x3", uint64_t(0)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+
+  // sltiu x3, x1, 5  (unsigned: 3 < 5 => 1)
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 4, riscv::Bytes32(word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(addr + 4)},
+         {"x1", uint64_t(3)}},
+        {{"x3", uint64_t(1)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+}
+
+TEST(RISCV64, And_Or_Xor_Register) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x6300;
+
+  // and x3, x1, x2
+  const auto and_word =
+      riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/3, /*funct3=*/0x7,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x00);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr, riscv::Bytes32(and_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(addr)},
+         {"x1", uint64_t(0xFF00'FF00'FF00'FF00ULL)},
+         {"x2", uint64_t(0x0F0F'0F0F'0F0F'0F0FULL)}},
+        {{"x3", uint64_t(0x0F00'0F00'0F00'0F00ULL)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+
+  // or x4, x1, x2
+  const auto or_word =
+      riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/4, /*funct3=*/0x6,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x00);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 4, riscv::Bytes32(or_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(addr + 4)},
+         {"x1", uint64_t(0xFF00'FF00'FF00'FF00ULL)},
+         {"x2", uint64_t(0x0F0F'0F0F'0F0F'0F0FULL)}},
+        {{"x4", uint64_t(0xFF0F'FF0F'FF0F'FF0FULL)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+
+  // xor x5, x1, x2
+  const auto xor_word =
+      riscv::EncodeR(riscv::kOpcodeOp, /*rd=*/5, /*funct3=*/0x4,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x00);
+  {
+    test_runner::TestOutputSpec<RISCVState> spec(
+        addr + 8, riscv::Bytes32(xor_word),
+        remill::Instruction::Category::kCategoryNormal,
+        {{"pc", uint64_t(addr + 8)},
+         {"x1", uint64_t(0xFF00'FF00'FF00'FF00ULL)},
+         {"x2", uint64_t(0x0F0F'0F0F'0F0F'0F0FULL)}},
+        {{"x5", uint64_t(0xF00F'F00F'F00F'F00FULL)}},
+        kRV64RegAccessors);
+    runner.RunTestSpec(spec);
+  }
+}
+
 TEST(RISCV64, ShiftImmediate_SrliVsSrai) {
   llvm::LLVMContext context;
   RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
@@ -524,6 +647,184 @@ TEST(RISCV64, Addw_UsesLow32BitsAndSignExtends) {
        {"x3", uint64_t(0u)}},
       {{"pc", uint64_t(addr + 4)},
        {"x3", uint64_t(0xFFFF'FFFF'8000'0000ULL)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
+
+TEST(RISCV64, Subw_SignExtends32BitResult) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x3000;
+
+  // subw x3, x1, x2
+  const auto word =
+      riscv::EncodeR(riscv::kOpcodeOp32, /*rd=*/3, /*funct3=*/0,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x20);
+
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(word),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)},
+       {"x1", uint64_t(0u)},
+       {"x2", uint64_t(1u)}},
+      {{"pc", uint64_t(addr + 4)},
+       {"x3", uint64_t(0xFFFF'FFFF'FFFF'FFFFULL)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
+
+TEST(RISCV64, Slliw_ShiftLeftWord) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x3100;
+
+  // slliw x2, x1, 31
+  const auto word =
+      riscv::EncodeI(riscv::kOpcodeOpImm32, /*rd=*/2, /*funct3=*/0x1,
+                     /*rs1=*/1, /*imm12=*/static_cast<int32_t>(31));
+
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(word),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)},
+       {"x1", uint64_t(1u)}},
+      {{"pc", uint64_t(addr + 4)},
+       {"x2", uint64_t(0xFFFF'FFFF'8000'0000ULL)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
+
+TEST(RISCV64, Srliw_LogicalShiftRightWord) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x3200;
+
+  // srliw x2, x1, 1
+  const auto word =
+      riscv::EncodeI(riscv::kOpcodeOpImm32, /*rd=*/2, /*funct3=*/0x5,
+                     /*rs1=*/1,
+                     /*imm12=*/static_cast<int32_t>((0x00U << 5) | 1));
+
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(word),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)},
+       {"x1", uint64_t(0x0000'0000'8000'0000ULL)}},
+      {{"pc", uint64_t(addr + 4)},
+       {"x2", uint64_t(0x0000'0000'4000'0000ULL)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
+
+TEST(RISCV64, Sraiw_ArithmeticShiftRightWord) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x3300;
+
+  // sraiw x2, x1, 1
+  const auto word =
+      riscv::EncodeI(riscv::kOpcodeOpImm32, /*rd=*/2, /*funct3=*/0x5,
+                     /*rs1=*/1,
+                     /*imm12=*/static_cast<int32_t>((0x20U << 5) | 1));
+
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(word),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)},
+       {"x1", uint64_t(0x0000'0000'8000'0000ULL)}},
+      {{"pc", uint64_t(addr + 4)},
+       {"x2", uint64_t(0xFFFF'FFFF'C000'0000ULL)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
+
+TEST(RISCV64, Sllw_ShiftLeftWordRegister) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x3400;
+
+  // sllw x3, x1, x2
+  const auto word =
+      riscv::EncodeR(riscv::kOpcodeOp32, /*rd=*/3, /*funct3=*/0x1,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x00);
+
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(word),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)},
+       {"x1", uint64_t(1u)},
+       {"x2", uint64_t(31u)}},
+      {{"pc", uint64_t(addr + 4)},
+       {"x3", uint64_t(0xFFFF'FFFF'8000'0000ULL)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
+
+TEST(RISCV64, Srlw_LogicalShiftRightWordRegister) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x3500;
+
+  // srlw x3, x1, x2
+  const auto word =
+      riscv::EncodeR(riscv::kOpcodeOp32, /*rd=*/3, /*funct3=*/0x5,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x00);
+
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(word),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)},
+       {"x1", uint64_t(0x0000'0000'8000'0000ULL)},
+       {"x2", uint64_t(1u)}},
+      {{"pc", uint64_t(addr + 4)},
+       {"x3", uint64_t(0x0000'0000'4000'0000ULL)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
+
+TEST(RISCV64, Sraw_ArithmeticShiftRightWordRegister) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0x3600;
+
+  // sraw x3, x1, x2
+  const auto word =
+      riscv::EncodeR(riscv::kOpcodeOp32, /*rd=*/3, /*funct3=*/0x5,
+                     /*rs1=*/1, /*rs2=*/2, /*funct7=*/0x20);
+
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(word),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)},
+       {"x1", uint64_t(0x0000'0000'8000'0000ULL)},
+       {"x2", uint64_t(1u)}},
+      {{"pc", uint64_t(addr + 4)},
+       {"x3", uint64_t(0xFFFF'FFFF'C000'0000ULL)}},
+      kRV64RegAccessors);
+  runner.RunTestSpec(spec);
+}
+
+// -- RV64I misc-mem -----------------------------------------------------------
+
+TEST(RISCV64, Fence_AdvancesPc) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV64> runner(context);
+
+  const uint64_t addr = 0xD000;
+
+  // fence iorw, iorw => 0x0FF0000F
+  test_runner::TestOutputSpec<RISCVState> spec(
+      addr, riscv::Bytes32(0x0FF0'000FU),
+      remill::Instruction::Category::kCategoryNormal,
+      {{"pc", uint64_t(addr)}},
+      {{"pc", uint64_t(addr + 4)}},
       kRV64RegAccessors);
   runner.RunTestSpec(spec);
 }
