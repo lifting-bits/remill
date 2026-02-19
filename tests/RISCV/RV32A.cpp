@@ -161,3 +161,251 @@ TEST(RISCV32, AmoswapW_ReturnsOldAndStoresNew) {
   EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), new_val);
   EXPECT_EQ(st.pc.dword, 0x4004u);
 }
+
+TEST(RISCV32, AmoaddW_ReturnsOldAndStoresSum) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
+
+  test_runner::MemoryHandler mem(llvm::endianness::little);
+  const uint64_t data_addr = 0x6000;
+  const uint32_t old_val = 0x00000010u;
+  const uint32_t addend = 0x00000020u;
+  mem.WriteMemory<uint32_t>(data_addr, old_val);
+
+  RISCVState st = {};
+  st.pc.dword = 0x4000u;
+  st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
+  st.gpr.x2.dword = addend;
+  st.gpr.x5.dword = 0u;
+
+  // amoadd.w x5, x2, (x1)
+  const auto amoadd = riscv::EncodeAmo(/*funct5=*/0x0U, /*aq=*/false,
+                                        /*rl=*/false, /*rd=*/5,
+                                        /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
+      lifter, "riscv32_amoadd_w_x5_x2_x1", riscv::Bytes32(amoadd), 0x4000,
+      &st, &mem);
+
+  EXPECT_EQ(st.gpr.x5.dword, old_val);
+  EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), old_val + addend);
+  EXPECT_EQ(st.pc.dword, 0x4004u);
+}
+
+TEST(RISCV32, AmoxorW_ReturnsOldAndStoresXor) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
+
+  test_runner::MemoryHandler mem(llvm::endianness::little);
+  const uint64_t data_addr = 0x6000;
+  const uint32_t old_val = 0xFF00FF00u;
+  const uint32_t operand = 0x0F0F0F0Fu;
+  mem.WriteMemory<uint32_t>(data_addr, old_val);
+
+  RISCVState st = {};
+  st.pc.dword = 0x4000u;
+  st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
+  st.gpr.x2.dword = operand;
+  st.gpr.x5.dword = 0u;
+
+  // amoxor.w x5, x2, (x1)
+  const auto amoxor = riscv::EncodeAmo(/*funct5=*/0x4U, /*aq=*/false,
+                                        /*rl=*/false, /*rd=*/5,
+                                        /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
+      lifter, "riscv32_amoxor_w_x5_x2_x1", riscv::Bytes32(amoxor), 0x4000,
+      &st, &mem);
+
+  EXPECT_EQ(st.gpr.x5.dword, old_val);
+  EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), old_val ^ operand);
+  EXPECT_EQ(st.pc.dword, 0x4004u);
+}
+
+TEST(RISCV32, AmoandW_ReturnsOldAndStoresAnd) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
+
+  test_runner::MemoryHandler mem(llvm::endianness::little);
+  const uint64_t data_addr = 0x6000;
+  const uint32_t old_val = 0xFF00FF00u;
+  const uint32_t operand = 0x0F0F0F0Fu;
+  mem.WriteMemory<uint32_t>(data_addr, old_val);
+
+  RISCVState st = {};
+  st.pc.dword = 0x4000u;
+  st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
+  st.gpr.x2.dword = operand;
+  st.gpr.x5.dword = 0u;
+
+  // amoand.w x5, x2, (x1)
+  const auto amoand = riscv::EncodeAmo(/*funct5=*/0xCU, /*aq=*/false,
+                                        /*rl=*/false, /*rd=*/5,
+                                        /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
+      lifter, "riscv32_amoand_w_x5_x2_x1", riscv::Bytes32(amoand), 0x4000,
+      &st, &mem);
+
+  EXPECT_EQ(st.gpr.x5.dword, old_val);
+  EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), old_val & operand);
+  EXPECT_EQ(st.pc.dword, 0x4004u);
+}
+
+TEST(RISCV32, AmoorW_ReturnsOldAndStoresOr) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
+
+  test_runner::MemoryHandler mem(llvm::endianness::little);
+  const uint64_t data_addr = 0x6000;
+  const uint32_t old_val = 0xFF00FF00u;
+  const uint32_t operand = 0x0F0F0F0Fu;
+  mem.WriteMemory<uint32_t>(data_addr, old_val);
+
+  RISCVState st = {};
+  st.pc.dword = 0x4000u;
+  st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
+  st.gpr.x2.dword = operand;
+  st.gpr.x5.dword = 0u;
+
+  // amoor.w x5, x2, (x1)
+  const auto amoor = riscv::EncodeAmo(/*funct5=*/0x8U, /*aq=*/false,
+                                       /*rl=*/false, /*rd=*/5,
+                                       /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
+      lifter, "riscv32_amoor_w_x5_x2_x1", riscv::Bytes32(amoor), 0x4000,
+      &st, &mem);
+
+  EXPECT_EQ(st.gpr.x5.dword, old_val);
+  EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), old_val | operand);
+  EXPECT_EQ(st.pc.dword, 0x4004u);
+}
+
+TEST(RISCV32, AmominW_ReturnsOldAndStoresSignedMin) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
+
+  test_runner::MemoryHandler mem(llvm::endianness::little);
+  const uint64_t data_addr = 0x6000;
+  // 0xFFFFFFFE is -2 as signed, 0x00000005 is 5 as signed; min is -2
+  const uint32_t old_val = 0xFFFFFFFEu;
+  const uint32_t operand = 0x00000005u;
+  mem.WriteMemory<uint32_t>(data_addr, old_val);
+
+  RISCVState st = {};
+  st.pc.dword = 0x4000u;
+  st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
+  st.gpr.x2.dword = operand;
+  st.gpr.x5.dword = 0u;
+
+  // amomin.w x5, x2, (x1)
+  const auto amomin = riscv::EncodeAmo(/*funct5=*/0x10U, /*aq=*/false,
+                                        /*rl=*/false, /*rd=*/5,
+                                        /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
+      lifter, "riscv32_amomin_w_x5_x2_x1", riscv::Bytes32(amomin), 0x4000,
+      &st, &mem);
+
+  EXPECT_EQ(st.gpr.x5.dword, old_val);
+  // Signed min(-2, 5) = -2 = 0xFFFFFFFE
+  EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), 0xFFFFFFFEu);
+  EXPECT_EQ(st.pc.dword, 0x4004u);
+}
+
+TEST(RISCV32, AmomaxW_ReturnsOldAndStoresSignedMax) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
+
+  test_runner::MemoryHandler mem(llvm::endianness::little);
+  const uint64_t data_addr = 0x6000;
+  // 0xFFFFFFFE is -2 as signed, 0x00000005 is 5 as signed; max is 5
+  const uint32_t old_val = 0xFFFFFFFEu;
+  const uint32_t operand = 0x00000005u;
+  mem.WriteMemory<uint32_t>(data_addr, old_val);
+
+  RISCVState st = {};
+  st.pc.dword = 0x4000u;
+  st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
+  st.gpr.x2.dword = operand;
+  st.gpr.x5.dword = 0u;
+
+  // amomax.w x5, x2, (x1)
+  const auto amomax = riscv::EncodeAmo(/*funct5=*/0x14U, /*aq=*/false,
+                                        /*rl=*/false, /*rd=*/5,
+                                        /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
+      lifter, "riscv32_amomax_w_x5_x2_x1", riscv::Bytes32(amomax), 0x4000,
+      &st, &mem);
+
+  EXPECT_EQ(st.gpr.x5.dword, old_val);
+  // Signed max(-2, 5) = 5
+  EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), 0x00000005u);
+  EXPECT_EQ(st.pc.dword, 0x4004u);
+}
+
+TEST(RISCV32, AmominuW_ReturnsOldAndStoresUnsignedMin) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
+
+  test_runner::MemoryHandler mem(llvm::endianness::little);
+  const uint64_t data_addr = 0x6000;
+  // Unsigned: 0xFFFFFFFE > 0x00000005; unsigned min is 0x00000005
+  const uint32_t old_val = 0xFFFFFFFEu;
+  const uint32_t operand = 0x00000005u;
+  mem.WriteMemory<uint32_t>(data_addr, old_val);
+
+  RISCVState st = {};
+  st.pc.dword = 0x4000u;
+  st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
+  st.gpr.x2.dword = operand;
+  st.gpr.x5.dword = 0u;
+
+  // amominu.w x5, x2, (x1)
+  const auto amominu = riscv::EncodeAmo(/*funct5=*/0x18U, /*aq=*/false,
+                                         /*rl=*/false, /*rd=*/5,
+                                         /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
+      lifter, "riscv32_amominu_w_x5_x2_x1", riscv::Bytes32(amominu), 0x4000,
+      &st, &mem);
+
+  EXPECT_EQ(st.gpr.x5.dword, old_val);
+  // Unsigned min(0xFFFFFFFE, 0x00000005) = 0x00000005
+  EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), 0x00000005u);
+  EXPECT_EQ(st.pc.dword, 0x4004u);
+}
+
+TEST(RISCV32, AmomaxuW_ReturnsOldAndStoresUnsignedMax) {
+  llvm::LLVMContext context;
+  RISCVTestSpecRunner<remill::ArchName::kArchRISCV32> runner(context);
+  auto &lifter = runner.GetLifter();
+
+  test_runner::MemoryHandler mem(llvm::endianness::little);
+  const uint64_t data_addr = 0x6000;
+  // Unsigned: 0xFFFFFFFE > 0x00000005; unsigned max is 0xFFFFFFFE
+  const uint32_t old_val = 0xFFFFFFFEu;
+  const uint32_t operand = 0x00000005u;
+  mem.WriteMemory<uint32_t>(data_addr, old_val);
+
+  RISCVState st = {};
+  st.pc.dword = 0x4000u;
+  st.gpr.x1.dword = static_cast<uint32_t>(data_addr);
+  st.gpr.x2.dword = operand;
+  st.gpr.x5.dword = 0u;
+
+  // amomaxu.w x5, x2, (x1)
+  const auto amomaxu = riscv::EncodeAmo(/*funct5=*/0x1CU, /*aq=*/false,
+                                         /*rl=*/false, /*rd=*/5,
+                                         /*funct3=*/0x2U, /*rs1=*/1, /*rs2=*/2);
+  riscv::test::ExecuteOne<remill::ArchName::kArchRISCV32>(
+      lifter, "riscv32_amomaxu_w_x5_x2_x1", riscv::Bytes32(amomaxu), 0x4000,
+      &st, &mem);
+
+  EXPECT_EQ(st.gpr.x5.dword, old_val);
+  // Unsigned max(0xFFFFFFFE, 0x00000005) = 0xFFFFFFFE
+  EXPECT_EQ(mem.ReadMemory<uint32_t>(data_addr), 0xFFFFFFFEu);
+  EXPECT_EQ(st.pc.dword, 0x4004u);
+}
