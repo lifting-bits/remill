@@ -19,6 +19,7 @@ enable_testing()
 
 add_executable(run-riscv32-tests
   TestLifting32.cpp
+  RV32I.cpp
   RV32M.cpp
   RV32A.cpp
   RV32C.cpp
@@ -40,6 +41,7 @@ set_property(TARGET run-riscv32-tests PROPERTY ENABLE_EXPORTS ON)
 
 add_executable(run-riscv64-tests
   TestLifting64.cpp
+  RV64I.cpp
   RV64M.cpp
   RV64A.cpp
   RV64C.cpp
