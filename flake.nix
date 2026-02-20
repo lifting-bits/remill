@@ -1,7 +1,7 @@
 {
   description = "Remill - Static binary translator that lifts machine code to LLVM bitcode";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
 
   outputs = { self, nixpkgs }:
     let
@@ -11,7 +11,7 @@
       packages = forSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          llvmPkgs = pkgs.llvmPackages_17;
+          llvmPkgs = pkgs.llvmPackages_20;
 
           xed = llvmPkgs.stdenv.mkDerivation {
             pname = "xed";
@@ -91,6 +91,8 @@
               pkgs.cmake
               pkgs.ninja
               pkgs.git
+              pkgs.python3
+              pkgs.ccacheWrapper
             ];
 
             buildInputs = [
@@ -111,8 +113,8 @@
                   -resource-dir ${llvmPkgs.clang-unwrapped.lib}/lib/clang/17 \
                   "$@"
               ''}"
-              "-DREMILL_ENABLE_TESTING=OFF"
-              "-DGIT_FAIL_IF_NONZERO_EXIT=FALSE"
+              #"-DREMILL_ENABLE_TESTING=OFF"
+              #"-DGIT_FAIL_IF_NONZERO_EXIT=FALSE"
             ];
           };
         in
