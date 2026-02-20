@@ -114,587 +114,92 @@ inline void ExecuteOne(test_runner::LiftingTester &lifter,
 
 }  // namespace riscv::test
 
-// RV64 register accessor map: GPR/PC via .qword, FPR via .qword
-const static std::unordered_map<
+// clang-format off
+
+// Macros to generate register accessor map entries.  GPR and PC width
+// varies between RV32 (.dword) and RV64 (.qword); FPR, FCSR, and
+// reservation fields are identical in both maps.
+
+#define RISCV_GPR_ACCESSOR(N, M) \
+  {"x" #N, [](RISCVState &st) -> test_runner::RegisterValueRef { \
+    return &st.gpr.x##N.M; \
+  }}
+
+#define RISCV_FPR_ACCESSOR(N) \
+  {"f" #N, [](RISCVState &st) -> test_runner::RegisterValueRef { \
+    return &st.fpr.f##N.qword; \
+  }}
+
+#define RISCV_GPR_ACCESSORS(M) \
+  RISCV_GPR_ACCESSOR(0, M),  RISCV_GPR_ACCESSOR(1, M),  \
+  RISCV_GPR_ACCESSOR(2, M),  RISCV_GPR_ACCESSOR(3, M),  \
+  RISCV_GPR_ACCESSOR(4, M),  RISCV_GPR_ACCESSOR(5, M),  \
+  RISCV_GPR_ACCESSOR(6, M),  RISCV_GPR_ACCESSOR(7, M),  \
+  RISCV_GPR_ACCESSOR(8, M),  RISCV_GPR_ACCESSOR(9, M),  \
+  RISCV_GPR_ACCESSOR(10, M), RISCV_GPR_ACCESSOR(11, M), \
+  RISCV_GPR_ACCESSOR(12, M), RISCV_GPR_ACCESSOR(13, M), \
+  RISCV_GPR_ACCESSOR(14, M), RISCV_GPR_ACCESSOR(15, M), \
+  RISCV_GPR_ACCESSOR(16, M), RISCV_GPR_ACCESSOR(17, M), \
+  RISCV_GPR_ACCESSOR(18, M), RISCV_GPR_ACCESSOR(19, M), \
+  RISCV_GPR_ACCESSOR(20, M), RISCV_GPR_ACCESSOR(21, M), \
+  RISCV_GPR_ACCESSOR(22, M), RISCV_GPR_ACCESSOR(23, M), \
+  RISCV_GPR_ACCESSOR(24, M), RISCV_GPR_ACCESSOR(25, M), \
+  RISCV_GPR_ACCESSOR(26, M), RISCV_GPR_ACCESSOR(27, M), \
+  RISCV_GPR_ACCESSOR(28, M), RISCV_GPR_ACCESSOR(29, M), \
+  RISCV_GPR_ACCESSOR(30, M), RISCV_GPR_ACCESSOR(31, M)
+
+#define RISCV_FPR_ACCESSORS \
+  RISCV_FPR_ACCESSOR(0),  RISCV_FPR_ACCESSOR(1),  \
+  RISCV_FPR_ACCESSOR(2),  RISCV_FPR_ACCESSOR(3),  \
+  RISCV_FPR_ACCESSOR(4),  RISCV_FPR_ACCESSOR(5),  \
+  RISCV_FPR_ACCESSOR(6),  RISCV_FPR_ACCESSOR(7),  \
+  RISCV_FPR_ACCESSOR(8),  RISCV_FPR_ACCESSOR(9),  \
+  RISCV_FPR_ACCESSOR(10), RISCV_FPR_ACCESSOR(11), \
+  RISCV_FPR_ACCESSOR(12), RISCV_FPR_ACCESSOR(13), \
+  RISCV_FPR_ACCESSOR(14), RISCV_FPR_ACCESSOR(15), \
+  RISCV_FPR_ACCESSOR(16), RISCV_FPR_ACCESSOR(17), \
+  RISCV_FPR_ACCESSOR(18), RISCV_FPR_ACCESSOR(19), \
+  RISCV_FPR_ACCESSOR(20), RISCV_FPR_ACCESSOR(21), \
+  RISCV_FPR_ACCESSOR(22), RISCV_FPR_ACCESSOR(23), \
+  RISCV_FPR_ACCESSOR(24), RISCV_FPR_ACCESSOR(25), \
+  RISCV_FPR_ACCESSOR(26), RISCV_FPR_ACCESSOR(27), \
+  RISCV_FPR_ACCESSOR(28), RISCV_FPR_ACCESSOR(29), \
+  RISCV_FPR_ACCESSOR(30), RISCV_FPR_ACCESSOR(31)
+
+#define RISCV_SHARED_ACCESSORS \
+  {"fcsr",           [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.fcsr.fcsr; }},    \
+  {"frm",            [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.fcsr.frm; }},     \
+  {"fflags",         [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.fcsr.fflags; }},  \
+  {"reserve",        [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.reserve; }},      \
+  {"reserve_length", [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.reserve_length; }}
+
+using RegAccessorMap = std::unordered_map<
     std::string,
-    std::function<test_runner::RegisterValueRef(RISCVState &)>>
-    kRV64RegAccessors = {
-        {"pc",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.pc.qword;
-         }},
-        {"x0",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x0.qword;
-         }},
-        {"x1",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x1.qword;
-         }},
-        {"x2",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x2.qword;
-         }},
-        {"x3",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x3.qword;
-         }},
-        {"x4",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x4.qword;
-         }},
-        {"x5",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x5.qword;
-         }},
-        {"x6",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x6.qword;
-         }},
-        {"x7",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x7.qword;
-         }},
-        {"x8",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x8.qword;
-         }},
-        {"x9",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x9.qword;
-         }},
-        {"x10",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x10.qword;
-         }},
-        {"x11",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x11.qword;
-         }},
-        {"x12",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x12.qword;
-         }},
-        {"x13",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x13.qword;
-         }},
-        {"x14",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x14.qword;
-         }},
-        {"x15",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x15.qword;
-         }},
-        {"x16",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x16.qword;
-         }},
-        {"x17",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x17.qword;
-         }},
-        {"x18",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x18.qword;
-         }},
-        {"x19",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x19.qword;
-         }},
-        {"x20",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x20.qword;
-         }},
-        {"x21",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x21.qword;
-         }},
-        {"x22",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x22.qword;
-         }},
-        {"x23",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x23.qword;
-         }},
-        {"x24",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x24.qword;
-         }},
-        {"x25",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x25.qword;
-         }},
-        {"x26",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x26.qword;
-         }},
-        {"x27",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x27.qword;
-         }},
-        {"x28",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x28.qword;
-         }},
-        {"x29",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x29.qword;
-         }},
-        {"x30",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x30.qword;
-         }},
-        {"x31",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x31.qword;
-         }},
-        {"f0",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f0.qword;
-         }},
-        {"f1",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f1.qword;
-         }},
-        {"f2",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f2.qword;
-         }},
-        {"f3",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f3.qword;
-         }},
-        {"f4",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f4.qword;
-         }},
-        {"f5",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f5.qword;
-         }},
-        {"f6",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f6.qword;
-         }},
-        {"f7",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f7.qword;
-         }},
-        {"f8",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f8.qword;
-         }},
-        {"f9",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f9.qword;
-         }},
-        {"f10",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f10.qword;
-         }},
-        {"f11",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f11.qword;
-         }},
-        {"f12",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f12.qword;
-         }},
-        {"f13",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f13.qword;
-         }},
-        {"f14",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f14.qword;
-         }},
-        {"f15",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f15.qword;
-         }},
-        {"f16",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f16.qword;
-         }},
-        {"f17",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f17.qword;
-         }},
-        {"f18",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f18.qword;
-         }},
-        {"f19",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f19.qword;
-         }},
-        {"f20",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f20.qword;
-         }},
-        {"f21",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f21.qword;
-         }},
-        {"f22",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f22.qword;
-         }},
-        {"f23",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f23.qword;
-         }},
-        {"f24",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f24.qword;
-         }},
-        {"f25",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f25.qword;
-         }},
-        {"f26",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f26.qword;
-         }},
-        {"f27",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f27.qword;
-         }},
-        {"f28",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f28.qword;
-         }},
-        {"f29",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f29.qword;
-         }},
-        {"f30",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f30.qword;
-         }},
-        {"f31",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f31.qword;
-         }},
-        {"fcsr",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fcsr.fcsr;
-         }},
-        {"frm",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fcsr.frm;
-         }},
-        {"fflags",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fcsr.fflags;
-         }},
-        {"reserve",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.reserve;
-         }},
-        {"reserve_length",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.reserve_length;
-         }},
-        {"reserve_address",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.reserve_address.qword;
-         }},
+    std::function<test_runner::RegisterValueRef(RISCVState &)>>;
+
+const static RegAccessorMap kRV64RegAccessors = {
+    {"pc", [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.pc.qword; }},
+    RISCV_GPR_ACCESSORS(qword),
+    RISCV_FPR_ACCESSORS,
+    RISCV_SHARED_ACCESSORS,
+    {"reserve_address", [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.reserve_address.qword; }},
 };
 
-// RV32 register accessor map: GPR/PC via .dword, FPR via .qword
-const static std::unordered_map<
-    std::string,
-    std::function<test_runner::RegisterValueRef(RISCVState &)>>
-    kRV32RegAccessors = {
-        {"pc",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.pc.dword;
-         }},
-        {"x0",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x0.dword;
-         }},
-        {"x1",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x1.dword;
-         }},
-        {"x2",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x2.dword;
-         }},
-        {"x3",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x3.dword;
-         }},
-        {"x4",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x4.dword;
-         }},
-        {"x5",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x5.dword;
-         }},
-        {"x6",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x6.dword;
-         }},
-        {"x7",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x7.dword;
-         }},
-        {"x8",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x8.dword;
-         }},
-        {"x9",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x9.dword;
-         }},
-        {"x10",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x10.dword;
-         }},
-        {"x11",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x11.dword;
-         }},
-        {"x12",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x12.dword;
-         }},
-        {"x13",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x13.dword;
-         }},
-        {"x14",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x14.dword;
-         }},
-        {"x15",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x15.dword;
-         }},
-        {"x16",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x16.dword;
-         }},
-        {"x17",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x17.dword;
-         }},
-        {"x18",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x18.dword;
-         }},
-        {"x19",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x19.dword;
-         }},
-        {"x20",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x20.dword;
-         }},
-        {"x21",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x21.dword;
-         }},
-        {"x22",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x22.dword;
-         }},
-        {"x23",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x23.dword;
-         }},
-        {"x24",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x24.dword;
-         }},
-        {"x25",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x25.dword;
-         }},
-        {"x26",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x26.dword;
-         }},
-        {"x27",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x27.dword;
-         }},
-        {"x28",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x28.dword;
-         }},
-        {"x29",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x29.dword;
-         }},
-        {"x30",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x30.dword;
-         }},
-        {"x31",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.gpr.x31.dword;
-         }},
-        {"f0",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f0.qword;
-         }},
-        {"f1",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f1.qword;
-         }},
-        {"f2",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f2.qword;
-         }},
-        {"f3",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f3.qword;
-         }},
-        {"f4",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f4.qword;
-         }},
-        {"f5",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f5.qword;
-         }},
-        {"f6",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f6.qword;
-         }},
-        {"f7",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f7.qword;
-         }},
-        {"f8",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f8.qword;
-         }},
-        {"f9",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f9.qword;
-         }},
-        {"f10",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f10.qword;
-         }},
-        {"f11",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f11.qword;
-         }},
-        {"f12",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f12.qword;
-         }},
-        {"f13",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f13.qword;
-         }},
-        {"f14",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f14.qword;
-         }},
-        {"f15",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f15.qword;
-         }},
-        {"f16",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f16.qword;
-         }},
-        {"f17",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f17.qword;
-         }},
-        {"f18",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f18.qword;
-         }},
-        {"f19",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f19.qword;
-         }},
-        {"f20",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f20.qword;
-         }},
-        {"f21",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f21.qword;
-         }},
-        {"f22",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f22.qword;
-         }},
-        {"f23",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f23.qword;
-         }},
-        {"f24",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f24.qword;
-         }},
-        {"f25",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f25.qword;
-         }},
-        {"f26",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f26.qword;
-         }},
-        {"f27",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f27.qword;
-         }},
-        {"f28",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f28.qword;
-         }},
-        {"f29",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f29.qword;
-         }},
-        {"f30",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f30.qword;
-         }},
-        {"f31",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fpr.f31.qword;
-         }},
-        {"fcsr",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fcsr.fcsr;
-         }},
-        {"frm",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fcsr.frm;
-         }},
-        {"fflags",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.fcsr.fflags;
-         }},
-        {"reserve",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.reserve;
-         }},
-        {"reserve_length",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.reserve_length;
-         }},
-        {"reserve_address",
-         [](RISCVState &st) -> test_runner::RegisterValueRef {
-           return &st.reserve_address.dword;
-         }},
+const static RegAccessorMap kRV32RegAccessors = {
+    {"pc", [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.pc.dword; }},
+    RISCV_GPR_ACCESSORS(dword),
+    RISCV_FPR_ACCESSORS,
+    RISCV_SHARED_ACCESSORS,
+    {"reserve_address", [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.reserve_address.dword; }},
 };
+
+#undef RISCV_GPR_ACCESSOR
+#undef RISCV_FPR_ACCESSOR
+#undef RISCV_GPR_ACCESSORS
+#undef RISCV_FPR_ACCESSORS
+#undef RISCV_SHARED_ACCESSORS
+
+// clang-format on
 
 // Test spec runner for RISC-V architectures
 template <remill::ArchName kArch>
