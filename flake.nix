@@ -91,6 +91,8 @@
               pkgs.cmake
               pkgs.ninja
               pkgs.git
+              pkgs.python3
+              pkgs.python3Packages.tqdm
             ];
 
             buildInputs = [
@@ -111,14 +113,52 @@
                   -resource-dir ${llvmPkgs.clang-unwrapped.lib}/lib/clang/17 \
                   "$@"
               ''}"
-              "-DREMILL_ENABLE_TESTING=OFF"
               "-DGIT_FAIL_IF_NONZERO_EXIT=FALSE"
             ];
+
+            doCheck = true;
+
+            checkPhase = ''
+              runHook preCheck
+              ninja test_dependencies
+              ctest --output-on-failure
+              runHook postCheck
+            '';
           };
         in
         {
           default = remill;
           inherit xed remill;
+        }
+      );
+
+      devShells = forSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          llvmPkgs = pkgs.llvmPackages_17;
+          remillPkg = self.packages.${system}.remill;
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              remillPkg
+              llvmPkgs.clang
+              llvmPkgs.llvm
+              pkgs.xxd
+              pkgs.cmake
+              pkgs.ninja
+              pkgs.glog
+              pkgs.gflags
+              pkgs.gtest
+              pkgs.python3
+              pkgs.python3Packages.tqdm
+            ];
+
+            shellHook = ''
+              echo "Remill development environment"
+              echo "Available tools: remill-lift-17, clang, llvm-*, xxd"
+            '';
+          };
         }
       );
     };
