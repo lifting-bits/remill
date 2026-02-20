@@ -27,6 +27,7 @@
 #include <test_runner/TestRunner.h>
 
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <sstream>
@@ -62,6 +63,30 @@ struct ArchTraits<remill::ArchName::kArchRISCV64> {
     st->pc.qword = pc;
   }
 };
+
+// Zero volatile Sleigh copy fields in RISCVState.  Sleigh semantics may
+// read wider regions of the state struct (e.g. 64-bit reads that span a
+// volatile padding byte and the real field), so leftover random bytes in
+// those padding slots corrupt the value seen by the lifted code.
+inline void ZeroVolatileFields(RISCVState &st) {
+  // Zero the entire FCSR struct.  Sleigh CSRRW on RV64 reads 64 bits
+  // starting at the fcsr field, spanning into frm/fflags/padding.
+  // Randomized bytes in any of these slots corrupt the value the
+  // lifted code sees, so zero everything and let preconditions set
+  // the fields that matter.
+  std::memset(&st.fcsr, 0, sizeof(st.fcsr));
+
+  // LR/SC reservation volatile copies.
+  st._reserve_address = 0;
+  st._reserve = 0;
+  st._reserve_length = 0;
+
+  // PC volatile copy.
+  st._pc = 0;
+
+  // Trailing struct padding.
+  std::memset(st._padding, 0, sizeof(st._padding));
+}
 
 template <remill::ArchName kArch>
 inline void ExecuteOne(test_runner::LiftingTester &lifter,
@@ -710,6 +735,7 @@ class RISCVTestSpecRunner {
 
     test.CheckLiftedInstruction(maybe_func->second);
     test_runner::RandomizeState(st, this->rbe);
+    riscv::test::ZeroVolatileFields(st);
 
     test.SetupTestPreconditions(st);
     auto mem_hand = std::make_unique<test_runner::MemoryHandler>(
