@@ -151,7 +151,23 @@ class SleighRISCVArch : public ArchBase {
   bool DecodeInstruction(uint64_t address, std::string_view instr_bytes,
                          Instruction &inst,
                          DecodingContext context) const override {
-    return decoder.DecodeInstruction(address, instr_bytes, inst, context);
+    bool ok = decoder.DecodeInstruction(address, instr_bytes, inst, context);
+    if (!ok) {
+      return false;
+    }
+
+    // Sleigh models ebreak/ecall with CALLOTHER pcode ops, which the
+    // generic control-flow analysis cannot classify.  Override here.
+    const auto &fn = inst.function;
+    if (fn == "ebreak" || fn == "c.ebreak") {
+      inst.category = Instruction::Category::kCategoryError;
+      inst.flows = Instruction::ErrorInsn();
+    } else if (fn == "ecall") {
+      inst.category = Instruction::Category::kCategoryAsyncHyperCall;
+      inst.flows = Instruction::AsyncHyperCall();
+    }
+
+    return true;
   }
 
   uint64_t MinInstructionAlign(const DecodingContext &) const override {
