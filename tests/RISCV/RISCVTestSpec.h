@@ -177,7 +177,7 @@ using RegAccessorMap = std::unordered_map<
     std::string,
     std::function<test_runner::RegisterValueRef(RISCVState &)>>;
 
-const static RegAccessorMap kRV64RegAccessors = {
+static const RegAccessorMap kRV64RegAccessors = {
     {"pc", [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.pc.qword; }},
     RISCV_GPR_ACCESSORS(qword),
     RISCV_FPR_ACCESSORS,
@@ -185,7 +185,7 @@ const static RegAccessorMap kRV64RegAccessors = {
     {"reserve_address", [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.reserve_address.qword; }},
 };
 
-const static RegAccessorMap kRV32RegAccessors = {
+static const RegAccessorMap kRV32RegAccessors = {
     {"pc", [](RISCVState &st) -> test_runner::RegisterValueRef { return &st.pc.dword; }},
     RISCV_GPR_ACCESSORS(dword),
     RISCV_FPR_ACCESSORS,

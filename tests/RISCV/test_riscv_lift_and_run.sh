@@ -37,6 +37,7 @@ echo "Lifted IR written to $TMPDIR/lifted.ll"
 
 echo "=== Step 2: Create native harness ==="
 cat > "$TMPDIR/harness.c" << 'HARNESS_EOF'
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,10 +69,10 @@ int main(void) {
   /* 100 + 42 == 142 */
   uint64_t result = call_sub_1000(100);
   if (result == 142) {
-    printf("PASS: call_sub_1000(100) == %lu\n", result);
+    printf("PASS: call_sub_1000(100) == %" PRIu64 "\n", result);
     return EXIT_SUCCESS;
   }
-  fprintf(stderr, "FAIL: expected 142, got %lu\n", result);
+  fprintf(stderr, "FAIL: expected 142, got %" PRIu64 "\n", result);
   return EXIT_FAILURE;
 }
 HARNESS_EOF
@@ -80,8 +81,9 @@ echo "=== Step 3: Compile lifted IR + harness to host native ==="
 # Compile LLVM IR to native object (clang handles the target override)
 "$CLANG" -Wno-override-module -O2 -c \
   "$TMPDIR/lifted.ll" -o "$TMPDIR/lifted.o"
-# Compile harness and link with the lifted object
-cc -O2 "$TMPDIR/harness.c" "$TMPDIR/lifted.o" -o "$TMPDIR/test_binary"
+# Compile harness (force C mode since $CLANG may be clang++) and link
+"$CLANG" -x c -O2 -c "$TMPDIR/harness.c" -o "$TMPDIR/harness.o"
+"$CLANG" -O2 "$TMPDIR/harness.o" "$TMPDIR/lifted.o" -o "$TMPDIR/test_binary"
 
 echo "=== Step 4: Run the native binary ==="
 "$TMPDIR/test_binary"
