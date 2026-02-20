@@ -68,4 +68,8 @@ add_test(
     "$<TARGET_FILE:remill-lift-${REMILL_LLVM_VERSION}>"
     "${CMAKE_BC_COMPILER}"
 )
-add_dependencies(test_dependencies remill-lift-${REMILL_LLVM_VERSION})
+add_dependencies(test_dependencies
+  run-riscv32-tests
+  run-riscv64-tests
+  remill-lift-${REMILL_LLVM_VERSION}
+)

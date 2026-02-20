@@ -106,5 +106,8 @@ VERSION
 # Doxygen generated documentation
 docs/doxygen/
 
+# CTest artifacts
+Testing/
+
 # Nix
 result
