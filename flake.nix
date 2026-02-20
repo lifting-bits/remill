@@ -115,8 +115,7 @@
               ''}"
               "-DGIT_FAIL_IF_NONZERO_EXIT=FALSE"
             ];
-            
-            /*
+
             doCheck = true;
 
             checkPhase = ''
@@ -125,7 +124,6 @@
               ctest --output-on-failure
               runHook postCheck
               '';
-              */
           };
         in
         {
