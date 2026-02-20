@@ -260,6 +260,10 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
         : Parameter(orig_type, true),
           register_pointer(register_pointer) {}
 
+    llvm::Value *GetPointer() const {
+      return register_pointer;
+    }
+
     static ParamPtr CreateRegister(llvm::Value *register_pointer,
                                    llvm::Type *vnode_type) {
       return std::make_shared<RegisterValue>(register_pointer, vnode_type);
@@ -382,6 +386,13 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                             nullptr, ss.str());
       this->cached_unique_ptrs.insert({offset, ptr});
       return ptr;
+    }
+
+    // Map a unique offset to an existing pointer (e.g., a register
+    // pointer). Subsequent GetUniquePtr calls for this offset return
+    // the mapped pointer instead of allocating a new stack slot.
+    void MapToPointer(uint64_t offset, llvm::Value *ptr) {
+      this->cached_unique_ptrs[offset] = ptr;
     }
   };
 
@@ -819,6 +830,26 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       }
       case OpCode::CPUI_COPY:
       case OpCode::CPUI_CAST: {
+        // Sleigh subconstructor pattern: when a register is copied
+        // into a unique (e.g., rdW exports a local initialized from
+        // the destination register), alias the unique to the register
+        // pointer so that writes to the unique propagate back to the
+        // actual register in the State struct.
+        if (outvar) {
+          auto *out_space = outvar->getAddr().getSpace();
+          auto *in_space = input_var.getAddr().getSpace();
+          if (std::string(out_space->getName()) == "unique" &&
+              std::string(in_space->getName()) == "register") {
+            VarnodeData reg_vnode = input_var;
+            auto reg_param = this->LiftParamPtr(bldr, reg_vnode);
+            auto *reg_val =
+                dynamic_cast<RegisterValue *>(reg_param.get());
+            if (reg_val) {
+              this->uniques.MapToPointer(outvar->offset,
+                                         reg_val->GetPointer());
+            }
+          }
+        }
         auto copy_inval = this->LiftInParam(
             bldr, input_var,
             llvm::IntegerType::get(this->context, input_var.size * 8));
