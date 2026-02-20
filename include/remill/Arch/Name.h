@@ -26,6 +26,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
+#    define REMILL_ON_RISCV 0
 #  elif defined(__i386__) || defined(_M_X86)
 #    define REMILL_ARCH "x86"
 #    define REMILL_ON_AMD64 0
@@ -35,6 +36,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
+#    define REMILL_ON_RISCV 0
 #  elif defined(__aarch64__)
 #    define REMILL_ARCH "aarch64"
 #    define REMILL_ON_AMD64 0
@@ -44,6 +46,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
+#    define REMILL_ON_RISCV 0
 #  elif defined(__arm__)
 #    define REMILL_ARCH "aarch32"
 #    define REMILL_ON_AMD64 0
@@ -53,6 +56,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
+#    define REMILL_ON_RISCV 0
 #  elif defined(__sparc__) || defined(__sparc) || defined(__sparc_v8__) || \
       defined(__sparc_v9__) || defined(__sparcv8) || defined(__sparcv9)
 #    define REMILL_ON_AMD64 0
@@ -60,6 +64,7 @@
 #    define REMILL_ON_AARCH64 0
 #    define REMILL_ON_AARCH32 0
 #    define REMILL_ON_PPC 0
+#    define REMILL_ON_RISCV 0
 #    if (defined(__LP64__) && __LP64__) || (defined(_LP64) && _LP64)
 #      define REMILL_ARCH "sparc64"
 #      define REMILL_ON_SPARC64 1
@@ -78,6 +83,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 1
+#    define REMILL_ON_RISCV 0
 #  elif defined(__riscv)
 #    if defined(__riscv_xlen) && __riscv_xlen == 64
 #      define REMILL_ARCH "riscv64"
@@ -94,6 +100,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
+#    define REMILL_ON_RISCV 1
 #  else
 #    error "Cannot infer current architecture."
 #    define REMILL_ARCH "invalid"
@@ -103,6 +110,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
+#    define REMILL_ON_RISCV 0
 #  endif
 #endif
 
