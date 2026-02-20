@@ -92,6 +92,7 @@
               pkgs.ninja
               pkgs.git
               pkgs.python3
+              pkgs.python3Packages.tqdm
             ];
 
             buildInputs = [
@@ -114,17 +115,17 @@
               ''}"
               "-DGIT_FAIL_IF_NONZERO_EXIT=FALSE"
             ];
-
+            
             /*
             doCheck = true;
 
             checkPhase = ''
               runHook preCheck
-              echo "Running remill tests..."
+              ninja test_dependencies
               ctest --output-on-failure
               runHook postCheck
               '';
-            */
+              */
           };
         in
         {
@@ -148,6 +149,11 @@
               pkgs.xxd
               pkgs.cmake
               pkgs.ninja
+              pkgs.glog
+              pkgs.gflags
+              pkgs.gtest
+              pkgs.python3
+              pkgs.python3Packages.tqdm
             ];
 
             shellHook = ''

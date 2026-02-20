@@ -60,3 +60,12 @@ target_link_libraries(
   glog::glog
 )
 set_property(TARGET run-riscv64-tests PROPERTY ENABLE_EXPORTS ON)
+
+# End-to-end test: lift RISC-V -> LLVM IR -> compile to host native -> run
+add_test(
+  NAME "riscv64-lift-and-run"
+  COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/test_riscv_lift_and_run.sh"
+    "$<TARGET_FILE:remill-lift-${REMILL_LLVM_VERSION}>"
+    "${CMAKE_BC_COMPILER}"
+)
+add_dependencies(test_dependencies remill-lift-${REMILL_LLVM_VERSION})
