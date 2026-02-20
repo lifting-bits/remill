@@ -388,12 +388,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return ptr;
     }
 
-    // Map a unique offset to an existing pointer (e.g., a register
-    // pointer). Subsequent GetUniquePtr calls for this offset return
-    // the mapped pointer instead of allocating a new stack slot.
-    void MapToPointer(uint64_t offset, llvm::Value *ptr) {
-      this->cached_unique_ptrs[offset] = ptr;
-    }
   };
 
   class ConstantReplacementContext {
@@ -457,6 +451,20 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
   UniqueRegSpace uniques;
   UniqueRegSpace unknown_regs;
+
+  // Tracks constant values COPY'd into uniques, used to resolve
+  // register-space LOAD/STORE addresses (e.g., &frs1D in fmv.x.d).
+  std::unordered_map<uint64_t, uint64_t> unique_const_values;
+
+  // Tracks register→unique COPYs for deferred writeback. When a
+  // subconstructor exports a local initialized from a register
+  // (e.g., rdW), subsequent stores to the unique must propagate
+  // back to the register. Maps unique offset → {reg_ptr, reg_size}.
+  struct RegWriteback {
+    llvm::Value *reg_ptr;
+    uint64_t reg_size;
+  };
+  std::unordered_map<uint64_t, RegWriteback> unique_reg_writebacks;
 
   ConstantReplacementContext replacement_cont;
 
@@ -674,7 +682,35 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     return this->LiftRequireOutParam(
         [&bldr, this, inner_lifted](VarnodeData out_param_data) {
           auto ptr = this->LiftParamPtr(bldr, out_param_data);
-          return ptr->StoreIntoParam(bldr, inner_lifted);
+          auto status = ptr->StoreIntoParam(bldr, inner_lifted);
+
+          // Writeback: if this unique was COPY'd from a register,
+          // also propagate the written value to the register.
+          if (status == LiftStatus::kLiftedInstruction &&
+              std::string(out_param_data.getAddr().getSpace()
+                              ->getName()) == "unique") {
+            auto it = this->unique_reg_writebacks.find(
+                out_param_data.offset);
+            if (it != this->unique_reg_writebacks.end()) {
+              auto &wb = it->second;
+              auto reg_int_type = llvm::IntegerType::get(
+                  this->context, wb.reg_size * 8);
+              auto val_int_type = llvm::IntegerType::get(
+                  this->context, out_param_data.size * 8);
+              llvm::Value *val = bldr.CreateLoad(val_int_type,
+                  this->uniques.GetUniquePtr(
+                      out_param_data.offset,
+                      out_param_data.size,
+                      bldr));
+              if (wb.reg_size > out_param_data.size) {
+                val = bldr.CreateZExt(val, reg_int_type);
+              } else if (wb.reg_size < out_param_data.size) {
+                val = bldr.CreateTrunc(val, reg_int_type);
+              }
+              bldr.CreateStore(val, wb.reg_ptr);
+            }
+          }
+          return status;
         },
         outvar);
   }
@@ -830,23 +866,60 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       }
       case OpCode::CPUI_COPY:
       case OpCode::CPUI_CAST: {
-        // Sleigh subconstructor pattern: when a register is copied
-        // into a unique (e.g., rdW exports a local initialized from
-        // the destination register), alias the unique to the register
-        // pointer so that writes to the unique propagate back to the
-        // actual register in the State struct.
         if (outvar) {
-          auto *out_space = outvar->getAddr().getSpace();
-          auto *in_space = input_var.getAddr().getSpace();
-          if (std::string(out_space->getName()) == "unique" &&
-              std::string(in_space->getName()) == "register") {
-            VarnodeData reg_vnode = input_var;
-            auto reg_param = this->LiftParamPtr(bldr, reg_vnode);
-            auto *reg_val =
-                dynamic_cast<RegisterValue *>(reg_param.get());
-            if (reg_val) {
-              this->uniques.MapToPointer(outvar->offset,
-                                         reg_val->GetPointer());
+          auto out_space_name =
+              outvar->getAddr().getSpace()->getName();
+          auto in_space_name =
+              input_var.getAddr().getSpace()->getName();
+
+          if (std::string(out_space_name) == "unique") {
+            if (std::string(in_space_name) == "register") {
+              // Sleigh subconstructor pattern: copies a register into
+              // a local/unique (e.g., rdW exports a local initialized
+              // from the destination register). Record the mapping so
+              // subsequent stores to the unique also write back to
+              // the register.
+              auto reg_name =
+                  this->insn_lifter_parent.GetEngine().getRegisterName(
+                      input_var.space, input_var.offset,
+                      input_var.size);
+              uint64_t full_reg_size = input_var.size;
+              if (!reg_name.empty()) {
+                for (auto &c : reg_name) {
+                  c = toupper(c);
+                }
+                const auto &remappings =
+                    this->insn_lifter_parent.decoder
+                        .GetStateRegRemappings();
+                if (auto el = remappings.find(reg_name);
+                    el != remappings.end()) {
+                  reg_name = el->second;
+                }
+                if (this->insn_lifter_parent.ArchHasRegByName(
+                        reg_name)) {
+                  auto [ptr, ty] =
+                      this->insn_lifter_parent.LoadRegAddress(
+                          bldr.GetInsertBlock(), this->state_pointer,
+                          reg_name);
+                  if (ty->isIntegerTy()) {
+                    full_reg_size =
+                        ty->getIntegerBitWidth() / 8;
+                  }
+                }
+              }
+              VarnodeData reg_vnode = input_var;
+              auto reg_param = this->LiftParamPtr(bldr, reg_vnode);
+              auto *reg_val =
+                  dynamic_cast<RegisterValue *>(reg_param.get());
+              if (reg_val) {
+                this->unique_reg_writebacks[outvar->offset] = {
+                    reg_val->GetPointer(), full_reg_size};
+              }
+            } else if (isVarnodeInConstantSpace(input_var)) {
+              // Track const-to-unique mappings for register-space
+              // LOAD/STORE address resolution.
+              this->unique_const_values[outvar->offset] =
+                  input_var.offset;
             }
           }
         }
@@ -1251,6 +1324,61 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
     if (opc == OpCode::CPUI_LOAD && outvar) {
       auto out_op = *outvar;
+
+      // lhs is a constant encoding the target address space.
+      // Decode it following Ghidra's convention (offset is the
+      // AddrSpace pointer cast to uintb).
+      auto *target_space = reinterpret_cast<AddrSpace *>(
+          static_cast<uintptr_t>(lhs.offset));
+      if (std::string(target_space->getName()) == "register") {
+        // Register-space LOAD (e.g., fmv.x.d uses *[register]:8).
+        // Resolve the address to a register offset and load from
+        // the State struct instead of RAM.
+        std::optional<uint64_t> reg_offset;
+        if (isVarnodeInConstantSpace(rhs)) {
+          reg_offset = rhs.offset;
+        } else if (std::string(rhs.getAddr().getSpace()->getName()) ==
+                   "unique") {
+          auto it = this->unique_const_values.find(rhs.offset);
+          if (it != this->unique_const_values.end()) {
+            reg_offset = it->second;
+          }
+        }
+        if (reg_offset) {
+          auto reg_name =
+              this->insn_lifter_parent.GetEngine().getRegisterName(
+                  target_space, *reg_offset, out_op.size);
+          auto out_type =
+              llvm::IntegerType::get(this->context, out_op.size * 8);
+
+          if (!reg_name.empty()) {
+            // Direct register resolution.
+            VarnodeData reg_vnode;
+            reg_vnode.space = target_space;
+            reg_vnode.offset = *reg_offset;
+            reg_vnode.size = out_op.size;
+            auto reg_param = this->LiftParamPtr(bldr, reg_vnode);
+            auto loaded = reg_param->LiftAsInParam(bldr, out_type);
+            if (loaded) {
+              return this->LiftStoreIntoOutParam(
+                  bldr, *loaded, outvar);
+            }
+          } else {
+            // The offset may be a unique-space address produced by
+            // &subconstructor (e.g., &frs1D). The subconstructor's
+            // COPY already stored the register value into this
+            // unique's alloca, so load from it.
+            llvm::IRBuilder<> entry_bldr(entry_block);
+            auto *src_ptr = this->uniques.GetUniquePtr(
+                *reg_offset, out_op.size, entry_bldr);
+            auto loaded = bldr.CreateLoad(out_type, src_ptr);
+            return this->LiftStoreIntoOutParam(
+                bldr, loaded, outvar);
+          }
+        }
+        return LiftStatus::kLiftedUnsupportedInstruction;
+      }
+
       auto addr_operand = rhs;
       auto lifted_addr_offset = this->LiftInParam(
           bldr, addr_operand, this->insn_lifter_parent.GetWordType());
@@ -1266,7 +1394,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       if (!loaded_value) {
         return LiftStatus::kLiftedUnsupportedInstruction;
       }
-
 
       auto lifted_out = this->LiftParamPtr(bldr, out_op);
       return lifted_out->StoreIntoParam(bldr, *loaded_value);
@@ -1341,6 +1468,60 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
                                 VarnodeData param2) {
     switch (opc) {
       case OpCode::CPUI_STORE: {
+        // param0 is a constant encoding the target address space.
+        auto *target_space = reinterpret_cast<AddrSpace *>(
+            static_cast<uintptr_t>(param0.offset));
+        if (std::string(target_space->getName()) == "register") {
+          // Register-space STORE (e.g., fmv.d.x uses
+          // *[register]:8 = ...). Resolve the address to a
+          // register offset and store into the State struct.
+          std::optional<uint64_t> reg_offset;
+          if (isVarnodeInConstantSpace(param1)) {
+            reg_offset = param1.offset;
+          } else if (std::string(
+                         param1.getAddr().getSpace()->getName()) ==
+                     "unique") {
+            auto it =
+                this->unique_const_values.find(param1.offset);
+            if (it != this->unique_const_values.end()) {
+              reg_offset = it->second;
+            }
+          }
+          if (reg_offset) {
+            auto reg_name =
+                this->insn_lifter_parent.GetEngine().getRegisterName(
+                    target_space, *reg_offset, param2.size);
+            auto store_type =
+                llvm::IntegerType::get(this->context,
+                                       param2.size * 8);
+            auto store_val =
+                this->LiftInParam(bldr, param2, store_type);
+            if (!store_val.has_value()) {
+              break;
+            }
+
+            if (!reg_name.empty()) {
+              // Direct register resolution.
+              VarnodeData reg_vnode;
+              reg_vnode.space = target_space;
+              reg_vnode.offset = *reg_offset;
+              reg_vnode.size = param2.size;
+              auto reg_param =
+                  this->LiftParamPtr(bldr, reg_vnode);
+              return reg_param->StoreIntoParam(bldr,
+                                               *store_val);
+            } else {
+              // Unique-alias fallback (see LOAD handler).
+              llvm::IRBuilder<> entry_bldr(entry_block);
+              auto *dst_ptr = this->uniques.GetUniquePtr(
+                  *reg_offset, param2.size, entry_bldr);
+              bldr.CreateStore(*store_val, dst_ptr);
+              return LiftStatus::kLiftedInstruction;
+            }
+          }
+          break;
+        }
+
         auto addr_operand = param1;
         auto lifted_addr_offset = this->LiftInParam(
             bldr, addr_operand, this->insn_lifter_parent.GetWordType());
