@@ -598,7 +598,6 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     } else if (space_name == "register") {
       auto reg_name = this->insn_lifter_parent.GetEngine().getRegisterName(
           vnode.space, vnode.offset, vnode.size);
-
       DLOG(INFO) << "Looking for reg name " << reg_name << " from offset "
                  << vnode.offset;
       return this->LiftNormalRegisterOrCreateUnique(bldr, reg_name, vnode);
@@ -761,10 +760,8 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       }
       case OpCode::CPUI_FLOAT_FLOAT2FLOAT: {
         auto float2float_inval = this->LiftFloatInParam(bldr, input_var);
-        auto new_float_type = this->GetFloatTypeOfByteSize(input_var.size);
+        auto new_float_type = this->GetFloatTypeOfByteSize(outvar->size);
         if (float2float_inval.has_value() && new_float_type) {
-
-          // This is a no-op until we make a helper to select an appropriate float type for a given node size.
           return this->LiftStoreIntoOutParam(
               bldr,
               this->CastFloatResult(
