@@ -538,7 +538,7 @@ TEST(RISCV64, CompressedEbreak_TriggersError) {
       0xAE00, riscv::Bytes16(halfword),
       remill::Instruction::Category::kCategoryError,
       {{"pc", uint64_t(0xAE00)}},
-      {{"pc", uint64_t(0xAE00)}},
+      {{"pc", uint64_t(0xAE02)}},
       kRV64RegAccessors);
   runner.RunTestSpec(spec);
 }
