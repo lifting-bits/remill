@@ -39,6 +39,9 @@
 #elif defined(__PPC__)
 #  include "remill/Arch/PPC/Runtime/State.h"
 #  define REMILL_HYPERCALL_PPC 1
+#elif defined(__riscv)
+#  include "remill/Arch/RISCV/Runtime/State.h"
+#  define REMILL_HYPERCALL_RISCV 1
 #else
 #  error "Cannot deduce hyper call architecture"
 #endif
@@ -419,6 +422,24 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
 
   case SyncHyperCall::kPPCSysCall:
       mem = __remill_ppc_syscall(mem);
+      break;
+
+#elif defined(REMILL_HYPERCALL_RISCV)
+
+    // RISC-V usermode in Remill uses hypercalls as an explicit escape hatch for
+    // system/privileged behavior. We make them observable by setting the
+    // `AsyncHyperCall` marker in the state.
+    case SyncHyperCall::kAssertPrivileged:
+    case SyncHyperCall::kRISCVEmulateInstruction:
+      state.hyper_call = AsyncHyperCall::kRISCVEmulateInstruction;
+      break;
+
+    case SyncHyperCall::kRISCVSysCall:
+      state.hyper_call = AsyncHyperCall::kRISCVSysCall;
+      break;
+
+    case SyncHyperCall::kRISCVBreak:
+      state.hyper_call = AsyncHyperCall::kRISCVBreak;
       break;
 
 #endif

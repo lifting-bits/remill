@@ -96,6 +96,12 @@ class SyncHyperCall {
 
     kPPCEmulateInstruction,
     kPPCSysCall,
+
+    // RISC-V usermode support uses hypercalls as an explicit escape hatch for
+    // system/privileged behavior.
+    kRISCVEmulateInstruction = 0x600U,
+    kRISCVSysCall,
+    kRISCVBreak,
   };
 } __attribute__((packed));
 
@@ -149,6 +155,11 @@ class AsyncHyperCall {
     kSPARCTrapCondVS,
 
     // Invalid instruction.
-    kInvalidInstruction
+    kInvalidInstruction,
+
+    // RISC-V usermode system instructions.
+    kRISCVEmulateInstruction,
+    kRISCVSysCall,
+    kRISCVBreak,
   };
 } __attribute__((packed));

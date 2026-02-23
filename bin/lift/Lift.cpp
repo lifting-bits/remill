@@ -58,7 +58,8 @@ DEFINE_string(os, REMILL_OS,
 DEFINE_string(arch, "",
               "Architecture of the code being translated. "
               "Valid architectures: x86, amd64 (with or without "
-              "`_avx` or `_avx512` appended), aarch64, aarch32");
+              "`_avx` or `_avx512` appended), aarch64, aarch32, "
+              "ppc, sparc32, sparc64, riscv32, riscv64");
 
 DEFINE_uint64(address, -1,
               "Address at which we should assume the bytes are "

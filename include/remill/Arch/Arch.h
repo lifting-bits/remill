@@ -442,6 +442,14 @@ class Arch {
   static ArchPtr GetSleighPPC(llvm::LLVMContext *context, OSName os,
                               ArchName arch_name);
 
+  // Defined in `lib/Arch/Sleigh/RISCVArch.cpp`
+  static ArchPtr GetSleighRISCV32(llvm::LLVMContext *context, OSName os,
+                                  ArchName arch_name);
+
+  // Defined in `lib/Arch/Sleigh/RISCVArch.cpp`
+  static ArchPtr GetSleighRISCV64(llvm::LLVMContext *context, OSName os,
+                                  ArchName arch_name);
+
   // Defined in `lib/Arch/SPARC32/Arch.cpp`.
   static ArchPtr GetSPARC32(llvm::LLVMContext *context, OSName os,
                           ArchName arch_name);
