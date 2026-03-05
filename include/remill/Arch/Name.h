@@ -17,7 +17,7 @@
 #pragma once
 
 #ifndef REMILL_ARCH
-#  if defined(__x86_64__)
+#  if defined(__x86_64__) || defined(_M_X64) || defined(_M_AMD64)
 #    define REMILL_ARCH "amd64_avx"
 #    define REMILL_ON_AMD64 1
 #    define REMILL_ON_X86 0
@@ -26,7 +26,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
-#  elif defined(__i386__) || defined(_M_X86)
+#  elif defined(__i386__) || defined(_M_X86) || defined(_M_IX86)
 #    define REMILL_ARCH "x86"
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 1
@@ -35,7 +35,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
-#  elif defined(__aarch64__)
+#  elif defined(__aarch64__) || defined(_M_ARM64)
 #    define REMILL_ARCH "aarch64"
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 0
@@ -44,7 +44,7 @@
 #    define REMILL_ON_SPARC64 0
 #    define REMILL_ON_SPARC32 0
 #    define REMILL_ON_PPC 0
-#  elif defined(__arm__)
+#  elif defined(__arm__) || defined(_M_ARM)
 #    define REMILL_ARCH "aarch32"
 #    define REMILL_ON_AMD64 0
 #    define REMILL_ON_X86 0
