@@ -1775,7 +1775,7 @@ DEF_SEM(PSHUFW, D dst, S1 src1, I8 src2) {
 
   auto vec_count = NumVectorElems(dst_vec);
   _Pragma("unroll") for (uint8_t i = 0; i < vec_count; i++) {
-    auto mask = UAnd(UShr(order, i), 3_u8);
+    auto mask = UAnd(UShr(order, i * 2), 3_u8);
     auto v1 = UExtractV16(src_vec, mask);
     dst_vec = UInsertV16(dst_vec, i, v1);
   }
