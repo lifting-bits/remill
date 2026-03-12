@@ -88,6 +88,7 @@ function(add_runtime_helper target_name address_bit_size enable_avx enable_avx51
     "${REMILL_LIB_DIR}/Arch/X86/Semantics/X87.cpp"
     "${REMILL_LIB_DIR}/Arch/X86/Semantics/COND_BR.cpp"
     "${REMILL_LIB_DIR}/Arch/X86/Semantics/INTERRUPT.cpp"
+    "${REMILL_LIB_DIR}/Arch/X86/Semantics/BMI.cpp"
   )
 endfunction()
 
