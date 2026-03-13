@@ -105,3 +105,6 @@ VERSION
 
 # Doxygen generated documentation
 docs/doxygen/
+
+# Nix
+result
