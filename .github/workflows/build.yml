@@ -93,10 +93,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: ubuntu-22.04
-          - runner: ubuntu-22.04-arm
-          - runner: macos-latest
+        runner:
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
+          - macos-latest
+        llvm:
+          - "15"
+          - "16"
+          - "17"
+          - "18"
+          - "19"
+          - "20"
+          - "21"
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -105,8 +113,8 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@4e002c8ec80594ecd40e759629461e26c8abed15 # v31
 
-      - name: Build remill
-        run: nix build .#remill
+      - name: Build remill (LLVM ${{ matrix.llvm }})
+        run: nix build .#remill-llvm${{ matrix.llvm }}
 
   macos:
     # Skip building pull requests from the same repository
