@@ -95,6 +95,11 @@
             let
               llvmPkgs = pkgs.${"llvmPackages_${toString ver}"};
               majorStr = toString ver;
+              # LLVM 16+ uses major-only version in resource dir (D125860)
+              clangVersion =
+                if lib.versionOlder llvmPkgs.release_version "16"
+                then llvmPkgs.release_version
+                else majorStr;
             in llvmPkgs.stdenv.mkDerivation {
               pname = "remill";
               version =
@@ -125,7 +130,7 @@
                 "-DFETCHCONTENT_FULLY_DISCONNECTED=ON"
                 "-DCLANG_PATH:FILEPATH=${pkgs.writeShellScript "bc-clang" ''
                   exec ${llvmPkgs.clang-unwrapped}/bin/clang++ \
-                    -resource-dir ${llvmPkgs.clang-unwrapped.lib}/lib/clang/${majorStr} \
+                    -resource-dir ${llvmPkgs.clang-unwrapped.lib}/lib/clang/${clangVersion} \
                     "$@"
                 ''}"
                 "-DGIT_FAIL_IF_NONZERO_EXIT=FALSE"
