@@ -10,10 +10,10 @@ jobs:
   linux:
     # Skip building pull requests from the same repository
     if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # We use a clean container to avoid LLVM conflicts on the GH runner images
     container:
-      image: ubuntu:22.04
+      image: ubuntu:24.04
     strategy:
       fail-fast: false
       matrix:
@@ -94,8 +94,8 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - ubuntu-22.04
-          - ubuntu-22.04-arm
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
           - macos-latest
         llvm:
           - "16"

@@ -2,7 +2,7 @@
 # This approach supports newer LLVM versions (19, 22, etc.)
 
 ARG LLVM_VERSION=22
-ARG UBUNTU_VERSION=22.04
+ARG UBUNTU_VERSION=24.04
 
 FROM ubuntu:${UBUNTU_VERSION} AS builder
 
