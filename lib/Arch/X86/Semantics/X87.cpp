@@ -119,12 +119,13 @@ template <typename T>
 DEF_FPU_SEM(FLD, RF80W, T src1) {
   SetFPUIpOp();
   auto val = Read(src1);
-  state.sw.ie |= IsSignalingNaN(val);
+  auto isSNaN = IsSignalingNaN(val);
+  state.sw.ie |= isSNaN;
   state.sw.de |= IsDenormal(val);
   auto res = Float80(val);
 
   // Quietize if signaling NaN.
-  if (state.sw.ie) {
+  if (isSNaN) {
 
 #if defined(__x86_64__) || defined(__i386__) || defined(_M_X86)
 // On non-x86 architectures, native_float80_t is defined as a double (float64_t)
