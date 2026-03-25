@@ -18,13 +18,13 @@ jobs:
       fail-fast: false
       matrix:
         llvm:
-          - "15"
           - "16"
           - "17"
           - "18"
           - "19"
           - "20"
           - "21"
+          - "22"
     steps:
       - name: Install LLVM and build tools
         run: |
@@ -98,13 +98,13 @@ jobs:
           - ubuntu-22.04-arm
           - macos-latest
         llvm:
-          - "15"
           - "16"
           - "17"
           - "18"
           - "19"
           - "20"
           - "21"
+          - "22"
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -130,13 +130,13 @@ jobs:
       fail-fast: false
       matrix:
         llvm:
-          - "15"
           - "16"
           - "17"
           - "18"
           - "19"
           - "20"
           - "21"
+          - "22"
     steps:
       - name: Install LLVM
         run: |

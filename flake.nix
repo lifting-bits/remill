@@ -12,7 +12,7 @@
         "aarch64-darwin"
       ];
 
-      llvmVersions = [ 15 16 17 18 19 20 21 ];
+      llvmVersions = [ 16 17 18 19 20 21 22 ];
       defaultLLVM = 17;
     in
     {
