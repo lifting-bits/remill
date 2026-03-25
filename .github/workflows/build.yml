@@ -98,8 +98,6 @@ jobs:
           - ubuntu-24.04-arm
           - macos-latest
         llvm:
-          - "16"
-          - "17"
           - "18"
           - "19"
           - "20"

@@ -12,8 +12,8 @@
         "aarch64-darwin"
       ];
 
-      llvmVersions = [ 16 17 18 19 20 21 22 ];
-      defaultLLVM = 17;
+      llvmVersions = [ 18 19 20 21 22 ];
+      defaultLLVM = 19;
     in
     {
       packages = forSystems (system:
