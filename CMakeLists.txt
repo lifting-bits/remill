@@ -47,10 +47,8 @@ else()
     aarch64info aarch64desc aarch64codegen aarch64asmparser
     armcodegen armasmparser
     interpreter mcjit
-    nvptxdesc
     x86info x86codegen x86asmparser
-    sparccodegen sparcasmparser
-    webassemblydesc)
+    sparccodegen sparcasmparser)
 endif()
 message(STATUS "LLVM Libraries: ${llvm_libs}")
 
