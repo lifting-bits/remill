@@ -89,6 +89,16 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
                      "d"(state.gpr.rdx.aword));
       break;
 
+    case SyncHyperCall::kX86XGetBV: {
+      uint32_t eax = 0;
+      uint32_t edx = 0;
+      const auto selector = static_cast<uint32_t>(state.addr_to_load);
+      asm volatile("xgetbv" : "=a"(eax), "=d"(edx) : "c"(selector));
+      state.gpr.rax.aword = eax;
+      state.gpr.rdx.aword = edx;
+      break;
+    }
+
     case SyncHyperCall::kX86LoadGlobalDescriptorTable: {
       const auto read =
           __remill_read_memory_64(mem, static_cast<addr_t>(state.addr_to_load));

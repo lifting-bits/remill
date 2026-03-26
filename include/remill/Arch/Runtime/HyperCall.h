@@ -30,6 +30,7 @@ class SyncHyperCall {
     kX86CPUID,
     kX86ReadTSC,
     kX86ReadTSCP,
+    kX86XGetBV,
     kX86LoadGlobalDescriptorTable,
     kX86LoadInterruptDescriptorTable,
     kX86LoadAccessRights,

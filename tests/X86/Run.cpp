@@ -914,26 +914,6 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   ImportX87State(native_state);
   ResetFlags();
 
-#if defined(__x86_64__) || defined(__i386__)
-  {
-    uint32_t eax = 1;
-    uint32_t ebx = 0;
-    uint32_t ecx = 0;
-    uint32_t edx = 0;
-    asm volatile("cpuid"
-                 : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
-                 : "a"(eax), "b"(ebx), "c"(ecx), "d"(edx));
-    if (ecx & (1U << 26U)) {
-      uint32_t xcr0_lo = 0;
-      uint32_t xcr0_hi = 0;
-      asm volatile("xgetbv" : "=a"(xcr0_lo), "=d"(xcr0_hi) : "c"(0));
-      native_state->xcr0.eax = xcr0_lo;
-      native_state->xcr0.edx = xcr0_hi;
-      lifted_state->xcr0 = native_state->xcr0;
-    }
-  }
-#endif
-
   // Set up the RIP correctly.
   lifted_state->gpr.rip.aword = static_cast<addr_t>(info->test_begin);
   native_state->gpr.rip.aword = static_cast<addr_t>(info->test_end);
@@ -1206,7 +1186,6 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
           << "st:" << offsetof(State, st) << "\n"
           << "mmx:" << offsetof(State, mmx) << "\n"
           << "sw:" << offsetof(State, sw) << "\n"
-          << "xcr0:" << offsetof(State, xcr0) << "\n"
           << "x87:" << offsetof(State, x87) << "\n"
           << "seg_caches:" << offsetof(State, seg_caches) << "\n";
     }

@@ -16,33 +16,9 @@
 
 namespace {
 
-DEF_SEM(DoXGETBV, PC next_pc) {
-  switch (Read(REG_ECX)) {
-
-    // Current state of the `xcr0` register.
-    case 0:
-      WriteZExt(IF_64BIT_ELSE(REG_RAX, REG_EAX), state.xcr0.eax);
-      WriteZExt(IF_64BIT_ELSE(REG_RDX, REG_EDX), state.xcr0.edx);
-      break;
-
-    // Current state of the `xcr0` register, anded with the `xinuse` register.
-    // We fake this as saying: this is what
-    case 1: {
-      XCR0 xcr0 = {};
-      xcr0.x87_fpu_mmx = 1;
-      xcr0.xmm = 1;
-      IF_AVX(xcr0.ymm = 1;)
-      IF_AVX512(xcr0.opmask = 1;)
-      IF_AVX512(xcr0.zmm_hi256 = 1;)
-      IF_AVX512(xcr0.hi16_zmm = 1;)
-      WriteZExt(IF_64BIT_ELSE(REG_RAX, REG_EAX), xcr0.eax);
-      WriteZExt(IF_64BIT_ELSE(REG_RDX, REG_EDX), xcr0.edx);
-      break;
-    }
-
-    default: WriteZExt(REG_PC, Read(next_pc)); StopFailure();
-  }
-  return memory;
+DEF_SEM(DoXGETBV, PC) {
+  state.addr_to_load = ZExtTo<uint64_t>(Read(REG_ECX));
+  return __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86XGetBV);
 }
 
 }  // namespace
