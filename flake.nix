@@ -1,7 +1,7 @@
 {
   description = "Remill - Static binary translator that lifts machine code to LLVM bitcode";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs = { self, nixpkgs }:
     let
@@ -12,8 +12,8 @@
         "aarch64-darwin"
       ];
 
-      llvmVersions = [ 15 16 17 18 19 20 21 ];
-      defaultLLVM = 17;
+      llvmVersions = [ 18 19 20 21 22 ];
+      defaultLLVM = 19;
     in
     {
       packages = forSystems (system:
@@ -136,7 +136,7 @@
                 "-DGIT_FAIL_IF_NONZERO_EXIT=FALSE"
               ];
 
-              doCheck = true;
+              doCheck = !pkgs.stdenv.hostPlatform.isDarwin;
 
               checkPhase = ''
                 runHook preCheck

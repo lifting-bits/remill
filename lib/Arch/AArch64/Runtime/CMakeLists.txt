@@ -22,6 +22,12 @@ set(AARCH64RUNTIME_SOURCEFILES
   "${REMILL_LIB_DIR}/Arch/Runtime/Intrinsics.cpp"
 )
 
+# TODO(llvm/llvm-project#178603): -ffp-exception-behavior=strict fixes LLVM 22
+# AArch64 SIMD fcvtzu/fcvtzs misselection but leaves strictfp-attributed
+# internal functions un-inlined, crashing the lifter on LLVM 17-18.
+# Re-enable once the lifter handles strictfp internal functions or upstream
+# fixes the instruction selection regression.
+#set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0 -ffp-exception-behavior=strict")
 set_source_files_properties(Instructions.cpp PROPERTIES COMPILE_FLAGS "-O3 -g0")
 set_source_files_properties(BasicBlock.cpp PROPERTIES COMPILE_FLAGS "-O0 -g3")
 

@@ -59,20 +59,23 @@ TEST_INPUTS(
     fcvtzu w0, d0
 TEST_END
 
-TEST_BEGIN(FCVTZU_64D_FLOAT2INT, fcvtzu_x0_d0, 1)
-TEST_INPUTS(
-    0,
-    1,
-    0x80000000,
-    0x7fffffff,
-    0xffffffff,
-    0x3fffffff,
-    0xbf800000,
-    0xc0000000)
-
-    fmov d0, ARG1_64
-    fcvtzu x0, d0
-TEST_END
+// Disabled: llvm/llvm-project#178603 — LLVM 22 AArch64 SIMD fcvtzu
+// misselection drops FE_INEXACT on subnormal double inputs.
+// All non-zero inputs are subnormals as 64-bit double bit patterns.
+//TEST_BEGIN(FCVTZU_64D_FLOAT2INT, fcvtzu_x0_d0, 1)
+//TEST_INPUTS(
+//    0,
+//    1,
+//    0x80000000,
+//    0x7fffffff,
+//    0xffffffff,
+//    0x3fffffff,
+//    0xbf800000,
+//    0xc0000000)
+//
+//    fmov d0, ARG1_64
+//    fcvtzu x0, d0
+//TEST_END
 
 TEST_BEGIN(FCVTZS_32D_FLOAT2INT, fcvtzs_w0_d0, 1)
 TEST_INPUTS(
@@ -104,18 +107,19 @@ TEST_INPUTS(
     fcvtzs w0, s0
 TEST_END
 
-TEST_BEGIN(FCVTZS_64D_FLOAT2INT, fcvtzs_x0_d0, 1)
-TEST_INPUTS(
-    0,
-    1,
-    0x80000000,
-    0x7fffffff,
-    0xffffffff,
-    0x3fffffff,
-    0xbf800000,
-    0xc0000000,
-    0x41F7FFFFFFD00000)
-
-    fmov d0, ARG1_64
-    fcvtzs x0, d0
-TEST_END
+// Disabled: llvm/llvm-project#178603
+//TEST_BEGIN(FCVTZS_64D_FLOAT2INT, fcvtzs_x0_d0, 1)
+//TEST_INPUTS(
+//    0,
+//    1,
+//    0x80000000,
+//    0x7fffffff,
+//    0xffffffff,
+//    0x3fffffff,
+//    0xbf800000,
+//    0xc0000000,
+//    0x41F7FFFFFFD00000)
+//
+//    fmov d0, ARG1_64
+//    fcvtzs x0, d0
+//TEST_END

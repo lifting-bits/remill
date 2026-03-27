@@ -18,14 +18,14 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["19", "21"]
+        llvm: ["19", "22"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,8 +45,8 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # Package name: remill/llvm19-ubuntu22.04
-          images: ${{ env.REGISTRY }}/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu22.04
+          # Package name: remill/llvm19-ubuntu24.04
+          images: ${{ env.REGISTRY }}/lifting-bits/remill/llvm${{ matrix.llvm }}-ubuntu24.04
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha
@@ -63,7 +63,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             LLVM_VERSION=${{ matrix.llvm }}
-            UBUNTU_VERSION=22.04
+            UBUNTU_VERSION=24.04
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -72,7 +72,7 @@ jobs:
         run: |
           docker build \
             --build-arg LLVM_VERSION=${{ matrix.llvm }} \
-            --build-arg UBUNTU_VERSION=22.04 \
+            --build-arg UBUNTU_VERSION=24.04 \
             -f Dockerfile.llvm \
             -t test-image .
           docker run --rm test-image --version

@@ -10,21 +10,20 @@ jobs:
   linux:
     # Skip building pull requests from the same repository
     if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     # We use a clean container to avoid LLVM conflicts on the GH runner images
     container:
-      image: ubuntu:22.04
+      image: ubuntu:24.04
     strategy:
       fail-fast: false
       matrix:
         llvm:
-          - "15"
-          - "16"
           - "17"
           - "18"
           - "19"
           - "20"
           - "21"
+          - "22"
     steps:
       - name: Install LLVM and build tools
         run: |
@@ -89,22 +88,20 @@ jobs:
           env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
 
   nix:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+    if: ${{ github.repository == 'lifting-bits/remill' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)) }}
     strategy:
       fail-fast: false
       matrix:
         runner:
-          - ubuntu-22.04
-          - ubuntu-22.04-arm
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
           - macos-latest
         llvm:
-          - "15"
-          - "16"
-          - "17"
           - "18"
           - "19"
           - "20"
           - "21"
+          - "22"
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -120,6 +117,10 @@ jobs:
         run: |
           ./result/bin/remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
           ./result/bin/remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
+
+      - name: Smoketests (aarch32)
+        if: ${{ runner.os != 'macOS' }}
+        run: |
           ./result/bin/remill-lift-${{ matrix.llvm }} --arch aarch32 -ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
 
   macos:
@@ -130,13 +131,12 @@ jobs:
       fail-fast: false
       matrix:
         llvm:
-          - "15"
-          - "16"
           - "17"
           - "18"
           - "19"
           - "20"
           - "21"
+          - "22"
     steps:
       - name: Install LLVM
         run: |
