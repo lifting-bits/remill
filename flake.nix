@@ -136,7 +136,7 @@
                 "-DGIT_FAIL_IF_NONZERO_EXIT=FALSE"
               ];
 
-              doCheck = !pkgs.stdenv.hostPlatform.isDarwin;
+              doCheck = true;
 
               checkPhase = ''
                 runHook preCheck

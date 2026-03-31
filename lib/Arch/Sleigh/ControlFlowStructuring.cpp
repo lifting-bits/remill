@@ -255,13 +255,22 @@ static ControlFlowStructureAnalysis::SleighDecodingResult
 ExtractNonConditionalCategory(
     const std::vector<Flow> &flows, const std::vector<RemillPcodeOp> &ops,
     std::function<std::optional<Instruction::InstructionFlowCategory>(
-        const Flow &, const RemillPcodeOp &)>
+        const Flow &,
+        std::optional<std::reference_wrapper<const RemillPcodeOp>>)>
         compute_single_flow_category) {
 
   // So here the requirement to make this cateogry work is that all flows target the same abnormal (or are all returns), and all decoding contexts are equal
   std::vector<Instruction::InstructionFlowCategory> cats;
-  for (auto flow : flows) {
-    if (auto cat = compute_single_flow_category(flow, ops[flow.pcode_index])) {
+  for (const auto &flow : flows) {
+    std::optional<std::reference_wrapper<const RemillPcodeOp>> op;
+    if (flow.pcode_index < ops.size()) {
+      op = std::cref(ops[flow.pcode_index]);
+    } else if (flow.pcode_index != ops.size()) {
+      DLOG(ERROR) << "Flow index out of range";
+      return std::nullopt;
+    }
+
+    if (auto cat = compute_single_flow_category(flow, op)) {
       cats.push_back(*cat);
     } else {
       DLOG(ERROR) << "Missing flow cat";
@@ -291,11 +300,12 @@ ExtractNonConditionalCategory(
 static ControlFlowStructureAnalysis::SleighDecodingResult
 ExtractNormal(const std::vector<Flow> &flows,
               const std::vector<RemillPcodeOp> &ops) {
-  // So we already know the op fallsthrough
   return ExtractNonConditionalCategory(
       flows, ops,
-      [](const Flow &flow, const RemillPcodeOp &op)
+      [](const Flow &flow,
+         std::optional<std::reference_wrapper<const RemillPcodeOp>> op)
           -> std::optional<Instruction::InstructionFlowCategory> {
+        (void) op;
         if (flow.context) {
           Instruction::NormalInsn norm(
               Instruction::FallthroughFlow(*flow.context));
@@ -312,9 +322,15 @@ ExtractAbnormal(const std::vector<Flow> &flows,
                 const std::vector<RemillPcodeOp> &ops) {
   return ExtractNonConditionalCategory(
       flows, ops,
-      [](const Flow &flow, const RemillPcodeOp &op)
+      [](const Flow &flow,
+         std::optional<std::reference_wrapper<const RemillPcodeOp>> op)
           -> std::optional<Instruction::InstructionFlowCategory> {
-        auto res = AbnormalCategoryOfFlow(flow, op);
+        if (!op) {
+          DLOG(ERROR) << "Abnormal flow requires backing pcode op";
+          return std::nullopt;
+        }
+
+        auto res = AbnormalCategoryOfFlow(flow, op->get());
         if (res) {
           return variant_cast(*res);
         }
