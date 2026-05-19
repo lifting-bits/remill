@@ -396,9 +396,14 @@ int main(int argc, char *argv[]) {
   // TODO: this should probably be removed
   auto hyperCall = module->getFunction("__remill_sync_hyper_call");
   if (hyperCall != nullptr) {
-    auto name = hyperCall->getName();
+    // Take an owned copy of the name *before* hyperCall is destroyed —
+    // hyperCall->getName() returns a StringRef into hyperCall's storage,
+    // which is freed by eraseFromParent() below. Re-using the StringRef
+    // after the erase yields zeroed memory and trips LLVM's "Null bytes
+    // not allowed in names" assertion in setName().
+    auto name = hyperCall->getName().str();
     auto ty = hyperCall->getFunctionType();
-    auto newFn = module->getOrInsertFunction(name.str() + "_", ty);
+    auto newFn = module->getOrInsertFunction(name + "_", ty);
     hyperCall->replaceAllUsesWith(newFn.getCallee());
     hyperCall->eraseFromParent();
     newFn.getCallee()->setName(name);
