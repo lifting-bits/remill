@@ -20,44 +20,36 @@ namespace remill {
 namespace aarch64 {
 
 // CINC  <Wd>, <Wn>, <cond>
-bool TryDecodeCINC_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeCINC_CSINC_32_CONDSEL.
+extern bool TryDecodeCINC_CSINC_32_CONDSEL(const InstData &, Instruction &);
 
 // CINC  <Xd>, <Xn>, <cond>
-bool TryDecodeCINC_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeCINC_CSINC_64_CONDSEL.
+extern bool TryDecodeCINC_CSINC_64_CONDSEL(const InstData &, Instruction &);
 
 // CSET  <Wd>, <cond>
-bool TryDecodeCSET_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeCSET_CSINC_32_CONDSEL.
+extern bool TryDecodeCSET_CSINC_32_CONDSEL(const InstData &, Instruction &);
 
 // CSET  <Xd>, <cond>
-bool TryDecodeCSET_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeCSET_CSINC_64_CONDSEL.
+extern bool TryDecodeCSET_CSINC_64_CONDSEL(const InstData &, Instruction &);
 
 // CINV  <Wd>, <Wn>, <cond>
-bool TryDecodeCINV_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeCINV_CSINV_32_CONDSEL.
+extern bool TryDecodeCINV_CSINV_32_CONDSEL(const InstData &, Instruction &);
 
 // CINV  <Xd>, <Xn>, <cond>
-bool TryDecodeCINV_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeCINV_CSINV_64_CONDSEL.
+extern bool TryDecodeCINV_CSINV_64_CONDSEL(const InstData &, Instruction &);
 
 // CSETM  <Wd>, <cond>
-bool TryDecodeCSETM_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeCSETM_CSINV_32_CONDSEL.
+extern bool TryDecodeCSETM_CSINV_32_CONDSEL(const InstData &, Instruction &);
 
 // CSETM  <Xd>, <cond>
-bool TryDecodeCSETM_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeCSETM_CSINV_64_CONDSEL.
+extern bool TryDecodeCSETM_CSINV_64_CONDSEL(const InstData &, Instruction &);
 
 // UMULL  <Xd>, <Wn>, <Wm>
 bool TryDecodeUMULL_UMADDL_64WA_DP_3SRC(const InstData &, Instruction &) {

@@ -3741,6 +3741,52 @@ bool TryDecodeCSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegX, 3);
 }
 
+// CSET / CINC / CINV / CSETM are conditional-select aliases:
+//
+//   CSET Rd, cond   = CSINC Rd, ZR, ZR, !cond     (1 if cond else 0)
+//   CINC Rd, Rn, cond = CSINC Rd, Rn,  Rn, !cond   (Rn+1 if cond else Rn)
+//   CINV Rd, Rn, cond = CSINV Rd, Rn,  Rn, !cond   (~Rn  if cond else Rn)
+//   CSETM Rd, cond  = CSINV Rd, ZR, ZR, !cond     (-1 if cond else 0)
+//
+// All four route through DecodeConditionalRegSelect with
+// invert_cond=true so the condition bit ends up matching the
+// alias's semantics. The destination + source registers are
+// encoded in the same fields as the parent CSINC/CSINV instruction
+// (n_regs picks up Rd / Rd+Rn / Rd+Rn+Rm).
+//
+// CSET / CSETM: n_regs=1 → just Rd is added. But CSINC's semantic
+// signature is (R32W dst, R32 src1, R32 src2), so we need Rn and
+// Rm read operands too. Use n_regs=3 — the decoder uses data.Rn
+// and data.Rm which are ZR (encoding 0x1F = WZR/XZR) for the CSET
+// alias.
+//
+// CINC / CINV: n_regs=2 (Rn picked up, Rm field also reads Rn in
+// the alias encoding so n_regs=3 with that being implicit works).
+bool TryDecodeCSET_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegW, 3, true);
+}
+bool TryDecodeCSET_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegX, 3, true);
+}
+bool TryDecodeCINC_CSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegW, 3, true);
+}
+bool TryDecodeCINC_CSINC_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegX, 3, true);
+}
+bool TryDecodeCINV_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegW, 3, true);
+}
+bool TryDecodeCINV_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegX, 3, true);
+}
+bool TryDecodeCSETM_CSINV_32_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegW, 3, true);
+}
+bool TryDecodeCSETM_CSINV_64_CONDSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegX, 3, true);
+}
+
 // CSNEG  <Wd>, <Wn>, <Wm>, <cond>
 bool TryDecodeCSNEG_32_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegW, 3);
