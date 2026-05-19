@@ -1322,6 +1322,41 @@ DEF_ISEL(INS_ASIMDINS_IR_R_D) = INS_64<R64>;
 
 namespace {
 
+// INS V→V: move one lane of one vector register into one lane of
+// another (or the same) vector register. Both source and dest are
+// vector-typed; the lane indices are immediates.
+#define INS_V_V(size) \
+  DEF_SEM(INS_V_V_##size, V128W dst, I64 dst_idx, V128 src, I64 src_idx) { \
+    auto dst_vec = UReadV##size(dst); \
+    auto src_vec = UReadV##size(src); \
+    auto val = UExtractV##size(src_vec, Read(src_idx)); \
+    dst_vec = UInsertV##size(dst_vec, Read(dst_idx), val); \
+    UWriteV##size(dst, dst_vec); \
+    return memory; \
+  }
+
+INS_V_V(8)
+INS_V_V(16)
+INS_V_V(32)
+INS_V_V(64)
+
+#undef INS_V_V
+
+}  // namespace
+
+DEF_ISEL(INS_ASIMDINS_IV_V_B) = INS_V_V_8;
+DEF_ISEL(INS_ASIMDINS_IV_V_H) = INS_V_V_16;
+DEF_ISEL(INS_ASIMDINS_IV_V_S) = INS_V_V_32;
+DEF_ISEL(INS_ASIMDINS_IV_V_D) = INS_V_V_64;
+
+// `mov.<T> Vd[i], Vn[i]` is an alias for INS V→V.
+DEF_ISEL(MOV_INS_ASIMDINS_IV_V_B) = INS_V_V_8;
+DEF_ISEL(MOV_INS_ASIMDINS_IV_V_H) = INS_V_V_16;
+DEF_ISEL(MOV_INS_ASIMDINS_IV_V_S) = INS_V_V_32;
+DEF_ISEL(MOV_INS_ASIMDINS_IV_V_D) = INS_V_V_64;
+
+namespace {
+
 #define EXTRACT_VEC(prefix, size, ext_op) \
   template <typename D, typename T> \
   DEF_SEM(prefix##MovFromVec##size, D dst, V128 src, I64 index) { \

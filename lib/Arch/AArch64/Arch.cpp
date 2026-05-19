@@ -4432,6 +4432,45 @@ bool TryDecodeINS_ASIMDINS_IR_R(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// INS  <Vd>.<Ts>[<index1>], <Vn>.<Ts>[<index2>]
+//
+// Element-wise vector lane move. Rustc emits this as
+// `mov.<T> v0[i1], v0[i2]` (or with different src/dst regs).
+// imm5 LSB position picks the element width (B=1, H=2, S=4, D=8).
+// imm5 >> (size+1) is the destination lane index. imm4 >> size is
+// the source lane index.
+static bool TryDecodeINS_ASIMDINS_IV_V_impl(
+    const InstData &data, Instruction &inst) {
+  uint64_t size = 0;
+  if (!LeastSignificantSetBit(data.imm5.uimm, &size) || size > 3) {
+    return false;
+  }
+  std::stringstream ss;
+  ss << inst.function;
+  switch (size) {
+    case 0: ss << "_B"; break;
+    case 1: ss << "_H"; break;
+    case 2: ss << "_S"; break;
+    case 3: ss << "_D"; break;
+    default: return false;
+  }
+  inst.function = ss.str();
+
+  AddRegOperand(inst, kActionWrite, kRegV, kUseAsValue, data.Rd);
+  AddImmOperand(inst, data.imm5.uimm >> (size + 1));
+  AddRegOperand(inst, kActionRead, kRegV, kUseAsValue, data.Rn);
+  AddImmOperand(inst, data.imm4.uimm >> size);
+  return true;
+}
+
+bool TryDecodeINS_ASIMDINS_IV_V(const InstData &data, Instruction &inst) {
+  return TryDecodeINS_ASIMDINS_IV_V_impl(data, inst);
+}
+
+bool TryDecodeMOV_INS_ASIMDINS_IV_V(const InstData &data, Instruction &inst) {
+  return TryDecodeINS_ASIMDINS_IV_V_impl(data, inst);
+}
+
 // LD1  { <Vt>.<T> }, [<Xn|SP>]
 bool TryDecodeLD1_ASISDLSE_R1_1V(const InstData &data, Instruction &inst) {
   uint64_t num_bytes = 0;

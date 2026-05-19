@@ -6377,9 +6377,8 @@ bool TryDecodeUABAL_ASIMDDIFF_L(const InstData &, Instruction &) {
 //  30 1 Q        0
 //  31 0
 // MOV  <Vd>.<Ts>[<index1>], <Vn>.<Ts>[<index2>]
-bool TryDecodeMOV_INS_ASIMDINS_IV_V(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeMOV_INS_ASIMDINS_IV_V.
+extern bool TryDecodeMOV_INS_ASIMDINS_IV_V(const InstData &, Instruction &);
 
 // SRSHR SRSHR_asisdshf_R:
 //   0 x Rd       0
@@ -16980,9 +16979,8 @@ bool TryDecodeNGCS_SBCS_64_ADDSUB_CARRY(const InstData &, Instruction &) {
 //  30 1 Q        0
 //  31 0
 // INS  <Vd>.<Ts>[<index1>], <Vn>.<Ts>[<index2>]
-bool TryDecodeINS_ASIMDINS_IV_V(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeINS_ASIMDINS_IV_V.
+extern bool TryDecodeINS_ASIMDINS_IV_V(const InstData &, Instruction &);
 
 // DCPS2 DCPS2_DC_exception:
 //   0 0 LL       0
