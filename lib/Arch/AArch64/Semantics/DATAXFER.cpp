@@ -379,41 +379,82 @@ namespace {
 // LDADD <Ws>, <Wt>, [Xn] — atomic load-and-add. Reads old value at
 // [Xn], computes old+Rs, writes new to [Xn], returns old in Rt.
 // LDADDA / LDADDL / LDADDAL add acquire / release / both barriers.
-template <typename D, typename M, typename S>
+//
+// The mem operand is declared write-only (M32W / M64W); we read
+// the old value via __remill_read_memory_* using AddressOf(). That
+// avoids the decoder producing two operands (one Read + one Write)
+// which would mismatch the semantic's 3-arg shape.
+//
+// Width is selected via an explicit template parameter (32 or 64)
+// because on AArch64 R32W and R64W are both typedef'd to
+// RnW<uint64_t>, so a type-driven dispatch isn't possible.
+template <int W> struct LDADD_RW;
+template <> struct LDADD_RW<32> {
+  using vt = uint32_t;
+  ALWAYS_INLINE static uint32_t do_read(Memory *&memory, addr_t a) {
+    return __remill_read_memory_32(memory, a);
+  }
+  ALWAYS_INLINE static Memory *do_write(Memory *memory, addr_t a, uint32_t v) {
+    return __remill_write_memory_32(memory, a, v);
+  }
+};
+template <> struct LDADD_RW<64> {
+  using vt = uint64_t;
+  ALWAYS_INLINE static uint64_t do_read(Memory *&memory, addr_t a) {
+    return __remill_read_memory_64(memory, a);
+  }
+  ALWAYS_INLINE static Memory *do_write(Memory *memory, addr_t a, uint64_t v) {
+    return __remill_write_memory_64(memory, a, v);
+  }
+};
+
+template <int W, typename D, typename M, typename S>
 DEF_SEM(LDADD_op, D rt, M mem_op, S rs) {
-  auto old_val = Read(mem_op);
-  auto new_val = UAdd(old_val, Read(rs));
-  WriteTrunc(mem_op, new_val);
+  using RW = LDADD_RW<W>;
+  auto addr = AddressOf(mem_op);
+  auto old_val = RW::do_read(memory, addr);
+  auto new_val = static_cast<typename RW::vt>(
+      old_val + static_cast<typename RW::vt>(Read(rs)));
+  memory = RW::do_write(memory, addr, new_val);
   WriteZExt(rt, old_val);
   return memory;
 }
 
-template <typename D, typename M, typename S>
+template <int W, typename D, typename M, typename S>
 DEF_SEM(LDADDA_op, D rt, M mem_op, S rs) {
+  using RW = LDADD_RW<W>;
   memory = __remill_barrier_load_store(memory);
-  auto old_val = Read(mem_op);
-  auto new_val = UAdd(old_val, Read(rs));
-  WriteTrunc(mem_op, new_val);
+  auto addr = AddressOf(mem_op);
+  auto old_val = RW::do_read(memory, addr);
+  auto new_val = static_cast<typename RW::vt>(
+      old_val + static_cast<typename RW::vt>(Read(rs)));
+  memory = RW::do_write(memory, addr, new_val);
   WriteZExt(rt, old_val);
   return memory;
 }
 
-template <typename D, typename M, typename S>
+template <int W, typename D, typename M, typename S>
 DEF_SEM(LDADDL_op, D rt, M mem_op, S rs) {
-  auto old_val = Read(mem_op);
-  auto new_val = UAdd(old_val, Read(rs));
-  WriteTrunc(mem_op, new_val);
+  using RW = LDADD_RW<W>;
+  auto addr = AddressOf(mem_op);
+  auto old_val = RW::do_read(memory, addr);
+  auto new_val = static_cast<typename RW::vt>(
+      old_val + static_cast<typename RW::vt>(Read(rs)));
+  memory = RW::do_write(memory, addr, new_val);
   WriteZExt(rt, old_val);
   memory = __remill_barrier_store_store(memory);
   return memory;
 }
 
-template <typename D, typename M, typename S>
+template <int W, typename D, typename M, typename S>
 DEF_SEM(LDADDAL_op, D rt, M mem_op, S rs) {
+  using RW = LDADD_RW<W>;
   memory = __remill_barrier_load_store(memory);
-  auto old_val = Read(mem_op);
-  auto new_val = UAdd(old_val, Read(rs));
-  WriteTrunc(mem_op, new_val);
+  auto addr = AddressOf(mem_op);
+  auto old_val = RW::do_read(memory, addr);
+  auto new_val = static_cast<typename RW::vt>(
+      old_val + static_cast<typename RW::vt>(Read(rs)));
+  memory = RW::do_write(memory, addr, new_val);
   WriteZExt(rt, old_val);
   memory = __remill_barrier_store_store(memory);
   return memory;
@@ -421,14 +462,14 @@ DEF_SEM(LDADDAL_op, D rt, M mem_op, S rs) {
 
 }  // namespace
 
-DEF_ISEL(LDADD_32_MEMOP) = LDADD_op<R32W, M32W, R32>;
-DEF_ISEL(LDADD_64_MEMOP) = LDADD_op<R64W, M64W, R64>;
-DEF_ISEL(LDADDA_32_MEMOP) = LDADDA_op<R32W, M32W, R32>;
-DEF_ISEL(LDADDA_64_MEMOP) = LDADDA_op<R64W, M64W, R64>;
-DEF_ISEL(LDADDL_32_MEMOP) = LDADDL_op<R32W, M32W, R32>;
-DEF_ISEL(LDADDL_64_MEMOP) = LDADDL_op<R64W, M64W, R64>;
-DEF_ISEL(LDADDAL_32_MEMOP) = LDADDAL_op<R32W, M32W, R32>;
-DEF_ISEL(LDADDAL_64_MEMOP) = LDADDAL_op<R64W, M64W, R64>;
+DEF_ISEL(LDADD_32_MEMOP) = LDADD_op<32, R32W, M32W, R32>;
+DEF_ISEL(LDADD_64_MEMOP) = LDADD_op<64, R64W, M64W, R64>;
+DEF_ISEL(LDADDA_32_MEMOP) = LDADDA_op<32, R32W, M32W, R32>;
+DEF_ISEL(LDADDA_64_MEMOP) = LDADDA_op<64, R64W, M64W, R64>;
+DEF_ISEL(LDADDL_32_MEMOP) = LDADDL_op<32, R32W, M32W, R32>;
+DEF_ISEL(LDADDL_64_MEMOP) = LDADDL_op<64, R64W, M64W, R64>;
+DEF_ISEL(LDADDAL_32_MEMOP) = LDADDAL_op<32, R32W, M32W, R32>;
+DEF_ISEL(LDADDAL_64_MEMOP) = LDADDAL_op<64, R64W, M64W, R64>;
 
 // LDAR is defined later via the existing LoadAcquire template;
 // only STLR_SL64 was missing.

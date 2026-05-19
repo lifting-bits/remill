@@ -4528,11 +4528,16 @@ bool TryDecodeINS_ASIMDINS_IR_R(const InstData &data, Instruction &inst) {
 //   bit  23:  A (acquire)
 //   bit  30-31: size (10 = 32-bit, 11 = 64-bit)
 //
-// Operand layout for the semantics: (Rt write, mem operand, Rs read).
+// Operand layout for the semantics: (Rt write, mem operand WRITE-ONLY,
+// Rs read). The semantic uses AddressOf+__remill_read_memory_* to
+// read the old value before writing the new one. kActionReadWrite
+// would cause AddBasePlusOffsetMemOp to emit TWO operands (one
+// Read and one Write), which would mismatch the semantic's 3-arg
+// signature.
 static bool TryDecodeLDADD_op(
     const InstData &data, Instruction &inst, RegClass r_class) {
   AddRegOperand(inst, kActionWrite, r_class, kUseAsValue, data.Rt);
-  AddBasePlusOffsetMemOp(inst, kActionReadWrite,
+  AddBasePlusOffsetMemOp(inst, kActionWrite,
                          r_class == kRegX ? 64 : 32, data.Rn, 0);
   AddRegOperand(inst, kActionRead, r_class, kUseAsValue, data.Rs);
   return true;
