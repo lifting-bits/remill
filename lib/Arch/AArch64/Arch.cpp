@@ -1039,6 +1039,26 @@ bool TryDecodeSTP_Q_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
   return TryDecodeSTP_Vn_LDSTPAIR_PRE(data, inst, kRegQ);
 }
 
+// STP  <St1>, <St2>, [<Xn|SP>], #<imm>
+bool TryDecodeSTP_S_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
+  return TryDecodeSTP_Vn_LDSTPAIR_POST(data, inst, kRegS);
+}
+
+// STP  <Dt1>, <Dt2>, [<Xn|SP>], #<imm>
+bool TryDecodeSTP_D_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
+  return TryDecodeSTP_Vn_LDSTPAIR_POST(data, inst, kRegD);
+}
+
+// STP  <St1>, <St2>, [<Xn|SP>, #<imm>]!
+bool TryDecodeSTP_S_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
+  return TryDecodeSTP_Vn_LDSTPAIR_PRE(data, inst, kRegS);
+}
+
+// STP  <Dt1>, <Dt2>, [<Xn|SP>, #<imm>]!
+bool TryDecodeSTP_D_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
+  return TryDecodeSTP_Vn_LDSTPAIR_PRE(data, inst, kRegD);
+}
+
 
 // LDP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
 bool TryDecodeLDP_32_LDSTPAIR_POST(const InstData &data, Instruction &inst) {

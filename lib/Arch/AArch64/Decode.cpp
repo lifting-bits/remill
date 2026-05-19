@@ -33322,9 +33322,8 @@ bool TryDecodeLDXRB_LR32_LDSTEXCL(const InstData &, Instruction &) {
 //  30 0 opc      0
 //  31 0 opc      1
 // STP  <St1>, <St2>, [<Xn|SP>], #<imm>
-bool TryDecodeSTP_S_LDSTPAIR_POST(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeSTP_S_LDSTPAIR_POST.
+extern bool TryDecodeSTP_S_LDSTPAIR_POST(const InstData &, Instruction &);
 
 // STP STP_D_ldstpair_post:
 //   0 x Rt       0
@@ -33360,9 +33359,8 @@ bool TryDecodeSTP_S_LDSTPAIR_POST(const InstData &, Instruction &) {
 //  30 1 opc      0
 //  31 0 opc      1
 // STP  <Dt1>, <Dt2>, [<Xn|SP>], #<imm>
-bool TryDecodeSTP_D_LDSTPAIR_POST(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeSTP_D_LDSTPAIR_POST.
+extern bool TryDecodeSTP_D_LDSTPAIR_POST(const InstData &, Instruction &);
 
 // STP STP_Q_ldstpair_post:
 //   0 x Rt       0
@@ -33436,9 +33434,8 @@ extern bool TryDecodeSTP_Q_LDSTPAIR_POST(const InstData &, Instruction &);
 //  30 0 opc      0
 //  31 0 opc      1
 // STP  <St1>, <St2>, [<Xn|SP>, #<imm>]!
-bool TryDecodeSTP_S_LDSTPAIR_PRE(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeSTP_S_LDSTPAIR_PRE.
+extern bool TryDecodeSTP_S_LDSTPAIR_PRE(const InstData &, Instruction &);
 
 // STP STP_D_ldstpair_pre:
 //   0 x Rt       0
@@ -33474,9 +33471,8 @@ bool TryDecodeSTP_S_LDSTPAIR_PRE(const InstData &, Instruction &) {
 //  30 1 opc      0
 //  31 0 opc      1
 // STP  <Dt1>, <Dt2>, [<Xn|SP>, #<imm>]!
-bool TryDecodeSTP_D_LDSTPAIR_PRE(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeSTP_D_LDSTPAIR_PRE.
+extern bool TryDecodeSTP_D_LDSTPAIR_PRE(const InstData &, Instruction &);
 
 // STP STP_Q_ldstpair_pre:
 //   0 x Rt       0
