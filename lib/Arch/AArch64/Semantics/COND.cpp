@@ -48,6 +48,52 @@ DEF_COND_ISEL(CSEL_64_CONDSEL, CSEL, R64W, R64, R64)
 
 namespace {
 
+// FCSEL writes one of two single-precision values into a vector
+// register based on the AArch64 NZCV condition. Source operands
+// come in as V32/V64 (vector views) — extract lane 0, select via
+// the condition, then FWriteV32/64 back to the destination,
+// matching how FMOV_S/D / FMUL etc. round-trip scalar FP values
+// through the vector register file.
+template <bool (*check_cond)(const State &)>
+DEF_SEM(FCSEL_S, V128W dst, V32 src1, V32 src2) {
+  auto a = FExtractV32(FReadV32(src1), 0);
+  auto b = FExtractV32(FReadV32(src2), 0);
+  FWriteV32(dst, check_cond(state) ? a : b);
+  return memory;
+}
+
+template <bool (*check_cond)(const State &)>
+DEF_SEM(FCSEL_D, V128W dst, V64 src1, V64 src2) {
+  auto a = FExtractV64(FReadV64(src1), 0);
+  auto b = FExtractV64(FReadV64(src2), 0);
+  FWriteV64(dst, check_cond(state) ? a : b);
+  return memory;
+}
+
+}  // namespace
+
+#define DEF_FCSEL_COND_ISEL(isel, sem) \
+  DEF_ISEL(isel##_GE) = sem<CondGE>; \
+  DEF_ISEL(isel##_GT) = sem<CondGT>; \
+  DEF_ISEL(isel##_LE) = sem<CondLE>; \
+  DEF_ISEL(isel##_LT) = sem<CondLT>; \
+  DEF_ISEL(isel##_EQ) = sem<CondEQ>; \
+  DEF_ISEL(isel##_NE) = sem<CondNE>; \
+  DEF_ISEL(isel##_CS) = sem<CondCS>; \
+  DEF_ISEL(isel##_CC) = sem<CondCC>; \
+  DEF_ISEL(isel##_MI) = sem<CondMI>; \
+  DEF_ISEL(isel##_PL) = sem<CondPL>; \
+  DEF_ISEL(isel##_VS) = sem<CondVS>; \
+  DEF_ISEL(isel##_VC) = sem<CondVC>; \
+  DEF_ISEL(isel##_HI) = sem<CondHI>; \
+  DEF_ISEL(isel##_LS) = sem<CondLS>; \
+  DEF_ISEL(isel##_AL) = sem<CondAL>;
+
+DEF_FCSEL_COND_ISEL(FCSEL_S_FLOATSEL, FCSEL_S)
+DEF_FCSEL_COND_ISEL(FCSEL_D_FLOATSEL, FCSEL_D)
+
+namespace {
+
 template <bool (*check_cond)(const State &), typename D, typename S1,
           typename S2>
 DEF_SEM(CSNEG, D dst, S1 src1, S2 src2) {

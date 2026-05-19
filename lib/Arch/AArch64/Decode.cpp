@@ -37687,9 +37687,8 @@ bool TryDecodeFCSEL_H_FLOATSEL(const InstData &, Instruction &) {
 //  30 0
 //  31 0 M        0
 // FCSEL  <Sd>, <Sn>, <Sm>, <cond>
-bool TryDecodeFCSEL_S_FLOATSEL(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCSEL_S_FLOATSEL.
+extern bool TryDecodeFCSEL_S_FLOATSEL(const InstData &, Instruction &);
 
 // FCSEL FCSEL_D_floatsel:
 //   0 x Rd       0
@@ -37725,9 +37724,8 @@ bool TryDecodeFCSEL_S_FLOATSEL(const InstData &, Instruction &) {
 //  30 0
 //  31 0 M        0
 // FCSEL  <Dd>, <Dn>, <Dm>, <cond>
-bool TryDecodeFCSEL_D_FLOATSEL(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCSEL_D_FLOATSEL.
+extern bool TryDecodeFCSEL_D_FLOATSEL(const InstData &, Instruction &);
 
 // SUBHN SUBHN_asimddiff_N:
 //   0 x Rd       0

@@ -3671,6 +3671,16 @@ bool TryDecodeCSEL_64_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegX, 3);
 }
 
+// FCSEL  <Sd>, <Sn>, <Sm>, <cond>
+bool TryDecodeFCSEL_S_FLOATSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegS, 3);
+}
+
+// FCSEL  <Dd>, <Dn>, <Dm>, <cond>
+bool TryDecodeFCSEL_D_FLOATSEL(const InstData &data, Instruction &inst) {
+  return DecodeConditionalRegSelect(data, inst, kRegD, 3);
+}
+
 // CSINC  <Wd>, <Wn>, <Wm>, <cond>
 bool TryDecodeCSINC_32_CONDSEL(const InstData &data, Instruction &inst) {
   return DecodeConditionalRegSelect(data, inst, kRegW, 3);
