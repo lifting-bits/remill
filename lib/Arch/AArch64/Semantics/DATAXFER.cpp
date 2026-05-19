@@ -88,6 +88,16 @@ DEF_SEM(STP_Q, V128 src1, V128 src2, MV256W dst) {
   memory = __remill_write_memory_128(memory, dst.addr + 16, src2_val);
   return memory;
 }
+
+DEF_SEM(STP_Q_UpdateIndex, V128 src1, V128 src2, MV256W dst, R64W dst_reg,
+        ADDR next_addr) {
+  auto src1_val = UExtractV128(UReadV128(src1), 0);
+  auto src2_val = UExtractV128(UReadV128(src2), 0);
+  memory = __remill_write_memory_128(memory, dst.addr, src1_val);
+  memory = __remill_write_memory_128(memory, dst.addr + 16, src2_val);
+  Write(dst_reg, Read(next_addr));
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(STP_32_LDSTPAIR_PRE) = StorePairUpdateIndex32;
@@ -103,6 +113,8 @@ DEF_ISEL(STP_S_LDSTPAIR_OFF) = STP_S;
 DEF_ISEL(STP_D_LDSTPAIR_OFF) = STP_D;
 
 DEF_ISEL(STP_Q_LDSTPAIR_OFF) = STP_Q;
+DEF_ISEL(STP_Q_LDSTPAIR_PRE) = STP_Q_UpdateIndex;
+DEF_ISEL(STP_Q_LDSTPAIR_POST) = STP_Q_UpdateIndex;
 
 namespace {
 

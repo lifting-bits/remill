@@ -1001,6 +1001,44 @@ bool TryDecodeSTP_Q_LDSTPAIR_OFF(const InstData &data, Instruction &inst) {
   return TryDecodeSTP_Vn_LDSTPAIR_OFF(data, inst, kRegQ);
 }
 
+static bool TryDecodeSTP_Vn_LDSTPAIR_POST(const InstData &data,
+                                          Instruction &inst, RegClass rclass) {
+  auto size = ReadRegSize(rclass);
+  auto scale = 2U + data.opc;
+  if (data.opc == 0x3) {
+    return false;  // `if opc == '11' then UnallocatedEncoding();`.
+  }
+  AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rt2);
+  AddPostIndexMemOp(inst, kActionWrite, size * 2, data.Rn,
+                    static_cast<uint64_t>(data.imm7.simm7) << scale);
+  return true;
+}
+
+static bool TryDecodeSTP_Vn_LDSTPAIR_PRE(const InstData &data,
+                                         Instruction &inst, RegClass rclass) {
+  auto size = ReadRegSize(rclass);
+  auto scale = 2U + data.opc;
+  if (data.opc == 0x3) {
+    return false;  // `if opc == '11' then UnallocatedEncoding();`.
+  }
+  AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rt);
+  AddRegOperand(inst, kActionRead, rclass, kUseAsValue, data.Rt2);
+  AddPreIndexMemOp(inst, kActionWrite, size * 2, data.Rn,
+                   static_cast<uint64_t>(data.imm7.simm7) << scale);
+  return true;
+}
+
+// STP  <Qt1>, <Qt2>, [<Xn|SP>], #<imm>
+bool TryDecodeSTP_Q_LDSTPAIR_POST(const InstData &data, Instruction &inst) {
+  return TryDecodeSTP_Vn_LDSTPAIR_POST(data, inst, kRegQ);
+}
+
+// STP  <Qt1>, <Qt2>, [<Xn|SP>, #<imm>]!
+bool TryDecodeSTP_Q_LDSTPAIR_PRE(const InstData &data, Instruction &inst) {
+  return TryDecodeSTP_Vn_LDSTPAIR_PRE(data, inst, kRegQ);
+}
+
 
 // LDP  <Wt1>, <Wt2>, [<Xn|SP>], #<imm>
 bool TryDecodeLDP_32_LDSTPAIR_POST(const InstData &data, Instruction &inst) {

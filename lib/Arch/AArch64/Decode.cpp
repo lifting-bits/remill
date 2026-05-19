@@ -33398,9 +33398,9 @@ bool TryDecodeSTP_D_LDSTPAIR_POST(const InstData &, Instruction &) {
 //  30 0 opc      0
 //  31 1 opc      1
 // STP  <Qt1>, <Qt2>, [<Xn|SP>], #<imm>
-bool TryDecodeSTP_Q_LDSTPAIR_POST(const InstData &, Instruction &) {
-  return false;
-}
+//
+// Implementation moved to Arch.cpp::TryDecodeSTP_Q_LDSTPAIR_POST.
+extern bool TryDecodeSTP_Q_LDSTPAIR_POST(const InstData &, Instruction &);
 
 // STP STP_S_ldstpair_pre:
 //   0 x Rt       0
@@ -33512,9 +33512,9 @@ bool TryDecodeSTP_D_LDSTPAIR_PRE(const InstData &, Instruction &) {
 //  30 0 opc      0
 //  31 1 opc      1
 // STP  <Qt1>, <Qt2>, [<Xn|SP>, #<imm>]!
-bool TryDecodeSTP_Q_LDSTPAIR_PRE(const InstData &, Instruction &) {
-  return false;
-}
+//
+// Implementation moved to Arch.cpp::TryDecodeSTP_Q_LDSTPAIR_PRE.
+extern bool TryDecodeSTP_Q_LDSTPAIR_PRE(const InstData &, Instruction &);
 
 // LDSMINAB LDSMINAB_32_memop:
 //   0 x Rt       0
