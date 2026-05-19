@@ -68,19 +68,26 @@ DEF_SEM(STP_D, V64 src1, V64 src2, MV128W dst) {
   return memory;
 }
 
-// MvW type isnt supported
-// remill/remill/Arch/Runtime/Operators.h:437:1: error: static_assert failed "Invalid value size for MVnW."
-// MAKE_MWRITEV(U, 128, dqwords, 128, uint128_t)
-
-// DEF_SEM(STP_Q, V128 src1, V128 src2, MV128W dst) {
-//   auto src1_vec = UReadV128(src1);
-//   auto src2_vec = UReadV128(src2);
-//   uint128v2_t tmp_vec = {};
-//   tmp_vec = UInsertV128(tmp_vec, 0, UExtractV128(src1_vec, 0));
-//   tmp_vec = UInsertV128(tmp_vec, 1, UExtractV128(src2_vec, 0));
-//   UWriteV128(dst, tmp_vec);
-//   return memory;
-// }
+// M12 fix: STP_Q (signed-offset variant) stores two 128-bit Q
+// registers (32 bytes total) to memory. Rust's AArch64 codegen
+// uses this heavily for fast struct copies. Previously the
+// semantics function could not compile against MV128W with a
+// uint128v2_t value (size mismatch) so STP_Q lifts bailed via
+// __remill_sync_hyper_call(state, memory, kAArch64EmulateInstruction).
+//
+// New approach: receive an MV256W destination (added to
+// Arch/AArch64/Runtime/Types.h) and decompose the 256-bit write
+// into two 128-bit __remill_write_memory_128 calls. The decoder
+// in Arch.cpp::TryDecodeSTP_Q_LDSTPAIR_OFF already emits the
+// memory operand with access_size = 256 bits (kRegQ * 2), so no
+// decoder change is needed.
+DEF_SEM(STP_Q, V128 src1, V128 src2, MV256W dst) {
+  auto src1_val = UExtractV128(UReadV128(src1), 0);
+  auto src2_val = UExtractV128(UReadV128(src2), 0);
+  memory = __remill_write_memory_128(memory, dst.addr, src1_val);
+  memory = __remill_write_memory_128(memory, dst.addr + 16, src2_val);
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(STP_32_LDSTPAIR_PRE) = StorePairUpdateIndex32;
@@ -95,7 +102,7 @@ DEF_ISEL(STP_64_LDSTPAIR_OFF) = StorePair64;
 DEF_ISEL(STP_S_LDSTPAIR_OFF) = STP_S;
 DEF_ISEL(STP_D_LDSTPAIR_OFF) = STP_D;
 
-// DEF_ISEL(STP_Q_LDSTPAIR_OFF) = STP_Q;
+DEF_ISEL(STP_Q_LDSTPAIR_OFF) = STP_Q;
 
 namespace {
 
