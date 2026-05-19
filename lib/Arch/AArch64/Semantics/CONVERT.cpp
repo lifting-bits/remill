@@ -138,6 +138,139 @@ DEF_ISEL(FCVTZS_32D_FLOAT2INT) = FCVTZS_Float64ToSInt32;
 DEF_ISEL(FCVTZS_64D_FLOAT2INT) = FCVTZS_Float64ToSInt64;
 DEF_ISEL(FCVTZS_64S_FLOAT2INT) = FCVTZS_Float32ToSInt64;
 
+namespace {
+
+// FCVT with specific rounding modes — round float to int via the
+// named rounding direction, then truncate to the destination integer
+// type.
+//   FCVTAS — Away from zero
+//   FCVTNS — Nearest, ties to even
+//   FCVTPS — to +Infinity (ceil)
+//   FCVTMS — to -Infinity (floor)
+//   *U variants produce unsigned destinations.
+//
+// remill's CONVERT.cpp ships only the truncate (FCVTZS/FCVTZU) forms;
+// Rustc emits the rounding variants whenever it lowers
+// `f32::round() as i32` / `as i64` and friends.
+
+// Helper that applies a rounding-mode builtin then static_casts to
+// the destination integer type. Defined per-mode/per-pair to avoid
+// the WriteZExt macro getting confused by `<>` commas in template
+// args.
+#define DEFINE_ROUND_HELPER(name, round_builtin, Src, Dst, suffix) \
+  ALWAYS_INLINE static Dst name##_cast_##suffix(State &state, Src v) { \
+    return CheckedCast<Src, Dst>(state, round_builtin(v)); \
+  }
+
+#define DEFINE_ROUND_SEMS(name, round_builtin) \
+  DEFINE_ROUND_HELPER(name, round_builtin, float32_t, int32_t,  F32_S32) \
+  DEFINE_ROUND_HELPER(name, round_builtin, float32_t, int64_t,  F32_S64) \
+  DEFINE_ROUND_HELPER(name, round_builtin, float64_t, int32_t,  F64_S32) \
+  DEFINE_ROUND_HELPER(name, round_builtin, float64_t, int64_t,  F64_S64) \
+  DEFINE_ROUND_HELPER(name, round_builtin, float32_t, uint32_t, F32_U32) \
+  DEFINE_ROUND_HELPER(name, round_builtin, float32_t, uint64_t, F32_U64) \
+  DEFINE_ROUND_HELPER(name, round_builtin, float64_t, uint32_t, F64_U32) \
+  DEFINE_ROUND_HELPER(name, round_builtin, float64_t, uint64_t, F64_U64) \
+  DEF_SEM(name##_F32_S32, R32W dst, V32 src) { \
+    auto v = FExtractV32(FReadV32(src), 0); \
+    auto r = name##_cast_F32_S32(state, v); \
+    WriteZExt(dst, r); \
+    return memory; \
+  } \
+  DEF_SEM(name##_F32_S64, R64W dst, V32 src) { \
+    auto v = FExtractV32(FReadV32(src), 0); \
+    auto r = name##_cast_F32_S64(state, v); \
+    WriteZExt(dst, r); \
+    return memory; \
+  } \
+  DEF_SEM(name##_F64_S32, R32W dst, V64 src) { \
+    auto v = FExtractV64(FReadV64(src), 0); \
+    auto r = name##_cast_F64_S32(state, v); \
+    WriteZExt(dst, r); \
+    return memory; \
+  } \
+  DEF_SEM(name##_F64_S64, R64W dst, V64 src) { \
+    auto v = FExtractV64(FReadV64(src), 0); \
+    auto r = name##_cast_F64_S64(state, v); \
+    WriteZExt(dst, r); \
+    return memory; \
+  } \
+  DEF_SEM(name##_F32_U32, R32W dst, V32 src) { \
+    auto v = FExtractV32(FReadV32(src), 0); \
+    auto r = name##_cast_F32_U32(state, v); \
+    WriteZExt(dst, r); \
+    return memory; \
+  } \
+  DEF_SEM(name##_F32_U64, R64W dst, V32 src) { \
+    auto v = FExtractV32(FReadV32(src), 0); \
+    auto r = name##_cast_F32_U64(state, v); \
+    WriteZExt(dst, r); \
+    return memory; \
+  } \
+  DEF_SEM(name##_F64_U32, R32W dst, V64 src) { \
+    auto v = FExtractV64(FReadV64(src), 0); \
+    auto r = name##_cast_F64_U32(state, v); \
+    WriteZExt(dst, r); \
+    return memory; \
+  } \
+  DEF_SEM(name##_F64_U64, R64W dst, V64 src) { \
+    auto v = FExtractV64(FReadV64(src), 0); \
+    auto r = name##_cast_F64_U64(state, v); \
+    WriteZExt(dst, r); \
+    return memory; \
+  }
+
+DEFINE_ROUND_SEMS(FCVTAS, __builtin_round)
+DEFINE_ROUND_SEMS(FCVTNS, __builtin_nearbyint)
+DEFINE_ROUND_SEMS(FCVTPS, __builtin_ceil)
+DEFINE_ROUND_SEMS(FCVTMS, __builtin_floor)
+
+#undef DEFINE_ROUND_SEMS
+#undef DEFINE_ROUND_HELPER
+
+}  // namespace
+
+// FCVTAS — round Away → signed
+DEF_ISEL(FCVTAS_32S_FLOAT2INT) = FCVTAS_F32_S32;
+DEF_ISEL(FCVTAS_64S_FLOAT2INT) = FCVTAS_F32_S64;
+DEF_ISEL(FCVTAS_32D_FLOAT2INT) = FCVTAS_F64_S32;
+DEF_ISEL(FCVTAS_64D_FLOAT2INT) = FCVTAS_F64_S64;
+// FCVTAU — round Away → unsigned
+DEF_ISEL(FCVTAU_32S_FLOAT2INT) = FCVTAS_F32_U32;
+DEF_ISEL(FCVTAU_64S_FLOAT2INT) = FCVTAS_F32_U64;
+DEF_ISEL(FCVTAU_32D_FLOAT2INT) = FCVTAS_F64_U32;
+DEF_ISEL(FCVTAU_64D_FLOAT2INT) = FCVTAS_F64_U64;
+// FCVTNS — round to Nearest → signed
+DEF_ISEL(FCVTNS_32S_FLOAT2INT) = FCVTNS_F32_S32;
+DEF_ISEL(FCVTNS_64S_FLOAT2INT) = FCVTNS_F32_S64;
+DEF_ISEL(FCVTNS_32D_FLOAT2INT) = FCVTNS_F64_S32;
+DEF_ISEL(FCVTNS_64D_FLOAT2INT) = FCVTNS_F64_S64;
+// FCVTNU — round to Nearest → unsigned
+DEF_ISEL(FCVTNU_32S_FLOAT2INT) = FCVTNS_F32_U32;
+DEF_ISEL(FCVTNU_64S_FLOAT2INT) = FCVTNS_F32_U64;
+DEF_ISEL(FCVTNU_32D_FLOAT2INT) = FCVTNS_F64_U32;
+DEF_ISEL(FCVTNU_64D_FLOAT2INT) = FCVTNS_F64_U64;
+// FCVTPS — round to +Inf → signed
+DEF_ISEL(FCVTPS_32S_FLOAT2INT) = FCVTPS_F32_S32;
+DEF_ISEL(FCVTPS_64S_FLOAT2INT) = FCVTPS_F32_S64;
+DEF_ISEL(FCVTPS_32D_FLOAT2INT) = FCVTPS_F64_S32;
+DEF_ISEL(FCVTPS_64D_FLOAT2INT) = FCVTPS_F64_S64;
+// FCVTPU — round to +Inf → unsigned
+DEF_ISEL(FCVTPU_32S_FLOAT2INT) = FCVTPS_F32_U32;
+DEF_ISEL(FCVTPU_64S_FLOAT2INT) = FCVTPS_F32_U64;
+DEF_ISEL(FCVTPU_32D_FLOAT2INT) = FCVTPS_F64_U32;
+DEF_ISEL(FCVTPU_64D_FLOAT2INT) = FCVTPS_F64_U64;
+// FCVTMS — round to -Inf → signed
+DEF_ISEL(FCVTMS_32S_FLOAT2INT) = FCVTMS_F32_S32;
+DEF_ISEL(FCVTMS_64S_FLOAT2INT) = FCVTMS_F32_S64;
+DEF_ISEL(FCVTMS_32D_FLOAT2INT) = FCVTMS_F64_S32;
+DEF_ISEL(FCVTMS_64D_FLOAT2INT) = FCVTMS_F64_S64;
+// FCVTMU — round to -Inf → unsigned
+DEF_ISEL(FCVTMU_32S_FLOAT2INT) = FCVTMS_F32_U32;
+DEF_ISEL(FCVTMU_64S_FLOAT2INT) = FCVTMS_F32_U64;
+DEF_ISEL(FCVTMU_32D_FLOAT2INT) = FCVTMS_F64_U32;
+DEF_ISEL(FCVTMU_64D_FLOAT2INT) = FCVTMS_F64_U64;
+
 DEF_ISEL(FCVT_DS_FLOATDP1) = FCVT_Float32ToFloat64;
 DEF_ISEL(FCVT_SD_FLOATDP1) = FCVT_Float64ToFloat32;
 

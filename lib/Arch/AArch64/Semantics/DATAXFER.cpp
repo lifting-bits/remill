@@ -430,6 +430,10 @@ DEF_ISEL(LDADDL_64_MEMOP) = LDADDL_op<R64W, M64W, R64>;
 DEF_ISEL(LDADDAL_32_MEMOP) = LDADDAL_op<R32W, M32W, R32>;
 DEF_ISEL(LDADDAL_64_MEMOP) = LDADDAL_op<R64W, M64W, R64>;
 
+// LDAR is defined later via the existing LoadAcquire template;
+// only STLR_SL64 was missing.
+DEF_ISEL(STLR_SL64_LDSTEXCL) = StoreRelease<R64, M64W>;
+
 namespace {
 
 template <typename D, typename S, typename InterType>

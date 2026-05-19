@@ -2846,6 +2846,46 @@ bool TryDecodeFCVTZS_64D_FLOAT2INT(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// FCVTAS / FCVTAU / FCVTNS / FCVTNU / FCVTPS / FCVTPU / FCVTMS / FCVTMU
+// — float→int conversion with explicit rounding mode. All forms share
+// the same operand shape as FCVTZS (one dest reg + one src reg).
+// Helper avoids 32 copies of the same body.
+static bool TryDecodeFCVT_Rounded(
+    const InstData &data, Instruction &inst,
+    RegClass dst_class, RegClass src_class) {
+  if (IsUnallocatedFloatEncoding(data)) {
+    return false;
+  }
+  AddRegOperand(inst, kActionWrite, dst_class, kUseAsValue, data.Rd);
+  AddRegOperand(inst, kActionRead, src_class, kUseAsValue, data.Rn);
+  return true;
+}
+
+#define DEF_FCVT_ROUND_DECODER(MNEM) \
+  bool TryDecode##MNEM##_32S_FLOAT2INT(const InstData &data, Instruction &inst) { \
+    return TryDecodeFCVT_Rounded(data, inst, kRegW, kRegS); \
+  } \
+  bool TryDecode##MNEM##_64S_FLOAT2INT(const InstData &data, Instruction &inst) { \
+    return TryDecodeFCVT_Rounded(data, inst, kRegX, kRegS); \
+  } \
+  bool TryDecode##MNEM##_32D_FLOAT2INT(const InstData &data, Instruction &inst) { \
+    return TryDecodeFCVT_Rounded(data, inst, kRegW, kRegD); \
+  } \
+  bool TryDecode##MNEM##_64D_FLOAT2INT(const InstData &data, Instruction &inst) { \
+    return TryDecodeFCVT_Rounded(data, inst, kRegX, kRegD); \
+  }
+
+DEF_FCVT_ROUND_DECODER(FCVTAS)
+DEF_FCVT_ROUND_DECODER(FCVTAU)
+DEF_FCVT_ROUND_DECODER(FCVTNS)
+DEF_FCVT_ROUND_DECODER(FCVTNU)
+DEF_FCVT_ROUND_DECODER(FCVTPS)
+DEF_FCVT_ROUND_DECODER(FCVTPU)
+DEF_FCVT_ROUND_DECODER(FCVTMS)
+DEF_FCVT_ROUND_DECODER(FCVTMU)
+
+#undef DEF_FCVT_ROUND_DECODER
+
 // FCVTZU  <Wd>, <Sn>
 bool TryDecodeFCVTZU_32S_FLOAT2INT(const InstData &data, Instruction &inst) {
   if (IsUnallocatedFloatEncoding(data)) {

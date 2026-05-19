@@ -1474,9 +1474,8 @@ bool TryDecodeFCVTPS_64H_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTPS  <Wd>, <Sn>
-bool TryDecodeFCVTPS_32S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTPS_32S_FLOAT2INT.
+extern bool TryDecodeFCVTPS_32S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTPS FCVTPS_64S_float2int:
 //   0 x Rd       0
@@ -1512,9 +1511,8 @@ bool TryDecodeFCVTPS_32S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTPS  <Xd>, <Sn>
-bool TryDecodeFCVTPS_64S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTPS_64S_FLOAT2INT.
+extern bool TryDecodeFCVTPS_64S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTPS FCVTPS_32D_float2int:
 //   0 x Rd       0
@@ -1550,9 +1548,8 @@ bool TryDecodeFCVTPS_64S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTPS  <Wd>, <Dn>
-bool TryDecodeFCVTPS_32D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTPS_32D_FLOAT2INT.
+extern bool TryDecodeFCVTPS_32D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTPS FCVTPS_64D_float2int:
 //   0 x Rd       0
@@ -1588,9 +1585,8 @@ bool TryDecodeFCVTPS_32D_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTPS  <Xd>, <Dn>
-bool TryDecodeFCVTPS_64D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTPS_64D_FLOAT2INT.
+extern bool TryDecodeFCVTPS_64D_FLOAT2INT(const InstData &, Instruction &);
 
 // FMINNM FMINNM_H_floatdp2:
 //   0 x Rd       0
@@ -20276,9 +20272,8 @@ bool TryDecodeFCVTAU_64H_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTAU  <Wd>, <Sn>
-bool TryDecodeFCVTAU_32S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTAU_32S_FLOAT2INT.
+extern bool TryDecodeFCVTAU_32S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTAU FCVTAU_64S_float2int:
 //   0 x Rd       0
@@ -20314,9 +20309,8 @@ bool TryDecodeFCVTAU_32S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTAU  <Xd>, <Sn>
-bool TryDecodeFCVTAU_64S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTAU_64S_FLOAT2INT.
+extern bool TryDecodeFCVTAU_64S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTAU FCVTAU_32D_float2int:
 //   0 x Rd       0
@@ -20352,9 +20346,8 @@ bool TryDecodeFCVTAU_64S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTAU  <Wd>, <Dn>
-bool TryDecodeFCVTAU_32D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTAU_32D_FLOAT2INT.
+extern bool TryDecodeFCVTAU_32D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTAU FCVTAU_64D_float2int:
 //   0 x Rd       0
@@ -20390,9 +20383,8 @@ bool TryDecodeFCVTAU_32D_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTAU  <Xd>, <Dn>
-bool TryDecodeFCVTAU_64D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTAU_64D_FLOAT2INT.
+extern bool TryDecodeFCVTAU_64D_FLOAT2INT(const InstData &, Instruction &);
 
 // SYS TLBI_SYS_CR_system:
 //   0 x Rt       0
@@ -30994,9 +30986,8 @@ bool TryDecodeFCVTAS_64H_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTAS  <Wd>, <Sn>
-bool TryDecodeFCVTAS_32S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTAS_32S_FLOAT2INT.
+extern bool TryDecodeFCVTAS_32S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTAS FCVTAS_64S_float2int:
 //   0 x Rd       0
@@ -31032,9 +31023,8 @@ bool TryDecodeFCVTAS_32S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTAS  <Xd>, <Sn>
-bool TryDecodeFCVTAS_64S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTAS_64S_FLOAT2INT.
+extern bool TryDecodeFCVTAS_64S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTAS FCVTAS_32D_float2int:
 //   0 x Rd       0
@@ -31070,9 +31060,8 @@ bool TryDecodeFCVTAS_64S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTAS  <Wd>, <Dn>
-bool TryDecodeFCVTAS_32D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTAS_32D_FLOAT2INT.
+extern bool TryDecodeFCVTAS_32D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTAS FCVTAS_64D_float2int:
 //   0 x Rd       0
@@ -31108,9 +31097,8 @@ bool TryDecodeFCVTAS_32D_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTAS  <Xd>, <Dn>
-bool TryDecodeFCVTAS_64D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTAS_64D_FLOAT2INT.
+extern bool TryDecodeFCVTAS_64D_FLOAT2INT(const InstData &, Instruction &);
 
 // LDURSH LDURSH_64_ldst_unscaled:
 //   0 x Rt       0
@@ -31830,9 +31818,8 @@ bool TryDecodeFCVTPU_64H_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTPU  <Wd>, <Sn>
-bool TryDecodeFCVTPU_32S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTPU_32S_FLOAT2INT.
+extern bool TryDecodeFCVTPU_32S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTPU FCVTPU_64S_float2int:
 //   0 x Rd       0
@@ -31868,9 +31855,8 @@ bool TryDecodeFCVTPU_32S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTPU  <Xd>, <Sn>
-bool TryDecodeFCVTPU_64S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTPU_64S_FLOAT2INT.
+extern bool TryDecodeFCVTPU_64S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTPU FCVTPU_32D_float2int:
 //   0 x Rd       0
@@ -31906,9 +31892,8 @@ bool TryDecodeFCVTPU_64S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTPU  <Wd>, <Dn>
-bool TryDecodeFCVTPU_32D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTPU_32D_FLOAT2INT.
+extern bool TryDecodeFCVTPU_32D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTPU FCVTPU_64D_float2int:
 //   0 x Rd       0
@@ -31944,9 +31929,8 @@ bool TryDecodeFCVTPU_32D_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTPU  <Xd>, <Dn>
-bool TryDecodeFCVTPU_64D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTPU_64D_FLOAT2INT.
+extern bool TryDecodeFCVTPU_64D_FLOAT2INT(const InstData &, Instruction &);
 
 // STSETH STSETH_32S_memop:
 //   0 1 Rt       0
@@ -32172,9 +32156,8 @@ bool TryDecodeFCVTMS_64H_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTMS  <Wd>, <Sn>
-bool TryDecodeFCVTMS_32S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTMS_32S_FLOAT2INT.
+extern bool TryDecodeFCVTMS_32S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTMS FCVTMS_64S_float2int:
 //   0 x Rd       0
@@ -32210,9 +32193,8 @@ bool TryDecodeFCVTMS_32S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTMS  <Xd>, <Sn>
-bool TryDecodeFCVTMS_64S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTMS_64S_FLOAT2INT.
+extern bool TryDecodeFCVTMS_64S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTMS FCVTMS_32D_float2int:
 //   0 x Rd       0
@@ -32248,9 +32230,8 @@ bool TryDecodeFCVTMS_64S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTMS  <Wd>, <Dn>
-bool TryDecodeFCVTMS_32D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTMS_32D_FLOAT2INT.
+extern bool TryDecodeFCVTMS_32D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTMS FCVTMS_64D_float2int:
 //   0 x Rd       0
@@ -32286,9 +32267,8 @@ bool TryDecodeFCVTMS_32D_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTMS  <Xd>, <Dn>
-bool TryDecodeFCVTMS_64D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTMS_64D_FLOAT2INT.
+extern bool TryDecodeFCVTMS_64D_FLOAT2INT(const InstData &, Instruction &);
 
 // STSMINH STSMINH_32S_memop:
 //   0 1 Rt       0
@@ -35702,9 +35682,8 @@ bool TryDecodeFCVTMU_64H_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTMU  <Wd>, <Sn>
-bool TryDecodeFCVTMU_32S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTMU_32S_FLOAT2INT.
+extern bool TryDecodeFCVTMU_32S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTMU FCVTMU_64S_float2int:
 //   0 x Rd       0
@@ -35740,9 +35719,8 @@ bool TryDecodeFCVTMU_32S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTMU  <Xd>, <Sn>
-bool TryDecodeFCVTMU_64S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTMU_64S_FLOAT2INT.
+extern bool TryDecodeFCVTMU_64S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTMU FCVTMU_32D_float2int:
 //   0 x Rd       0
@@ -35778,9 +35756,8 @@ bool TryDecodeFCVTMU_64S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTMU  <Wd>, <Dn>
-bool TryDecodeFCVTMU_32D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTMU_32D_FLOAT2INT.
+extern bool TryDecodeFCVTMU_32D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTMU FCVTMU_64D_float2int:
 //   0 x Rd       0
@@ -35816,9 +35793,8 @@ bool TryDecodeFCVTMU_32D_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTMU  <Xd>, <Dn>
-bool TryDecodeFCVTMU_64D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTMU_64D_FLOAT2INT.
+extern bool TryDecodeFCVTMU_64D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTZU FCVTZU_64H_float2int:
 //   0 x Rd       0
@@ -39499,9 +39475,8 @@ bool TryDecodeFCVTNS_64H_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTNS  <Wd>, <Sn>
-bool TryDecodeFCVTNS_32S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTNS_32S_FLOAT2INT.
+extern bool TryDecodeFCVTNS_32S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTNS FCVTNS_64S_float2int:
 //   0 x Rd       0
@@ -39537,9 +39512,8 @@ bool TryDecodeFCVTNS_32S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTNS  <Xd>, <Sn>
-bool TryDecodeFCVTNS_64S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTNS_64S_FLOAT2INT.
+extern bool TryDecodeFCVTNS_64S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTNS FCVTNS_32D_float2int:
 //   0 x Rd       0
@@ -39575,9 +39549,8 @@ bool TryDecodeFCVTNS_64S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTNS  <Wd>, <Dn>
-bool TryDecodeFCVTNS_32D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTNS_32D_FLOAT2INT.
+extern bool TryDecodeFCVTNS_32D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTNS FCVTNS_64D_float2int:
 //   0 x Rd       0
@@ -39613,9 +39586,8 @@ bool TryDecodeFCVTNS_32D_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTNS  <Xd>, <Dn>
-bool TryDecodeFCVTNS_64D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTNS_64D_FLOAT2INT.
+extern bool TryDecodeFCVTNS_64D_FLOAT2INT(const InstData &, Instruction &);
 
 // SQSHRN SQSHRN_asisdshf_N:
 //   0 x Rd       0
@@ -41171,9 +41143,8 @@ bool TryDecodeFCVTNU_64H_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTNU  <Wd>, <Sn>
-bool TryDecodeFCVTNU_32S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTNU_32S_FLOAT2INT.
+extern bool TryDecodeFCVTNU_32S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTNU FCVTNU_64S_float2int:
 //   0 x Rd       0
@@ -41209,9 +41180,8 @@ bool TryDecodeFCVTNU_32S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTNU  <Xd>, <Sn>
-bool TryDecodeFCVTNU_64S_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTNU_64S_FLOAT2INT.
+extern bool TryDecodeFCVTNU_64S_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTNU FCVTNU_32D_float2int:
 //   0 x Rd       0
@@ -41247,9 +41217,8 @@ bool TryDecodeFCVTNU_64S_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 0 sf       0
 // FCVTNU  <Wd>, <Dn>
-bool TryDecodeFCVTNU_32D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTNU_32D_FLOAT2INT.
+extern bool TryDecodeFCVTNU_32D_FLOAT2INT(const InstData &, Instruction &);
 
 // FCVTNU FCVTNU_64D_float2int:
 //   0 x Rd       0
@@ -41285,9 +41254,8 @@ bool TryDecodeFCVTNU_32D_FLOAT2INT(const InstData &, Instruction &) {
 //  30 0
 //  31 1 sf       0
 // FCVTNU  <Xd>, <Dn>
-bool TryDecodeFCVTNU_64D_FLOAT2INT(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeFCVTNU_64D_FLOAT2INT.
+extern bool TryDecodeFCVTNU_64D_FLOAT2INT(const InstData &, Instruction &);
 
 // MUL MUL_asimdsame_only:
 //   0 x Rd       0
