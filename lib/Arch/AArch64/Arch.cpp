@@ -4432,6 +4432,51 @@ bool TryDecodeINS_ASIMDINS_IR_R(const InstData &data, Instruction &inst) {
   return true;
 }
 
+// LDADD/LDADDA/LDADDL/LDADDAL <Ws>, <Wt>, [<Xn>] — atomic add
+//
+// Format (32-bit variant, 64-bit identical except `kRegX`):
+//   bits  0-4: Rt (output reg, receives OLD value)
+//   bits  5-9: Rn (base register holding the address)
+//   bits 16-20: Rs (added value)
+//   bit  22:  R (release)
+//   bit  23:  A (acquire)
+//   bit  30-31: size (10 = 32-bit, 11 = 64-bit)
+//
+// Operand layout for the semantics: (Rt write, mem operand, Rs read).
+static bool TryDecodeLDADD_op(
+    const InstData &data, Instruction &inst, RegClass r_class) {
+  AddRegOperand(inst, kActionWrite, r_class, kUseAsValue, data.Rt);
+  AddBasePlusOffsetMemOp(inst, kActionReadWrite,
+                         r_class == kRegX ? 64 : 32, data.Rn, 0);
+  AddRegOperand(inst, kActionRead, r_class, kUseAsValue, data.Rs);
+  return true;
+}
+
+bool TryDecodeLDADD_32_MEMOP(const InstData &data, Instruction &inst) {
+  return TryDecodeLDADD_op(data, inst, kRegW);
+}
+bool TryDecodeLDADD_64_MEMOP(const InstData &data, Instruction &inst) {
+  return TryDecodeLDADD_op(data, inst, kRegX);
+}
+bool TryDecodeLDADDA_32_MEMOP(const InstData &data, Instruction &inst) {
+  return TryDecodeLDADD_op(data, inst, kRegW);
+}
+bool TryDecodeLDADDA_64_MEMOP(const InstData &data, Instruction &inst) {
+  return TryDecodeLDADD_op(data, inst, kRegX);
+}
+bool TryDecodeLDADDL_32_MEMOP(const InstData &data, Instruction &inst) {
+  return TryDecodeLDADD_op(data, inst, kRegW);
+}
+bool TryDecodeLDADDL_64_MEMOP(const InstData &data, Instruction &inst) {
+  return TryDecodeLDADD_op(data, inst, kRegX);
+}
+bool TryDecodeLDADDAL_32_MEMOP(const InstData &data, Instruction &inst) {
+  return TryDecodeLDADD_op(data, inst, kRegW);
+}
+bool TryDecodeLDADDAL_64_MEMOP(const InstData &data, Instruction &inst) {
+  return TryDecodeLDADD_op(data, inst, kRegX);
+}
+
 // INS  <Vd>.<Ts>[<index1>], <Vn>.<Ts>[<index2>]
 //
 // Element-wise vector lane move. Rustc emits this as

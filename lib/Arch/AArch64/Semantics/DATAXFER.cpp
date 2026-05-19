@@ -376,6 +376,62 @@ DEF_ISEL(STLXR_SR64_LDSTEXCL) = STLXR<R64, M64W>;
 
 namespace {
 
+// LDADD <Ws>, <Wt>, [Xn] — atomic load-and-add. Reads old value at
+// [Xn], computes old+Rs, writes new to [Xn], returns old in Rt.
+// LDADDA / LDADDL / LDADDAL add acquire / release / both barriers.
+template <typename D, typename M, typename S>
+DEF_SEM(LDADD_op, D rt, M mem_op, S rs) {
+  auto old_val = Read(mem_op);
+  auto new_val = UAdd(old_val, Read(rs));
+  WriteTrunc(mem_op, new_val);
+  WriteZExt(rt, old_val);
+  return memory;
+}
+
+template <typename D, typename M, typename S>
+DEF_SEM(LDADDA_op, D rt, M mem_op, S rs) {
+  memory = __remill_barrier_load_store(memory);
+  auto old_val = Read(mem_op);
+  auto new_val = UAdd(old_val, Read(rs));
+  WriteTrunc(mem_op, new_val);
+  WriteZExt(rt, old_val);
+  return memory;
+}
+
+template <typename D, typename M, typename S>
+DEF_SEM(LDADDL_op, D rt, M mem_op, S rs) {
+  auto old_val = Read(mem_op);
+  auto new_val = UAdd(old_val, Read(rs));
+  WriteTrunc(mem_op, new_val);
+  WriteZExt(rt, old_val);
+  memory = __remill_barrier_store_store(memory);
+  return memory;
+}
+
+template <typename D, typename M, typename S>
+DEF_SEM(LDADDAL_op, D rt, M mem_op, S rs) {
+  memory = __remill_barrier_load_store(memory);
+  auto old_val = Read(mem_op);
+  auto new_val = UAdd(old_val, Read(rs));
+  WriteTrunc(mem_op, new_val);
+  WriteZExt(rt, old_val);
+  memory = __remill_barrier_store_store(memory);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(LDADD_32_MEMOP) = LDADD_op<R32W, M32W, R32>;
+DEF_ISEL(LDADD_64_MEMOP) = LDADD_op<R64W, M64W, R64>;
+DEF_ISEL(LDADDA_32_MEMOP) = LDADDA_op<R32W, M32W, R32>;
+DEF_ISEL(LDADDA_64_MEMOP) = LDADDA_op<R64W, M64W, R64>;
+DEF_ISEL(LDADDL_32_MEMOP) = LDADDL_op<R32W, M32W, R32>;
+DEF_ISEL(LDADDL_64_MEMOP) = LDADDL_op<R64W, M64W, R64>;
+DEF_ISEL(LDADDAL_32_MEMOP) = LDADDAL_op<R32W, M32W, R32>;
+DEF_ISEL(LDADDAL_64_MEMOP) = LDADDAL_op<R64W, M64W, R64>;
+
+namespace {
+
 template <typename D, typename S, typename InterType>
 DEF_SEM(LoadSExt, D dst, S src) {
   WriteZExt(dst, SExtTo<InterType>(Read(src)));

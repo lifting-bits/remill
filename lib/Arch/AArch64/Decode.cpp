@@ -11773,9 +11773,8 @@ bool TryDecodeST3_ASISDLSOP_DX3_R3D(const InstData &, Instruction &) {
 //  30 0 size     0
 //  31 1 size     1
 // LDADDA  <Ws>, <Wt>, [<Xn|SP>]
-bool TryDecodeLDADDA_32_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeLDADDA_32_MEMOP.
+extern bool TryDecodeLDADDA_32_MEMOP(const InstData &, Instruction &);
 
 // LDADDAL LDADDAL_32_memop:
 //   0 x Rt       0
@@ -11811,9 +11810,8 @@ bool TryDecodeLDADDA_32_MEMOP(const InstData &, Instruction &) {
 //  30 0 size     0
 //  31 1 size     1
 // LDADDAL  <Ws>, <Wt>, [<Xn|SP>]
-bool TryDecodeLDADDAL_32_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeLDADDAL_32_MEMOP.
+extern bool TryDecodeLDADDAL_32_MEMOP(const InstData &, Instruction &);
 
 // LDADD LDADD_32_memop:
 //   0 x Rt       0
@@ -11849,9 +11847,8 @@ bool TryDecodeLDADDAL_32_MEMOP(const InstData &, Instruction &) {
 //  30 0 size     0
 //  31 1 size     1
 // LDADD  <Ws>, <Wt>, [<Xn|SP>]
-bool TryDecodeLDADD_32_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeLDADD_32_MEMOP.
+extern bool TryDecodeLDADD_32_MEMOP(const InstData &, Instruction &);
 
 // LDADDL LDADDL_32_memop:
 //   0 x Rt       0
@@ -11887,9 +11884,8 @@ bool TryDecodeLDADD_32_MEMOP(const InstData &, Instruction &) {
 //  30 0 size     0
 //  31 1 size     1
 // LDADDL  <Ws>, <Wt>, [<Xn|SP>]
-bool TryDecodeLDADDL_32_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeLDADDL_32_MEMOP.
+extern bool TryDecodeLDADDL_32_MEMOP(const InstData &, Instruction &);
 
 // LDADDA LDADDA_64_memop:
 //   0 x Rt       0
@@ -11925,9 +11921,8 @@ bool TryDecodeLDADDL_32_MEMOP(const InstData &, Instruction &) {
 //  30 1 size     0
 //  31 1 size     1
 // LDADDA  <Xs>, <Xt>, [<Xn|SP>]
-bool TryDecodeLDADDA_64_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeLDADDA_64_MEMOP.
+extern bool TryDecodeLDADDA_64_MEMOP(const InstData &, Instruction &);
 
 // LDADDAL LDADDAL_64_memop:
 //   0 x Rt       0
@@ -11963,9 +11958,8 @@ bool TryDecodeLDADDA_64_MEMOP(const InstData &, Instruction &) {
 //  30 1 size     0
 //  31 1 size     1
 // LDADDAL  <Xs>, <Xt>, [<Xn|SP>]
-bool TryDecodeLDADDAL_64_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeLDADDAL_64_MEMOP.
+extern bool TryDecodeLDADDAL_64_MEMOP(const InstData &, Instruction &);
 
 // LDADD LDADD_64_memop:
 //   0 x Rt       0
@@ -12001,9 +11995,8 @@ bool TryDecodeLDADDAL_64_MEMOP(const InstData &, Instruction &) {
 //  30 1 size     0
 //  31 1 size     1
 // LDADD  <Xs>, <Xt>, [<Xn|SP>]
-bool TryDecodeLDADD_64_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeLDADD_64_MEMOP.
+extern bool TryDecodeLDADD_64_MEMOP(const InstData &, Instruction &);
 
 // LDADDL LDADDL_64_memop:
 //   0 x Rt       0
@@ -12039,9 +12032,8 @@ bool TryDecodeLDADD_64_MEMOP(const InstData &, Instruction &) {
 //  30 1 size     0
 //  31 1 size     1
 // LDADDL  <Xs>, <Xt>, [<Xn|SP>]
-bool TryDecodeLDADDL_64_MEMOP(const InstData &, Instruction &) {
-  return false;
-}
+// Implementation moved to Arch.cpp::TryDecodeLDADDL_64_MEMOP.
+extern bool TryDecodeLDADDL_64_MEMOP(const InstData &, Instruction &);
 
 // FCVTZS FCVTZS_asisdshf_C:
 //   0 x Rd       0
