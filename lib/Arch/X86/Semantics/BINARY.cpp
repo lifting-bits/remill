@@ -534,15 +534,55 @@ IF_64BIT(DEF_ISEL(DIV_GPRv_64) = DIVrdxrax<R64>;)
 
 namespace {
 
+ALWAYS_INLINE static float32_t X86IndefiniteQNaN(float32_t) {
+  nan32_t ret = {};
+  ret.flat = 0xFFC00000U;
+  return ret.f;
+}
+
+ALWAYS_INLINE static float64_t X86IndefiniteQNaN(float64_t) {
+  nan64_t ret = {};
+  ret.flat = 0xFFF8000000000000ULL;
+  return ret.d;
+}
+
+template <typename T>
+ALWAYS_INLINE static T X86Div(T lhs, T rhs) {
+  auto quot = FDiv(lhs, rhs);
+  if ((IsZero(lhs) && IsZero(rhs)) ||
+      (IsInfinite(lhs) && IsInfinite(rhs))) {
+    return X86IndefiniteQNaN(lhs);
+  }
+  return quot;
+}
+
+template <typename V>
+ALWAYS_INLINE static V X86DivV32(V lhs, V rhs) {
+  auto res = lhs;
+  _Pragma("unroll") for (addr_t i = 0; i < NumVectorElems(lhs); ++i) {
+    res = FInsertV32(res, i, X86Div(FExtractV32(lhs, i), FExtractV32(rhs, i)));
+  }
+  return res;
+}
+
+template <typename V>
+ALWAYS_INLINE static V X86DivV64(V lhs, V rhs) {
+  auto res = lhs;
+  _Pragma("unroll") for (addr_t i = 0; i < NumVectorElems(lhs); ++i) {
+    res = FInsertV64(res, i, X86Div(FExtractV64(lhs, i), FExtractV64(rhs, i)));
+  }
+  return res;
+}
+
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIVPS, D dst, S1 src1, S2 src2) {
-  FWriteV32(dst, FDivV32(FReadV32(src1), FReadV32(src2)));
+  FWriteV32(dst, X86DivV32(FReadV32(src1), FReadV32(src2)));
   return memory;
 }
 
 template <typename D, typename S1, typename S2>
 DEF_SEM(DIVPD, D dst, const S1 src1, const S2 src2) {
-  FWriteV64(dst, FDivV64(FReadV64(src1), FReadV64(src2)));
+  FWriteV64(dst, X86DivV64(FReadV64(src1), FReadV64(src2)));
   return memory;
 }
 
@@ -550,7 +590,7 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(DIVSS, D dst, S1 src1, S2 src2) {
   auto lhs = FReadV32(src1);
   auto rhs = FReadV32(src2);
-  auto quot = FDiv(FExtractV32(lhs, 0), FExtractV32(rhs, 0));
+  auto quot = X86Div(FExtractV32(lhs, 0), FExtractV32(rhs, 0));
   auto res = FInsertV32(lhs, 0, quot);
   FWriteV32(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
@@ -560,7 +600,7 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(DIVSD, D dst, S1 src1, S2 src2) {
   auto lhs = FReadV64(src1);
   auto rhs = FReadV64(src2);
-  auto quot = FDiv(FExtractV64(lhs, 0), FExtractV64(rhs, 0));
+  auto quot = X86Div(FExtractV64(lhs, 0), FExtractV64(rhs, 0));
   auto res = FInsertV64(lhs, 0, quot);
   FWriteV64(dst, res);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
   return memory;
