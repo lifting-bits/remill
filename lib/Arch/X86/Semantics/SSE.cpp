@@ -1446,6 +1446,68 @@ DEF_SEM(MAXPS, D dst, S1 src1, S2 src2) {
   return memory;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(MINPD, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV64(src1);
+  auto src2_vec = FReadV64(src2);
+
+  auto vec_count = NumVectorElems(src2_vec);
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; i++) {
+    auto v1 = FExtractV64(dest_vec, i);
+    auto v2 = FExtractV64(src2_vec, i);
+
+    auto min = v1;
+
+    // If either float is a NaN (SNaN or QNaN):
+    if (std::isunordered(v1, v2)) {
+      min = v2;
+
+      // or if both floats are 0.0:
+    } else if ((v1 == 0.0) && (v2 == 0.0)) {
+      min = v2;
+
+      // or if src2 is less than src1:
+    } else if (v2 < v1) {
+      min = v2;
+    }
+
+    dest_vec = FInsertV64(dest_vec, i, min);
+  }
+  FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(MAXPD, D dst, S1 src1, S2 src2) {
+  auto dest_vec = FReadV64(src1);
+  auto src2_vec = FReadV64(src2);
+
+  auto vec_count = NumVectorElems(src2_vec);
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; i++) {
+    auto v1 = FExtractV64(dest_vec, i);
+    auto v2 = FExtractV64(src2_vec, i);
+
+    auto max = v1;
+
+    // If either float is a NaN (SNaN or QNaN):
+    if (std::isunordered(v1, v2)) {
+      max = v2;
+
+      // or if both floats are 0.0:
+    } else if ((v1 == 0.0) && (v2 == 0.0)) {
+      max = v2;
+
+      // or if src2 is greater than src1:
+    } else if (v2 > v1) {
+      max = v2;
+    }
+
+    dest_vec = FInsertV64(dest_vec, i, max);
+  }
+  FWriteV64(dst, dest_vec);  // SSE: Writes to XMM, AVX: Zero-extends XMM.
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(MINPS_XMMps_MEMps) = MINPS<V128W, V128, MV128>;
@@ -1453,6 +1515,12 @@ DEF_ISEL(MINPS_XMMps_XMMps) = MINPS<V128W, V128, V128>;
 
 DEF_ISEL(MAXPS_XMMps_XMMps) = MAXPS<V128W, V128, V128>;
 DEF_ISEL(MAXPS_XMMps_MEMps) = MAXPS<V128W, V128, MV128>;
+
+DEF_ISEL(MINPD_XMMpd_MEMpd) = MINPD<V128W, V128, MV128>;
+DEF_ISEL(MINPD_XMMpd_XMMpd) = MINPD<V128W, V128, V128>;
+
+DEF_ISEL(MAXPD_XMMpd_MEMpd) = MAXPD<V128W, V128, MV128>;
+DEF_ISEL(MAXPD_XMMpd_XMMpd) = MAXPD<V128W, V128, V128>;
 
 namespace {
 
@@ -1858,6 +1926,21 @@ IF_AVX(DEF_ISEL(VSQRTSD_XMMdq_XMMdq_XMMq) = VSQRTSD<VV128W, V128, V128>;)
 namespace {
 
 template <typename D, typename S1>
+DEF_SEM(SQRTPS, D dst, S1 src1) {
+  auto src_vec = FReadV32(src1);
+  auto dest_vec = FReadV32(dst);
+
+  auto vec_count = NumVectorElems(src_vec);
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; i++) {
+    auto square_root = SquareRoot32(memory, state, FExtractV32(src_vec, i));
+    dest_vec = FInsertV32(dest_vec, i, square_root);
+  }
+
+  FWriteV32(dst, dest_vec);
+  return memory;
+}
+
+template <typename D, typename S1>
 DEF_SEM(SQRTPD, D dst, S1 src1) {
   auto src_vec = FReadV64(src1);
 
@@ -1873,6 +1956,9 @@ DEF_SEM(SQRTPD, D dst, S1 src1) {
 }
 
 }  // namespace
+
+DEF_ISEL(SQRTPS_XMMps_MEMps) = SQRTPS<V128W, MV128>;
+DEF_ISEL(SQRTPS_XMMps_XMMps) = SQRTPS<V128W, V128>;
 
 DEF_ISEL(SQRTPD_XMMpd_MEMpd) = SQRTPD<V128W, MV128>;
 DEF_ISEL(SQRTPD_XMMpd_XMMpd) = SQRTPD<V128W, V128>;
