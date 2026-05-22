@@ -116,4 +116,4 @@ ExternalProject_Add(xed
 )
 
 # TODO: generate XEDVersion.cmake as well file
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/XEDConfig.cmake.in" "${CMAKE_INSTALL_PREFIX}/lib/cmake/XED/XEDConfig.cmake" @ONLY)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/XEDConfig.cmake.in" "${CMAKE_INSTALL_PREFIX}/lib/cmake/XED/XEDConfig.cmake" @ONLY)
