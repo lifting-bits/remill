@@ -410,6 +410,50 @@ DEF_SEM(BZHI, D dst, S1 src1, S2 src2) {
   return memory;
 }
 
+// BMI1 bit-low operations write CF/ZF/SF/OF, leave AF/PF undefined, and do
+// not read flags.
+template <typename D, typename S>
+DEF_SEM(BLSI, D dst, S src) {
+  auto val = Read(src);
+  auto res = UAnd(val, USub(Literal<S>(0), val));
+  WriteZExt(dst, res);
+  Write(FLAG_CF, UCmpNeq(val, Literal<S>(0)));
+  Write(FLAG_ZF, ZeroFlag(res));
+  Write(FLAG_SF, SignFlag(res));
+  Write(FLAG_OF, false);
+  UndefFlag(af);
+  UndefFlag(pf);
+  return memory;
+}
+
+template <typename D, typename S>
+DEF_SEM(BLSR, D dst, S src) {
+  auto val = Read(src);
+  auto res = UAnd(val, USub(val, Literal<S>(1)));
+  WriteZExt(dst, res);
+  Write(FLAG_CF, ZeroFlag(val));
+  Write(FLAG_ZF, ZeroFlag(res));
+  Write(FLAG_SF, SignFlag(res));
+  Write(FLAG_OF, false);
+  UndefFlag(af);
+  UndefFlag(pf);
+  return memory;
+}
+
+template <typename D, typename S>
+DEF_SEM(BLSMSK, D dst, S src) {
+  auto val = Read(src);
+  auto res = UXor(val, USub(val, Literal<S>(1)));
+  WriteZExt(dst, res);
+  Write(FLAG_CF, ZeroFlag(val));
+  Write(FLAG_ZF, ZeroFlag(res));
+  Write(FLAG_SF, SignFlag(res));
+  Write(FLAG_OF, false);
+  UndefFlag(af);
+  UndefFlag(pf);
+  return memory;
+}
+
 template <typename D, typename S>
 DEF_SEM(POPCNT, D dst, S src) {
   auto val = Read(src);
@@ -507,6 +551,33 @@ IF_64BIT(DEF_ISEL(BZHI_GPR64q_MEMq_GPR64q) = BZHI<R64W, M64, R64>;)
 IF_64BIT(DEF_ISEL(BZHI_GPR64q_GPR64q_GPR64q) = BZHI<R64W, R64, R64>;)
 IF_64BIT(DEF_ISEL(BZHI_VGPR64q_MEMq_VGPR64q) = BZHI<R64W, M64, R64>;)
 IF_64BIT(DEF_ISEL(BZHI_VGPR64q_VGPR64q_VGPR64q) = BZHI<R64W, R64, R64>;)
+
+DEF_ISEL(BLSI_GPR32d_MEMd) = BLSI<R32W, M32>;
+DEF_ISEL(BLSI_GPR32d_GPR32d) = BLSI<R32W, R32>;
+DEF_ISEL(BLSI_VGPR32d_MEMd) = BLSI<R32W, M32>;
+DEF_ISEL(BLSI_VGPR32d_VGPR32d) = BLSI<R32W, R32>;
+IF_64BIT(DEF_ISEL(BLSI_GPR64q_MEMq) = BLSI<R64W, M64>;)
+IF_64BIT(DEF_ISEL(BLSI_GPR64q_GPR64q) = BLSI<R64W, R64>;)
+IF_64BIT(DEF_ISEL(BLSI_VGPR64q_MEMq) = BLSI<R64W, M64>;)
+IF_64BIT(DEF_ISEL(BLSI_VGPR64q_VGPR64q) = BLSI<R64W, R64>;)
+
+DEF_ISEL(BLSR_GPR32d_MEMd) = BLSR<R32W, M32>;
+DEF_ISEL(BLSR_GPR32d_GPR32d) = BLSR<R32W, R32>;
+DEF_ISEL(BLSR_VGPR32d_MEMd) = BLSR<R32W, M32>;
+DEF_ISEL(BLSR_VGPR32d_VGPR32d) = BLSR<R32W, R32>;
+IF_64BIT(DEF_ISEL(BLSR_GPR64q_MEMq) = BLSR<R64W, M64>;)
+IF_64BIT(DEF_ISEL(BLSR_GPR64q_GPR64q) = BLSR<R64W, R64>;)
+IF_64BIT(DEF_ISEL(BLSR_VGPR64q_MEMq) = BLSR<R64W, M64>;)
+IF_64BIT(DEF_ISEL(BLSR_VGPR64q_VGPR64q) = BLSR<R64W, R64>;)
+
+DEF_ISEL(BLSMSK_GPR32d_MEMd) = BLSMSK<R32W, M32>;
+DEF_ISEL(BLSMSK_GPR32d_GPR32d) = BLSMSK<R32W, R32>;
+DEF_ISEL(BLSMSK_VGPR32d_MEMd) = BLSMSK<R32W, M32>;
+DEF_ISEL(BLSMSK_VGPR32d_VGPR32d) = BLSMSK<R32W, R32>;
+IF_64BIT(DEF_ISEL(BLSMSK_GPR64q_MEMq) = BLSMSK<R64W, M64>;)
+IF_64BIT(DEF_ISEL(BLSMSK_GPR64q_GPR64q) = BLSMSK<R64W, R64>;)
+IF_64BIT(DEF_ISEL(BLSMSK_VGPR64q_MEMq) = BLSMSK<R64W, M64>;)
+IF_64BIT(DEF_ISEL(BLSMSK_VGPR64q_VGPR64q) = BLSMSK<R64W, R64>;)
 
 DEF_ISEL_RnW_Mn(POPCNT_GPRv_MEMv, POPCNT);
 DEF_ISEL_RnW_Rn(POPCNT_GPRv_GPRv, POPCNT);
