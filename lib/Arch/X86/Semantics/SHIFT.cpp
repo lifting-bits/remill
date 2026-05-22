@@ -175,6 +175,34 @@ DEF_SEM(SHLX, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, UShl(val, masked_shift));
   return memory;
 }
+
+// BMI2 variable shifts do not write flags and take the count from the low byte
+// of the third operand, masked according to the data operand width.
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHRX, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto shift = ZExtTo<S1>(TruncTo<uint8_t>(Read(src2)));
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+  WriteZExt(dst, UShr(val, masked_shift));
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SARX, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto shift = ZExtTo<S1>(TruncTo<uint8_t>(Read(src2)));
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+  WriteZExt(dst, Unsigned(SShr(Signed(val), Signed(masked_shift))));
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(SHR_MEMb_IMMb) = SHR<M8W, M8, I8>;
@@ -236,6 +264,24 @@ IF_64BIT(DEF_ISEL(SHLX_GPR64q_MEMq_GPR64q) = SHLX<R64W, M64, R64>;)
 IF_64BIT(DEF_ISEL(SHLX_GPR64q_GPR64q_GPR64q) = SHLX<R64W, R64, R64>;)
 IF_64BIT(DEF_ISEL(SHLX_VGPR64q_MEMq_VGPR64q) = SHLX<R64W, M64, R64>;)
 IF_64BIT(DEF_ISEL(SHLX_VGPR64q_VGPR64q_VGPR64q) = SHLX<R64W, R64, R64>;)
+
+DEF_ISEL(SHRX_GPR32d_MEMd_GPR32d) = SHRX<R32W, M32, R32>;
+DEF_ISEL(SHRX_GPR32d_GPR32d_GPR32d) = SHRX<R32W, R32, R32>;
+DEF_ISEL(SHRX_VGPR32d_MEMd_VGPR32d) = SHRX<R32W, M32, R32>;
+DEF_ISEL(SHRX_VGPR32d_VGPR32d_VGPR32d) = SHRX<R32W, R32, R32>;
+IF_64BIT(DEF_ISEL(SHRX_GPR64q_MEMq_GPR64q) = SHRX<R64W, M64, R64>;)
+IF_64BIT(DEF_ISEL(SHRX_GPR64q_GPR64q_GPR64q) = SHRX<R64W, R64, R64>;)
+IF_64BIT(DEF_ISEL(SHRX_VGPR64q_MEMq_VGPR64q) = SHRX<R64W, M64, R64>;)
+IF_64BIT(DEF_ISEL(SHRX_VGPR64q_VGPR64q_VGPR64q) = SHRX<R64W, R64, R64>;)
+
+DEF_ISEL(SARX_GPR32d_MEMd_GPR32d) = SARX<R32W, M32, R32>;
+DEF_ISEL(SARX_GPR32d_GPR32d_GPR32d) = SARX<R32W, R32, R32>;
+DEF_ISEL(SARX_VGPR32d_MEMd_VGPR32d) = SARX<R32W, M32, R32>;
+DEF_ISEL(SARX_VGPR32d_VGPR32d_VGPR32d) = SARX<R32W, R32, R32>;
+IF_64BIT(DEF_ISEL(SARX_GPR64q_MEMq_GPR64q) = SARX<R64W, M64, R64>;)
+IF_64BIT(DEF_ISEL(SARX_GPR64q_GPR64q_GPR64q) = SARX<R64W, R64, R64>;)
+IF_64BIT(DEF_ISEL(SARX_VGPR64q_MEMq_VGPR64q) = SARX<R64W, M64, R64>;)
+IF_64BIT(DEF_ISEL(SARX_VGPR64q_VGPR64q_VGPR64q) = SARX<R64W, R64, R64>;)
 
 namespace {
 
