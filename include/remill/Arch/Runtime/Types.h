@@ -689,51 +689,51 @@ struct IntegerType<size_t> : public SizeTEquivalent<sizeof(size_t)>::T {};
 
 #if !COMPILING_WITH_GCC
 
-inline uint8_t operator"" _u8(unsigned long long value) {
+inline uint8_t operator""_u8(unsigned long long value) {
   return static_cast<uint8_t>(value);
 }
 
-inline uint16_t operator"" _u16(unsigned long long value) {
+inline uint16_t operator""_u16(unsigned long long value) {
   return static_cast<uint16_t>(value);
 }
 
-inline uint32_t operator"" _u32(unsigned long long value) {
+inline uint32_t operator""_u32(unsigned long long value) {
   return static_cast<uint32_t>(value);
 }
 
-inline uint64_t operator"" _u64(unsigned long long value) {
+inline uint64_t operator""_u64(unsigned long long value) {
   return static_cast<uint64_t>(value);
 }
 
-inline uint64_t operator"" _addr_t(unsigned long long value) {
+inline uint64_t operator""_addr_t(unsigned long long value) {
   return static_cast<addr_t>(value);
 }
 
 #if !defined(REMILL_DISABLE_INT128)
-inline uint128_t operator"" _u128(unsigned long long value) {
+inline uint128_t operator""_u128(unsigned long long value) {
   return static_cast<uint128_t>(value);
 }
 #endif
 
 
-inline int8_t operator"" _s8(unsigned long long value) {
+inline int8_t operator""_s8(unsigned long long value) {
   return static_cast<int8_t>(value);
 }
 
-inline int16_t operator"" _s16(unsigned long long value) {
+inline int16_t operator""_s16(unsigned long long value) {
   return static_cast<int16_t>(value);
 }
 
-inline int32_t operator"" _s32(unsigned long long value) {
+inline int32_t operator""_s32(unsigned long long value) {
   return static_cast<int32_t>(value);
 }
 
-inline int64_t operator"" _s64(unsigned long long value) {
+inline int64_t operator""_s64(unsigned long long value) {
   return static_cast<int64_t>(value);
 }
 
 #if !defined(REMILL_DISABLE_INT128)
-inline int128_t operator"" _s128(unsigned long long value) {
+inline int128_t operator""_s128(unsigned long long value) {
   return static_cast<int128_t>(value);
 }
 #endif
