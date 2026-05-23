@@ -1823,6 +1823,39 @@ DEF_ISEL(PSADBW_MMXq_MEMq) = PSADBW<V64W, V64, MV64>;
 DEF_ISEL(PSADBW_XMMdq_XMMdq) = PSADBW<V128W, V128, V128>;
 DEF_ISEL(PSADBW_XMMdq_MEMdq) = PSADBW<V128W, V128, MV128>;
 
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(MPSADBW, D dst, S1 src1, S2 src2, I8 src3) {
+  auto src1_vec = UReadV8(src1);
+  auto src2_vec = UReadV8(src2);
+  auto imm = Read(src3);
+  auto src1_offset = UShl(UAnd(UShr(imm, 2_u8), 1_u8), 2_u8);
+  auto src2_offset = UShl(UAnd(imm, 3_u8), 2_u8);
+  auto dst_vec = UClearV16(UReadV16(dst));
+
+  _Pragma("unroll") for (size_t i = 0; i < 8; ++i) {
+    uint16_t sum = 0;
+    _Pragma("unroll") for (size_t j = 0; j < 4; ++j) {
+      auto src1_index = UAdd(src1_offset, UInt8(i + j));
+      auto src2_index = UAdd(src2_offset, UInt8(j));
+      uint8_t v1 = UExtractV8(src1_vec, src1_index);
+      uint8_t v2 = UExtractV8(src2_vec, src2_index);
+      uint8_t abs_diff = Select(UCmpGte(v1, v2), USub(v1, v2), USub(v2, v1));
+      sum = UAdd(sum, ZExt(abs_diff));
+    }
+    dst_vec = UInsertV16(dst_vec, i, sum);
+  }
+
+  UWriteV16(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(MPSADBW_XMMdq_XMMdq_IMMb) = MPSADBW<V128W, V128, V128>;
+DEF_ISEL(MPSADBW_XMMdq_MEMdq_IMMb) = MPSADBW<V128W, V128, MV128>;
+
 IF_AVX(DEF_ISEL(VPSADBW_XMMdq_XMMdq_MEMdq) = PSADBW<V128W, V128, MV128>;)
 IF_AVX(DEF_ISEL(VPSADBW_XMMdq_XMMdq_XMMdq) = PSADBW<V128W, V128, V128>;)
 IF_AVX(DEF_ISEL(VPSADBW_YMMqq_YMMqq_MEMqq) = PSADBW<VV256W, V256, MV256>;)
