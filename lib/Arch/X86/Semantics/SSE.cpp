@@ -354,6 +354,38 @@ DEF_ISEL(BLENDVPD_XMMdq_MEMdq) = BLENDVPD<V128W, V128, MV128>;
 
 namespace {
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(INSERTPS, D dst, S1 src1, S2 src2, I8 src3) {
+  auto dst_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto imm = Read(src3);
+  auto src_index = URem(UShr8(imm, 6_u8), UInt8(NumVectorElems(src2_vec)));
+  auto dst_index = UAnd8(UShr8(imm, 4_u8), 3_u8);
+  auto val = UExtractV32(src2_vec, src_index);
+
+  dst_vec = UInsertV32(dst_vec, dst_index, val);
+
+  auto num_groups = NumVectorElems(dst_vec);
+  _Pragma("unroll") for (std::size_t i = 0; i < num_groups; ++i) {
+    auto zero_bit = UAnd8(UShr8(imm, TruncTo<uint8_t>(i)), 1_u8);
+    auto lane = Select(zero_bit != 0_u8, 0_u32, UExtractV32(dst_vec, i));
+    dst_vec = UInsertV32(dst_vec, i, lane);
+  }
+
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(EXTRACTPS_GPR32d_XMMdq_IMMb) = PEXTRD<R32W, V128>;
+DEF_ISEL(EXTRACTPS_MEMd_XMMdq_IMMb) = PEXTRD<M32W, V128>;
+
+DEF_ISEL(INSERTPS_XMMps_XMMps_IMMb) = INSERTPS<V128W, V128, V128>;
+DEF_ISEL(INSERTPS_XMMps_MEMd_IMMb) = INSERTPS<V128W, V128, MV32>;
+
+namespace {
+
 template <typename D, typename S1>
 DEF_SEM(PSHUFD, D dst, S1 src1, I8 src2) {
   auto dst_vec = UClearV32(UReadV32(src1));
