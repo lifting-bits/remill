@@ -24,6 +24,12 @@ DEF_SEM(DoRDTSCP) {
   return __remill_sync_hyper_call(state, memory, SyncHyperCall::kX86ReadTSCP);
 }
 
+template <typename D>
+DEF_SEM(RDFSBASE, D dst) {
+  WriteZExt(dst, TruncTo<D>(Read(REG_FS_BASE)));
+  return memory;
+}
+
 template <typename D, typename S>
 DEF_SEM(LAR, D dst, S src) {
   auto old_dst = Read(dst);
@@ -174,6 +180,8 @@ DEF_SEM(WRITE_DEBUG_REG_64, R64W dst, R64 src) {
 
 DEF_ISEL(RDTSC) = DoRDTSC;
 DEF_ISEL(RDTSCP) = DoRDTSCP;
+DEF_ISEL(RDFSBASE_GPRy_32) = RDFSBASE<R32W>;
+IF_64BIT(DEF_ISEL(RDFSBASE_GPRy_64) = RDFSBASE<R64W>;)
 DEF_ISEL(RDMSR) = DoRDMSR;
 DEF_ISEL(WRMSR) = DoWRMSR;
 DEF_ISEL(WBINVD) = DoWBINVD;
