@@ -973,6 +973,7 @@ DEF_FPU_SEM(FXCH, RF80W dst1, RF80W src1, RF80W dst2, RF80W src2) {
   auto sti = Read(src2);
   Write(dst1, sti);
   Write(dst2, st0);
+  state.sw.c1 = 0;
   return memory;
 }
 
