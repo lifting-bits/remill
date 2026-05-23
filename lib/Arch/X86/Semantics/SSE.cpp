@@ -3109,3 +3109,26 @@ DEF_SEM(SHA1MSG2, D dst, S1 src1, S2 src2) {
 
 DEF_ISEL(SHA1MSG2_XMMi32_XMMi32_SHA) = SHA1MSG2<V128W, V128, V128>;
 DEF_ISEL(SHA1MSG2_XMMi32_MEMi32_SHA) = SHA1MSG2<V128W, V128, MV128>;
+
+namespace {
+
+ALWAYS_INLINE static uint32_t ShaRor32(uint32_t value, uint32_t shift) {
+  return UOr(UShr(value, shift), UShl(value, USub(32_u32, shift)));
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHA1NEXTE, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto dst_vec = src2_vec;
+  auto next_e = UAdd(UExtractV32(src2_vec, 3),
+                     ShaRor32(UExtractV32(src1_vec, 3), 2_u32));
+  dst_vec = UInsertV32(dst_vec, 3, next_e);
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(SHA1NEXTE_XMMi32_XMMi32_SHA) = SHA1NEXTE<V128W, V128, V128>;
+DEF_ISEL(SHA1NEXTE_XMMi32_MEMi32_SHA) = SHA1NEXTE<V128W, V128, MV128>;
