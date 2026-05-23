@@ -35,6 +35,21 @@ DEF_SEM(RDSSP_DISABLED, D) {
   return memory;
 }
 
+DEF_SEM(SMSW_GPR16, R16W dst) {
+  Write(dst, 0x31_u16);
+  return memory;
+}
+
+DEF_SEM(SMSW_GPR32, R32W dst) {
+  WriteZExt(dst, 0x80050031_u32);
+  return memory;
+}
+
+IF_64BIT(DEF_SEM(SMSW_GPR64, R64W dst) {
+  Write(dst, 0x80050031_u64);
+  return memory;
+})
+
 template <typename D, typename S>
 DEF_SEM(LAR, D dst, S src) {
   auto old_dst = Read(dst);
@@ -189,6 +204,9 @@ DEF_ISEL(RDFSBASE_GPRy_32) = RDFSBASE<R32W>;
 IF_64BIT(DEF_ISEL(RDFSBASE_GPRy_64) = RDFSBASE<R64W>;)
 DEF_ISEL(RDSSPD_GPR32u32) = RDSSP_DISABLED<R32W>;
 IF_64BIT(DEF_ISEL(RDSSPQ_GPR64u64) = RDSSP_DISABLED<R64W>;)
+DEF_ISEL(SMSW_GPRv_16) = SMSW_GPR16;
+DEF_ISEL(SMSW_GPRv_32) = SMSW_GPR32;
+IF_64BIT(DEF_ISEL(SMSW_GPRv_64) = SMSW_GPR64;)
 DEF_ISEL(RDMSR) = DoRDMSR;
 DEF_ISEL(WRMSR) = DoWRMSR;
 DEF_ISEL(WBINVD) = DoWBINVD;
