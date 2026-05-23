@@ -3132,3 +3132,91 @@ DEF_SEM(SHA1NEXTE, D dst, S1 src1, S2 src2) {
 
 DEF_ISEL(SHA1NEXTE_XMMi32_XMMi32_SHA) = SHA1NEXTE<V128W, V128, V128>;
 DEF_ISEL(SHA1NEXTE_XMMi32_MEMi32_SHA) = SHA1NEXTE<V128W, V128, MV128>;
+
+namespace {
+
+ALWAYS_INLINE static uint32_t Sha1Choose(uint32_t b, uint32_t c, uint32_t d) {
+  return UXor(UAnd(b, c), UAnd(UNot(b), d));
+}
+
+ALWAYS_INLINE static uint32_t Sha1Parity(uint32_t b, uint32_t c, uint32_t d) {
+  return UXor(UXor(b, c), d);
+}
+
+ALWAYS_INLINE static uint32_t Sha1Majority(uint32_t b, uint32_t c, uint32_t d) {
+  return UXor(UXor(UAnd(b, c), UAnd(b, d)), UAnd(c, d));
+}
+
+ALWAYS_INLINE static uint32_t Sha1RoundFunction(uint32_t b, uint32_t c,
+                                                uint32_t d, uint8_t mode) {
+  switch (UAnd8(mode, 3_u8)) {
+    case 0:
+      return Sha1Choose(b, c, d);
+    case 1:
+      return Sha1Parity(b, c, d);
+    case 2:
+      return Sha1Majority(b, c, d);
+    default:
+      return Sha1Parity(b, c, d);
+  }
+}
+
+ALWAYS_INLINE static uint32_t Sha1RoundConstant(uint8_t mode) {
+  switch (UAnd8(mode, 3_u8)) {
+    case 0:
+      return 0x5A827999_u32;
+    case 1:
+      return 0x6ED9EBA1_u32;
+    case 2:
+      return 0x8F1BBCDC_u32;
+    default:
+      return 0xCA62C1D6_u32;
+  }
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHA1RNDS4, D dst, S1 src1, S2 src2, I8 src3) {
+  auto state_vec = UReadV32(src1);
+  auto message_vec = UReadV32(src2);
+  auto mode = Read(src3);
+  auto constant = Sha1RoundConstant(mode);
+
+  auto a = UExtractV32(state_vec, 3);
+  auto b = UExtractV32(state_vec, 2);
+  auto c = UExtractV32(state_vec, 1);
+  auto d = UExtractV32(state_vec, 0);
+  auto e = 0_u32;
+
+#define SHA1RNDS4_ROUND(message_index) \
+  do { \
+    auto temp = UAdd(UAdd(UAdd(ShaRol32(a, 5_u32), \
+                               Sha1RoundFunction(b, c, d, mode)), \
+                          e), \
+                     UAdd(UExtractV32(message_vec, message_index), constant)); \
+    e = d; \
+    d = c; \
+    c = ShaRor32(b, 2_u32); \
+    b = a; \
+    a = temp; \
+  } while (false)
+
+  SHA1RNDS4_ROUND(3);
+  SHA1RNDS4_ROUND(2);
+  SHA1RNDS4_ROUND(1);
+  SHA1RNDS4_ROUND(0);
+
+#undef SHA1RNDS4_ROUND
+
+  auto dst_vec = UClearV32(UReadV32(dst));
+  dst_vec = UInsertV32(dst_vec, 0, d);
+  dst_vec = UInsertV32(dst_vec, 1, c);
+  dst_vec = UInsertV32(dst_vec, 2, b);
+  dst_vec = UInsertV32(dst_vec, 3, a);
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(SHA1RNDS4_XMMi32_XMMi32_IMM8_SHA) = SHA1RNDS4<V128W, V128, V128>;
+DEF_ISEL(SHA1RNDS4_XMMi32_MEMi32_IMM8_SHA) = SHA1RNDS4<V128W, V128, MV128>;
