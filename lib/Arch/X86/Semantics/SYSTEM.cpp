@@ -57,9 +57,14 @@ DEF_SEM(LAR, D dst, S src) {
   const auto is_user_data = UCmpEq(selector, 0x20_u16);
   const auto is_user_data_rpl1 = UCmpEq(selector, 0x21_u16);
   const auto is_user_code = UCmpEq(selector, 0x28_u16);
-  const auto valid = BOr(BOr(is_user_data, is_user_data_rpl1), is_user_code);
-  const auto access_rights = Select<uint32_t>(
+  const auto is_system_tss = UCmpEq(selector, 0x50_u16);
+  const auto valid = BOr(BOr(BOr(is_user_data, is_user_data_rpl1),
+                            is_user_code),
+                         is_system_tss);
+  const auto user_access_rights = Select<uint32_t>(
       is_user_code, 0x0000f300_u32, 0x00cffb00_u32);
+  const auto access_rights = Select<uint32_t>(
+      is_system_tss, 0x0040f300_u32, user_access_rights);
   const auto new_dst = static_cast<decltype(old_dst)>(access_rights);
   FLAG_ZF = valid;
   Write(dst, Select(valid, new_dst, old_dst));
