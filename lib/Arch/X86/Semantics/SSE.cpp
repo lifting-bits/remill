@@ -2814,3 +2814,232 @@ IF_AVX(DEF_ISEL(VADDSUBPD_XMMdq_XMMdq_MEMdq) = ADDSUBPD<VV128W, V128, MV128>;)
 IF_AVX(DEF_ISEL(VADDSUBPD_XMMdq_XMMdq_XMMdq) = ADDSUBPD<VV128W, V128, V128>;)
 IF_AVX(DEF_ISEL(VADDSUBPD_YMMqq_YMMqq_MEMqq) = ADDSUBPD<VV256W, V256, MV256>;)
 IF_AVX(DEF_ISEL(VADDSUBPD_YMMqq_YMMqq_YMMqq) = ADDSUBPD<VV256W, V256, V128>;)
+
+namespace {
+
+static const uint8_t kAesSBox[256] = {
+    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b,
+    0xfe, 0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0,
+    0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26,
+    0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2,
+    0xeb, 0x27, 0xb2, 0x75, 0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0,
+    0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84, 0x53, 0xd1, 0x00, 0xed,
+    0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f,
+    0x50, 0x3c, 0x9f, 0xa8, 0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5,
+    0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2, 0xcd, 0x0c, 0x13, 0xec,
+    0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14,
+    0xde, 0x5e, 0x0b, 0xdb, 0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c,
+    0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79, 0xe7, 0xc8, 0x37, 0x6d,
+    0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f,
+    0x4b, 0xbd, 0x8b, 0x8a, 0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e,
+    0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e, 0xe1, 0xf8, 0x98, 0x11,
+    0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f,
+    0xb0, 0x54, 0xbb, 0x16};
+
+static const uint8_t kAesInvSBox[256] = {
+    0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e,
+    0x81, 0xf3, 0xd7, 0xfb, 0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87,
+    0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb, 0x54, 0x7b, 0x94, 0x32,
+    0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
+    0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49,
+    0x6d, 0x8b, 0xd1, 0x25, 0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16,
+    0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92, 0x6c, 0x70, 0x48, 0x50,
+    0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
+    0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05,
+    0xb8, 0xb3, 0x45, 0x06, 0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02,
+    0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b, 0x3a, 0x91, 0x11, 0x41,
+    0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
+    0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8,
+    0x1c, 0x75, 0xdf, 0x6e, 0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89,
+    0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b, 0xfc, 0x56, 0x3e, 0x4b,
+    0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
+    0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59,
+    0x27, 0x80, 0xec, 0x5f, 0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d,
+    0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef, 0xa0, 0xe0, 0x3b, 0x4d,
+    0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
+    0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63,
+    0x55, 0x21, 0x0c, 0x7d};
+
+ALWAYS_INLINE static uint8_t AesSBox(uint8_t value) { return kAesSBox[value]; }
+ALWAYS_INLINE static uint8_t AesInvSBox(uint8_t value) { return kAesInvSBox[value]; }
+
+ALWAYS_INLINE static uint8_t AesXtime(uint8_t value) {
+  return UXor(UShl(value, 1_u8),
+              Select<uint8_t>(UCmpNeq(UAnd(value, 0x80_u8), 0_u8), 0x1b_u8, 0_u8));
+}
+
+ALWAYS_INLINE static uint8_t AesMul(uint8_t value, uint8_t factor) {
+  uint8_t result = 0;
+  _Pragma("unroll") for (auto i = 0u; i < 8u; ++i) {
+    result = Select<uint8_t>(UCmpNeq(UAnd(factor, 1_u8), 0_u8), UXor(result, value), result);
+    value = AesXtime(value);
+    factor = UShr(factor, 1_u8);
+  }
+  return result;
+}
+
+ALWAYS_INLINE static uint32_t AesPack4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) {
+  return UOr(UOr(ZExtTo<uint32_t>(b0), UShl(ZExtTo<uint32_t>(b1), 8_u32)),
+             UOr(UShl(ZExtTo<uint32_t>(b2), 16_u32), UShl(ZExtTo<uint32_t>(b3), 24_u32)));
+}
+
+ALWAYS_INLINE static uint8_t AesPackByte(uint32_t value, uint32_t index) {
+  return UInt8(UShr(value, UMul(index, 8_u32)));
+}
+
+ALWAYS_INLINE static uint32_t AesMixColumn(uint8_t s0, uint8_t s1, uint8_t s2, uint8_t s3) {
+  auto r0 = UXor(UXor(AesMul(s0, 2_u8), AesMul(s1, 3_u8)), UXor(s2, s3));
+  auto r1 = UXor(UXor(s0, AesMul(s1, 2_u8)), UXor(AesMul(s2, 3_u8), s3));
+  auto r2 = UXor(UXor(s0, s1), UXor(AesMul(s2, 2_u8), AesMul(s3, 3_u8)));
+  auto r3 = UXor(UXor(AesMul(s0, 3_u8), s1), UXor(s2, AesMul(s3, 2_u8)));
+  return AesPack4(r0, r1, r2, r3);
+}
+
+ALWAYS_INLINE static uint32_t AesInvMixColumn(uint8_t s0, uint8_t s1, uint8_t s2, uint8_t s3) {
+  auto r0 = UXor(UXor(AesMul(s0, 0x0e_u8), AesMul(s1, 0x0b_u8)),
+                 UXor(AesMul(s2, 0x0d_u8), AesMul(s3, 0x09_u8)));
+  auto r1 = UXor(UXor(AesMul(s0, 0x09_u8), AesMul(s1, 0x0e_u8)),
+                 UXor(AesMul(s2, 0x0b_u8), AesMul(s3, 0x0d_u8)));
+  auto r2 = UXor(UXor(AesMul(s0, 0x0d_u8), AesMul(s1, 0x09_u8)),
+                 UXor(AesMul(s2, 0x0e_u8), AesMul(s3, 0x0b_u8)));
+  auto r3 = UXor(UXor(AesMul(s0, 0x0b_u8), AesMul(s1, 0x0d_u8)),
+                 UXor(AesMul(s2, 0x09_u8), AesMul(s3, 0x0e_u8)));
+  return AesPack4(r0, r1, r2, r3);
+}
+
+#define AES_XOR_INSERT(vec, key, idx, value) \
+  vec = UInsertV8(vec, idx, UXor(value, UExtractV8(key, idx)))
+#define AES_MIX_INSERT(vec, key, col, idx) \
+  AES_XOR_INSERT(vec, key, idx, AesPackByte(col, (idx % 4)))
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(AESENC, D dst, S1 src1, S2 src2) {
+  auto state_vec = UReadV8(src1);
+  auto key_vec = UReadV8(src2);
+  auto dst_vec = UClearV8(UReadV8(dst));
+  auto c0 = AesMixColumn(AesSBox(UExtractV8(state_vec, 0)), AesSBox(UExtractV8(state_vec, 5)), AesSBox(UExtractV8(state_vec, 10)), AesSBox(UExtractV8(state_vec, 15)));
+  auto c1 = AesMixColumn(AesSBox(UExtractV8(state_vec, 4)), AesSBox(UExtractV8(state_vec, 9)), AesSBox(UExtractV8(state_vec, 14)), AesSBox(UExtractV8(state_vec, 3)));
+  auto c2 = AesMixColumn(AesSBox(UExtractV8(state_vec, 8)), AesSBox(UExtractV8(state_vec, 13)), AesSBox(UExtractV8(state_vec, 2)), AesSBox(UExtractV8(state_vec, 7)));
+  auto c3 = AesMixColumn(AesSBox(UExtractV8(state_vec, 12)), AesSBox(UExtractV8(state_vec, 1)), AesSBox(UExtractV8(state_vec, 6)), AesSBox(UExtractV8(state_vec, 11)));
+  AES_MIX_INSERT(dst_vec, key_vec, c0, 0); AES_MIX_INSERT(dst_vec, key_vec, c0, 1); AES_MIX_INSERT(dst_vec, key_vec, c0, 2); AES_MIX_INSERT(dst_vec, key_vec, c0, 3);
+  AES_MIX_INSERT(dst_vec, key_vec, c1, 4); AES_MIX_INSERT(dst_vec, key_vec, c1, 5); AES_MIX_INSERT(dst_vec, key_vec, c1, 6); AES_MIX_INSERT(dst_vec, key_vec, c1, 7);
+  AES_MIX_INSERT(dst_vec, key_vec, c2, 8); AES_MIX_INSERT(dst_vec, key_vec, c2, 9); AES_MIX_INSERT(dst_vec, key_vec, c2, 10); AES_MIX_INSERT(dst_vec, key_vec, c2, 11);
+  AES_MIX_INSERT(dst_vec, key_vec, c3, 12); AES_MIX_INSERT(dst_vec, key_vec, c3, 13); AES_MIX_INSERT(dst_vec, key_vec, c3, 14); AES_MIX_INSERT(dst_vec, key_vec, c3, 15);
+  UWriteV8(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(AESENCLAST, D dst, S1 src1, S2 src2) {
+  auto state_vec = UReadV8(src1);
+  auto key_vec = UReadV8(src2);
+  auto dst_vec = UClearV8(UReadV8(dst));
+  AES_XOR_INSERT(dst_vec, key_vec, 0, AesSBox(UExtractV8(state_vec, 0)));
+  AES_XOR_INSERT(dst_vec, key_vec, 1, AesSBox(UExtractV8(state_vec, 5)));
+  AES_XOR_INSERT(dst_vec, key_vec, 2, AesSBox(UExtractV8(state_vec, 10)));
+  AES_XOR_INSERT(dst_vec, key_vec, 3, AesSBox(UExtractV8(state_vec, 15)));
+  AES_XOR_INSERT(dst_vec, key_vec, 4, AesSBox(UExtractV8(state_vec, 4)));
+  AES_XOR_INSERT(dst_vec, key_vec, 5, AesSBox(UExtractV8(state_vec, 9)));
+  AES_XOR_INSERT(dst_vec, key_vec, 6, AesSBox(UExtractV8(state_vec, 14)));
+  AES_XOR_INSERT(dst_vec, key_vec, 7, AesSBox(UExtractV8(state_vec, 3)));
+  AES_XOR_INSERT(dst_vec, key_vec, 8, AesSBox(UExtractV8(state_vec, 8)));
+  AES_XOR_INSERT(dst_vec, key_vec, 9, AesSBox(UExtractV8(state_vec, 13)));
+  AES_XOR_INSERT(dst_vec, key_vec, 10, AesSBox(UExtractV8(state_vec, 2)));
+  AES_XOR_INSERT(dst_vec, key_vec, 11, AesSBox(UExtractV8(state_vec, 7)));
+  AES_XOR_INSERT(dst_vec, key_vec, 12, AesSBox(UExtractV8(state_vec, 12)));
+  AES_XOR_INSERT(dst_vec, key_vec, 13, AesSBox(UExtractV8(state_vec, 1)));
+  AES_XOR_INSERT(dst_vec, key_vec, 14, AesSBox(UExtractV8(state_vec, 6)));
+  AES_XOR_INSERT(dst_vec, key_vec, 15, AesSBox(UExtractV8(state_vec, 11)));
+  UWriteV8(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(AESDEC, D dst, S1 src1, S2 src2) {
+  auto state_vec = UReadV8(src1);
+  auto key_vec = UReadV8(src2);
+  auto dst_vec = UClearV8(UReadV8(dst));
+  auto c0 = AesInvMixColumn(AesInvSBox(UExtractV8(state_vec, 0)), AesInvSBox(UExtractV8(state_vec, 13)), AesInvSBox(UExtractV8(state_vec, 10)), AesInvSBox(UExtractV8(state_vec, 7)));
+  auto c1 = AesInvMixColumn(AesInvSBox(UExtractV8(state_vec, 4)), AesInvSBox(UExtractV8(state_vec, 1)), AesInvSBox(UExtractV8(state_vec, 14)), AesInvSBox(UExtractV8(state_vec, 11)));
+  auto c2 = AesInvMixColumn(AesInvSBox(UExtractV8(state_vec, 8)), AesInvSBox(UExtractV8(state_vec, 5)), AesInvSBox(UExtractV8(state_vec, 2)), AesInvSBox(UExtractV8(state_vec, 15)));
+  auto c3 = AesInvMixColumn(AesInvSBox(UExtractV8(state_vec, 12)), AesInvSBox(UExtractV8(state_vec, 9)), AesInvSBox(UExtractV8(state_vec, 6)), AesInvSBox(UExtractV8(state_vec, 3)));
+  AES_MIX_INSERT(dst_vec, key_vec, c0, 0); AES_MIX_INSERT(dst_vec, key_vec, c0, 1); AES_MIX_INSERT(dst_vec, key_vec, c0, 2); AES_MIX_INSERT(dst_vec, key_vec, c0, 3);
+  AES_MIX_INSERT(dst_vec, key_vec, c1, 4); AES_MIX_INSERT(dst_vec, key_vec, c1, 5); AES_MIX_INSERT(dst_vec, key_vec, c1, 6); AES_MIX_INSERT(dst_vec, key_vec, c1, 7);
+  AES_MIX_INSERT(dst_vec, key_vec, c2, 8); AES_MIX_INSERT(dst_vec, key_vec, c2, 9); AES_MIX_INSERT(dst_vec, key_vec, c2, 10); AES_MIX_INSERT(dst_vec, key_vec, c2, 11);
+  AES_MIX_INSERT(dst_vec, key_vec, c3, 12); AES_MIX_INSERT(dst_vec, key_vec, c3, 13); AES_MIX_INSERT(dst_vec, key_vec, c3, 14); AES_MIX_INSERT(dst_vec, key_vec, c3, 15);
+  UWriteV8(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(AESDECLAST, D dst, S1 src1, S2 src2) {
+  auto state_vec = UReadV8(src1);
+  auto key_vec = UReadV8(src2);
+  auto dst_vec = UClearV8(UReadV8(dst));
+  AES_XOR_INSERT(dst_vec, key_vec, 0, AesInvSBox(UExtractV8(state_vec, 0)));
+  AES_XOR_INSERT(dst_vec, key_vec, 1, AesInvSBox(UExtractV8(state_vec, 13)));
+  AES_XOR_INSERT(dst_vec, key_vec, 2, AesInvSBox(UExtractV8(state_vec, 10)));
+  AES_XOR_INSERT(dst_vec, key_vec, 3, AesInvSBox(UExtractV8(state_vec, 7)));
+  AES_XOR_INSERT(dst_vec, key_vec, 4, AesInvSBox(UExtractV8(state_vec, 4)));
+  AES_XOR_INSERT(dst_vec, key_vec, 5, AesInvSBox(UExtractV8(state_vec, 1)));
+  AES_XOR_INSERT(dst_vec, key_vec, 6, AesInvSBox(UExtractV8(state_vec, 14)));
+  AES_XOR_INSERT(dst_vec, key_vec, 7, AesInvSBox(UExtractV8(state_vec, 11)));
+  AES_XOR_INSERT(dst_vec, key_vec, 8, AesInvSBox(UExtractV8(state_vec, 8)));
+  AES_XOR_INSERT(dst_vec, key_vec, 9, AesInvSBox(UExtractV8(state_vec, 5)));
+  AES_XOR_INSERT(dst_vec, key_vec, 10, AesInvSBox(UExtractV8(state_vec, 2)));
+  AES_XOR_INSERT(dst_vec, key_vec, 11, AesInvSBox(UExtractV8(state_vec, 15)));
+  AES_XOR_INSERT(dst_vec, key_vec, 12, AesInvSBox(UExtractV8(state_vec, 12)));
+  AES_XOR_INSERT(dst_vec, key_vec, 13, AesInvSBox(UExtractV8(state_vec, 9)));
+  AES_XOR_INSERT(dst_vec, key_vec, 14, AesInvSBox(UExtractV8(state_vec, 6)));
+  AES_XOR_INSERT(dst_vec, key_vec, 15, AesInvSBox(UExtractV8(state_vec, 3)));
+  UWriteV8(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S>
+DEF_SEM(AESIMC, D dst, S src) {
+  auto src_vec = UReadV8(src);
+  auto dst_vec = UClearV8(UReadV8(dst));
+  auto c0 = AesInvMixColumn(UExtractV8(src_vec, 0), UExtractV8(src_vec, 1), UExtractV8(src_vec, 2), UExtractV8(src_vec, 3));
+  auto c1 = AesInvMixColumn(UExtractV8(src_vec, 4), UExtractV8(src_vec, 5), UExtractV8(src_vec, 6), UExtractV8(src_vec, 7));
+  auto c2 = AesInvMixColumn(UExtractV8(src_vec, 8), UExtractV8(src_vec, 9), UExtractV8(src_vec, 10), UExtractV8(src_vec, 11));
+  auto c3 = AesInvMixColumn(UExtractV8(src_vec, 12), UExtractV8(src_vec, 13), UExtractV8(src_vec, 14), UExtractV8(src_vec, 15));
+  dst_vec = UInsertV8(dst_vec, 0, AesPackByte(c0, 0_u32)); dst_vec = UInsertV8(dst_vec, 1, AesPackByte(c0, 1_u32)); dst_vec = UInsertV8(dst_vec, 2, AesPackByte(c0, 2_u32)); dst_vec = UInsertV8(dst_vec, 3, AesPackByte(c0, 3_u32));
+  dst_vec = UInsertV8(dst_vec, 4, AesPackByte(c1, 0_u32)); dst_vec = UInsertV8(dst_vec, 5, AesPackByte(c1, 1_u32)); dst_vec = UInsertV8(dst_vec, 6, AesPackByte(c1, 2_u32)); dst_vec = UInsertV8(dst_vec, 7, AesPackByte(c1, 3_u32));
+  dst_vec = UInsertV8(dst_vec, 8, AesPackByte(c2, 0_u32)); dst_vec = UInsertV8(dst_vec, 9, AesPackByte(c2, 1_u32)); dst_vec = UInsertV8(dst_vec, 10, AesPackByte(c2, 2_u32)); dst_vec = UInsertV8(dst_vec, 11, AesPackByte(c2, 3_u32));
+  dst_vec = UInsertV8(dst_vec, 12, AesPackByte(c3, 0_u32)); dst_vec = UInsertV8(dst_vec, 13, AesPackByte(c3, 1_u32)); dst_vec = UInsertV8(dst_vec, 14, AesPackByte(c3, 2_u32)); dst_vec = UInsertV8(dst_vec, 15, AesPackByte(c3, 3_u32));
+  UWriteV8(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S>
+DEF_SEM(AESKEYGENASSIST, D dst, S src, I64 imm) {
+  auto src_vec = UReadV8(src);
+  auto dst_vec = UClearV8(UReadV8(dst));
+  auto rcon = UInt8(Read(imm));
+  auto b4 = AesSBox(UExtractV8(src_vec, 4)); auto b5 = AesSBox(UExtractV8(src_vec, 5)); auto b6 = AesSBox(UExtractV8(src_vec, 6)); auto b7 = AesSBox(UExtractV8(src_vec, 7));
+  auto b12 = AesSBox(UExtractV8(src_vec, 12)); auto b13 = AesSBox(UExtractV8(src_vec, 13)); auto b14 = AesSBox(UExtractV8(src_vec, 14)); auto b15 = AesSBox(UExtractV8(src_vec, 15));
+  dst_vec = UInsertV8(dst_vec, 0, b4); dst_vec = UInsertV8(dst_vec, 1, b5); dst_vec = UInsertV8(dst_vec, 2, b6); dst_vec = UInsertV8(dst_vec, 3, b7);
+  dst_vec = UInsertV8(dst_vec, 4, UXor(b5, rcon)); dst_vec = UInsertV8(dst_vec, 5, b6); dst_vec = UInsertV8(dst_vec, 6, b7); dst_vec = UInsertV8(dst_vec, 7, b4);
+  dst_vec = UInsertV8(dst_vec, 8, b12); dst_vec = UInsertV8(dst_vec, 9, b13); dst_vec = UInsertV8(dst_vec, 10, b14); dst_vec = UInsertV8(dst_vec, 11, b15);
+  dst_vec = UInsertV8(dst_vec, 12, UXor(b13, rcon)); dst_vec = UInsertV8(dst_vec, 13, b14); dst_vec = UInsertV8(dst_vec, 14, b15); dst_vec = UInsertV8(dst_vec, 15, b12);
+  UWriteV8(dst, dst_vec);
+  return memory;
+}
+
+#undef AES_MIX_INSERT
+#undef AES_XOR_INSERT
+
+}  // namespace
+
+DEF_ISEL(AESENC_XMMdq_XMMdq) = AESENC<V128W, V128, V128>;
+DEF_ISEL(AESENCLAST_XMMdq_XMMdq) = AESENCLAST<V128W, V128, V128>;
+DEF_ISEL(AESDEC_XMMdq_XMMdq) = AESDEC<V128W, V128, V128>;
+DEF_ISEL(AESDECLAST_XMMdq_XMMdq) = AESDECLAST<V128W, V128, V128>;
+DEF_ISEL(AESIMC_XMMdq_XMMdq) = AESIMC<V128W, V128>;
+DEF_ISEL(AESKEYGENASSIST_XMMdq_XMMdq_IMMb) = AESKEYGENASSIST<V128W, V128>;
