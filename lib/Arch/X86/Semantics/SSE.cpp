@@ -2111,6 +2111,75 @@ DEF_SEM(HADDPD, D dst, S1 src1, S2 src2) {
   return memory;
 }
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(HSUBPS, D dst, S1 src1, S2 src2) {
+  auto lhs_vec = FReadV32(src1);
+  auto rhs_vec = FReadV32(src2);
+  auto dst_vec = FClearV32(FReadV32(dst));
+
+  // Compute the horizontal packing
+  auto vec_count = NumVectorElems(lhs_vec);
+  auto tmp_vec_count = vec_count;
+  if (vec_count == 8) {
+    // For VEX.256, it is basically two 128bits concatenated.
+    // The upper half of lhs_vec will be inserted into dst_vec after the lower half of rhs_vec
+    tmp_vec_count /= 2;
+  }
+  _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
+    auto v1 = FExtractV32(lhs_vec, index);
+    auto v2 = FExtractV32(lhs_vec, index + 1);
+    auto off = Select(index < tmp_vec_count, 0, 2);
+    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
+    dst_vec = FInsertV32(dst_vec, i, FSub(v1, v2));
+  }
+  _Pragma("unroll") for (size_t index = 0; index < NumVectorElems(rhs_vec);
+                         index += 2) {
+    auto v1 = FExtractV32(rhs_vec, index);
+    auto v2 = FExtractV32(rhs_vec, index + 1);
+    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
+    dst_vec = FInsertV32(dst_vec, i, FSub(v1, v2));
+  }
+  FWriteV32(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(HSUBPD, D dst, S1 src1, S2 src2) {
+  auto lhs_vec = FReadV64(src1);
+  auto rhs_vec = FReadV64(src2);
+  auto dst_vec = FClearV64(FReadV64(dst));
+
+  static_assert(
+      NumVectorElems(lhs_vec) == NumVectorElems(rhs_vec),
+      "First and second source vector must have the same number of elements");
+
+  auto vec_count = NumVectorElems(lhs_vec);
+  auto tmp_vec_count = vec_count;
+  if (vec_count == 4) {
+    // For VEX.256, it is basically two 128bits concatenated.
+    // The upper half of lhs_vec will be inserted into dst_vec after the lower half of rhs_vec
+    tmp_vec_count /= 2;
+  }
+  // Compute the horizontal packing
+  _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
+    auto v1 = FExtractV64(lhs_vec, index);
+    auto v2 = FExtractV64(lhs_vec, index + 1);
+    auto off = Select(index < tmp_vec_count, 0, 1);
+    auto i = UAdd(UDiv(UInt32(index), UInt32(2)), UInt32(off));
+    dst_vec = FInsertV64(dst_vec, i, FSub(v1, v2));
+  }
+  _Pragma("unroll") for (size_t index = 0; index < vec_count; index += 2) {
+    auto v1 = FExtractV64(rhs_vec, index);
+    auto v2 = FExtractV64(rhs_vec, index + 1);
+    auto off = Select(index < tmp_vec_count, tmp_vec_count, vec_count);
+    auto i = UDiv(UAdd(UInt32(index), UInt32(off)), UInt32(2));
+    dst_vec = FInsertV64(dst_vec, i, FSub(v1, v2));
+  }
+  FWriteV64(dst, dst_vec);
+  return memory;
+}
+
 }  // namespace
 
 DEF_ISEL(HADDPS_XMMps_XMMps) = HADDPS<V128W, V128, V128>;
@@ -2126,6 +2195,20 @@ IF_AVX(DEF_ISEL(VHADDPD_XMMdq_XMMdq_XMMdq) = HADDPD<VV128W, V128, V128>;)
 IF_AVX(DEF_ISEL(VHADDPD_XMMdq_XMMdq_MEMdq) = HADDPD<VV128W, V128, MV128>;)
 IF_AVX(DEF_ISEL(VHADDPD_YMMqq_YMMqq_YMMqq) = HADDPD<VV256W, V256, V256>;)
 IF_AVX(DEF_ISEL(VHADDPD_YMMqq_YMMqq_MEMqq) = HADDPD<VV256W, V256, MV256>;)
+
+DEF_ISEL(HSUBPS_XMMps_XMMps) = HSUBPS<V128W, V128, V128>;
+DEF_ISEL(HSUBPS_XMMps_MEMps) = HSUBPS<V128W, V128, MV128>;
+IF_AVX(DEF_ISEL(VHSUBPS_XMMdq_XMMdq_XMMdq) = HSUBPS<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VHSUBPS_XMMdq_XMMdq_MEMdq) = HSUBPS<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VHSUBPS_YMMqq_YMMqq_YMMqq) = HSUBPS<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VHSUBPS_YMMqq_YMMqq_MEMqq) = HSUBPS<VV256W, V256, MV256>;)
+
+DEF_ISEL(HSUBPD_XMMpd_XMMpd) = HSUBPD<V128W, V128, V128>;
+DEF_ISEL(HSUBPD_XMMpd_MEMpd) = HSUBPD<V128W, V128, MV128>;
+IF_AVX(DEF_ISEL(VHSUBPD_XMMdq_XMMdq_XMMdq) = HSUBPD<VV128W, V128, V128>;)
+IF_AVX(DEF_ISEL(VHSUBPD_XMMdq_XMMdq_MEMdq) = HSUBPD<VV128W, V128, MV128>;)
+IF_AVX(DEF_ISEL(VHSUBPD_YMMqq_YMMqq_YMMqq) = HSUBPD<VV256W, V256, V256>;)
+IF_AVX(DEF_ISEL(VHSUBPD_YMMqq_YMMqq_MEMqq) = HSUBPD<VV256W, V256, MV256>;)
 
 /*
 555 PACKSSDW PACKSSDW_MMXq_MEMq MMX MMX PENTIUMMMX ATTRIBUTES: HALF_WIDE_OUTPUT NOTSX
