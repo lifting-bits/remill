@@ -3073,3 +3073,39 @@ DEF_SEM(SHA1MSG1, D dst, S1 src1, S2 src2) {
 
 DEF_ISEL(SHA1MSG1_XMMi32_XMMi32_SHA) = SHA1MSG1<V128W, V128, V128>;
 DEF_ISEL(SHA1MSG1_XMMi32_MEMi32_SHA) = SHA1MSG1<V128W, V128, MV128>;
+
+namespace {
+
+ALWAYS_INLINE static uint32_t ShaRol32(uint32_t value, uint32_t shift) {
+  return UOr(UShl(value, shift), UShr(value, USub(32_u32, shift)));
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHA1MSG2, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto dst_vec = UClearV32(UReadV32(dst));
+
+  auto word3 = ShaRol32(UXor(UExtractV32(src1_vec, 3),
+                             UExtractV32(src2_vec, 2)),
+                        1_u32);
+  auto word2 = ShaRol32(UXor(UExtractV32(src1_vec, 2),
+                             UExtractV32(src2_vec, 1)),
+                        1_u32);
+  auto word1 = ShaRol32(UXor(UExtractV32(src1_vec, 1),
+                             UExtractV32(src2_vec, 0)),
+                        1_u32);
+  auto word0 = ShaRol32(UXor(UExtractV32(src1_vec, 0), word3), 1_u32);
+
+  dst_vec = UInsertV32(dst_vec, 0, word0);
+  dst_vec = UInsertV32(dst_vec, 1, word1);
+  dst_vec = UInsertV32(dst_vec, 2, word2);
+  dst_vec = UInsertV32(dst_vec, 3, word3);
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(SHA1MSG2_XMMi32_XMMi32_SHA) = SHA1MSG2<V128W, V128, V128>;
+DEF_ISEL(SHA1MSG2_XMMi32_MEMi32_SHA) = SHA1MSG2<V128W, V128, MV128>;
