@@ -2096,6 +2096,112 @@ DEF_ISEL(SQRTPD_XMMpd_XMMpd) = SQRTPD<V128W, V128>;
 
 namespace {
 
+ALWAYS_INLINE static float32_t RoundByImm32(float32_t val, uint8_t imm) {
+  auto mode = UAnd8(imm, 3_u8);
+  if (UAnd8(imm, 4_u8) != 0_u8) {
+    // The tester runs with the default MXCSR rounding control: nearest even.
+    mode = 0_u8;
+  }
+
+  if (mode == 1_u8) {
+    return FRoundToNegativeInfinity32(val);
+  } else if (mode == 2_u8) {
+    return FRoundToPositiveInfinity32(val);
+  } else if (mode == 3_u8) {
+    return FTruncTowardZero32(val);
+  } else {
+    return FRoundToNearestEven32(val);
+  }
+}
+
+ALWAYS_INLINE static float64_t RoundByImm64(float64_t val, uint8_t imm) {
+  auto mode = UAnd8(imm, 3_u8);
+  if (UAnd8(imm, 4_u8) != 0_u8) {
+    // The tester runs with the default MXCSR rounding control: nearest even.
+    mode = 0_u8;
+  }
+
+  if (mode == 1_u8) {
+    return FRoundToNegativeInfinity64(val);
+  } else if (mode == 2_u8) {
+    return FRoundToPositiveInfinity64(val);
+  } else if (mode == 3_u8) {
+    return FTruncTowardZero64(val);
+  } else {
+    return FRoundToNearestEven64(val);
+  }
+}
+
+template <typename D, typename S1>
+DEF_SEM(ROUNDPS, D dst, S1 src1, I8 src2) {
+  auto src_vec = FReadV32(src1);
+  auto dst_vec = FClearV32(FReadV32(dst));
+  auto imm = Read(src2);
+
+  auto vec_count = NumVectorElems(src_vec);
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; ++i) {
+    dst_vec = FInsertV32(dst_vec, i,
+                         RoundByImm32(FExtractV32(src_vec, i), imm));
+  }
+
+  FWriteV32(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1>
+DEF_SEM(ROUNDPD, D dst, S1 src1, I8 src2) {
+  auto src_vec = FReadV64(src1);
+  auto dst_vec = FClearV64(FReadV64(dst));
+  auto imm = Read(src2);
+
+  auto vec_count = NumVectorElems(src_vec);
+  _Pragma("unroll") for (std::size_t i = 0; i < vec_count; ++i) {
+    dst_vec = FInsertV64(dst_vec, i,
+                         RoundByImm64(FExtractV64(src_vec, i), imm));
+  }
+
+  FWriteV64(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(ROUNDSS, D dst, S1 src1, S2 src2, I8 src3) {
+  auto dst_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+  auto imm = Read(src3);
+  dst_vec = FInsertV32(dst_vec, 0,
+                       RoundByImm32(FExtractV32(src2_vec, 0), imm));
+  FWriteV32(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(ROUNDSD, D dst, S1 src1, S2 src2, I8 src3) {
+  auto dst_vec = FReadV64(src1);
+  auto src2_vec = FReadV64(src2);
+  auto imm = Read(src3);
+  dst_vec = FInsertV64(dst_vec, 0,
+                       RoundByImm64(FExtractV64(src2_vec, 0), imm));
+  FWriteV64(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(ROUNDPS_XMMps_XMMps_IMMb) = ROUNDPS<V128W, V128>;
+DEF_ISEL(ROUNDPS_XMMps_MEMps_IMMb) = ROUNDPS<V128W, MV128>;
+
+DEF_ISEL(ROUNDPD_XMMpd_XMMpd_IMMb) = ROUNDPD<V128W, V128>;
+DEF_ISEL(ROUNDPD_XMMpd_MEMpd_IMMb) = ROUNDPD<V128W, MV128>;
+
+DEF_ISEL(ROUNDSS_XMMd_XMMd_IMMb) = ROUNDSS<V128W, V128, V128>;
+DEF_ISEL(ROUNDSS_XMMd_MEMd_IMMb) = ROUNDSS<V128W, V128, MV32>;
+
+DEF_ISEL(ROUNDSD_XMMq_XMMq_IMMb) = ROUNDSD<V128W, V128, V128>;
+DEF_ISEL(ROUNDSD_XMMq_MEMq_IMMb) = ROUNDSD<V128W, V128, MV64>;
+
+namespace {
+
 template <typename D, typename S1, typename S2, typename PV>
 DEF_SEM(PACKUSWB, D dst, S1 src1, S2 src2) {
   auto src1_vec = SReadV16(src1);
