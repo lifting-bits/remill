@@ -3043,3 +3043,33 @@ DEF_ISEL(AESDEC_XMMdq_XMMdq) = AESDEC<V128W, V128, V128>;
 DEF_ISEL(AESDECLAST_XMMdq_XMMdq) = AESDECLAST<V128W, V128, V128>;
 DEF_ISEL(AESIMC_XMMdq_XMMdq) = AESIMC<V128W, V128>;
 DEF_ISEL(AESKEYGENASSIST_XMMdq_XMMdq_IMMb) = AESKEYGENASSIST<V128W, V128>;
+
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHA1MSG1, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto dst_vec = UClearV32(UReadV32(dst));
+
+  dst_vec = UInsertV32(dst_vec, 0,
+                       UXor(UExtractV32(src1_vec, 0),
+                            UExtractV32(src2_vec, 2)));
+  dst_vec = UInsertV32(dst_vec, 1,
+                       UXor(UExtractV32(src1_vec, 1),
+                            UExtractV32(src2_vec, 3)));
+  dst_vec = UInsertV32(dst_vec, 2,
+                       UXor(UExtractV32(src1_vec, 2),
+                            UExtractV32(src1_vec, 0)));
+  dst_vec = UInsertV32(dst_vec, 3,
+                       UXor(UExtractV32(src1_vec, 3),
+                            UExtractV32(src1_vec, 1)));
+
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(SHA1MSG1_XMMi32_XMMi32_SHA) = SHA1MSG1<V128W, V128, V128>;
+DEF_ISEL(SHA1MSG1_XMMi32_MEMi32_SHA) = SHA1MSG1<V128W, V128, MV128>;
