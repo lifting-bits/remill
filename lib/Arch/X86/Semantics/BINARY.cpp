@@ -709,6 +709,30 @@ DEF_SEM(ADC, D dst, S1 src1, S2 src2) {
 }
 
 template <typename D, typename S1, typename S2>
+DEF_SEM(ADCX, D dst, S1 src1, S2 src2) {
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto carry = ZExtTo<S1>(Unsigned(Read(FLAG_CF)));
+  auto sum = UAdd(lhs, rhs);
+  auto res = UAdd(sum, carry);
+  WriteZExt(dst, res);
+  Write(FLAG_CF, CarryFlag<tag_add>(lhs, rhs, sum, carry, res));
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(ADOX, D dst, S1 src1, S2 src2) {
+  auto lhs = Read(src1);
+  auto rhs = Read(src2);
+  auto carry = ZExtTo<S1>(Unsigned(Read(FLAG_OF)));
+  auto sum = UAdd(lhs, rhs);
+  auto res = UAdd(sum, carry);
+  WriteZExt(dst, res);
+  Write(FLAG_OF, CarryFlag<tag_add>(lhs, rhs, sum, carry, res));
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
 DEF_SEM(SBB, D dst, S1 src1, S2 src2) {
   auto lhs = Read(src1);
   auto rhs = Read(src2);
@@ -760,3 +784,9 @@ DEF_ISEL_RnW_Rn_Mn(ADC_GPRv_MEMv, ADC);
 DEF_ISEL_RnW_Rn_Rn(ADC_GPRv_GPRv_13, ADC);
 DEF_ISEL(ADC_AL_IMMb) = ADC<R8W, R8, I8>;
 DEF_ISEL_RnW_Rn_In(ADC_OrAX_IMMz, ADC);
+
+DEF_ISEL(ADCX_GPR32d_GPR32d) = ADCX<R32W, R32, R32>;
+IF_64BIT(DEF_ISEL(ADCX_GPR64q_GPR64q) = ADCX<R64W, R64, R64>;)
+
+DEF_ISEL(ADOX_GPR32d_GPR32d) = ADOX<R32W, R32, R32>;
+IF_64BIT(DEF_ISEL(ADOX_GPR64q_GPR64q) = ADOX<R64W, R64, R64>;)
