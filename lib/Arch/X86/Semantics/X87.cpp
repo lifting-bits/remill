@@ -802,6 +802,13 @@ DEF_FPU_SEM(FSTPmem, T dst, RF80W src) {
   return FSTP(memory, state, dst, src, pc, fop);
 }
 
+DEF_FPU_SEM(FSTx87, RF80W dst, RF80W src) {
+  SetFPUIpOp();
+  Write(dst, Read(src));
+  state.sw.c1 = 0;
+  return memory;
+}
+
 template <typename C1, typename C2>
 DEF_HELPER(ConvertToInt, C1 cast, C2 convert, native_float80_t input)
     ->decltype(cast(input)) {
@@ -892,7 +899,7 @@ DEF_ISEL(FSTP_X87_ST0_DFD0) = FSTP<RF80W>;
 DEF_ISEL(FSTP_X87_ST0_DFD1) = FSTP<RF80W>;
 DEF_ISEL(FST_MEMmem32real_ST0) = FSTmem<MF32W>;
 DEF_ISEL(FST_MEMm64real_ST0) = FSTmem<MF64W>;
-DEF_ISEL(FST_X87_ST0) = FST<RF80W>;
+DEF_ISEL(FST_X87_ST0) = FSTx87;
 DEF_ISEL(FIST_MEMmem16int_ST0) = FISTm16;
 DEF_ISEL(FIST_MEMmem32int_ST0) = FISTm32;
 DEF_ISEL(FISTP_MEMmem16int_ST0) = FISTPm16;
