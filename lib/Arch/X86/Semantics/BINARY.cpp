@@ -283,9 +283,12 @@ DEF_SEM(MULX, D dst1, D dst2, const S2 src2) {
   auto res_high = UShr(res, ZExt(BitSizeOf(src2)));
 
   // In 64-bit, a 32-bit dest needs to zero-extend up to 64 bits because the
-  // write version of the reg will be the 64-bit version.
-  WriteZExt(dst1, TruncTo<S2>(res_high));  // High N bits.
+  // write version of the reg will be the 64-bit version. MULX writes its
+  // first explicit destination with the high half and its second explicit
+  // destination with the low half; write the second destination first so that
+  // aliasing destinations leave the architecturally observed high half.
   WriteZExt(dst2, TruncTo<S2>(res));  // Low N bits.
+  WriteZExt(dst1, TruncTo<S2>(res_high));  // High N bits.
   return memory;
 }
 
