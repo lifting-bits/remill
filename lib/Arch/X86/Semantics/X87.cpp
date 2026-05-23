@@ -213,16 +213,18 @@ DEF_FPU_SEM(DoFLDPI) {
 DEF_FPU_SEM(DoFABS) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
-  auto res = CheckedFloatUnaryOp(state, FAbs80, st0);
-  Write(X87_ST0, res);
+  st0.data[9] &= 0x7f_u8;
+  Write(X87_ST0, st0);
+  state.sw.c1 = 0;
   return memory;
 }
 
 DEF_FPU_SEM(DoFCHS) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
-  auto res = CheckedFloatUnaryOp(state, FNeg80, st0);
-  Write(X87_ST0, res);
+  st0.data[9] ^= 0x80_u8;
+  Write(X87_ST0, st0);
+  state.sw.c1 = 0;
   return memory;
 }
 
