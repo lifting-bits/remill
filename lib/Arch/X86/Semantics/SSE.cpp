@@ -3287,3 +3287,65 @@ DEF_ISEL(SHA256MSG1_XMMi32_XMMi32_SHA) = SHA256MSG1<V128W, V128, V128>;
 DEF_ISEL(SHA256MSG1_XMMi32_MEMi32_SHA) = SHA256MSG1<V128W, V128, MV128>;
 DEF_ISEL(SHA256MSG2_XMMi32_XMMi32_SHA) = SHA256MSG2<V128W, V128, V128>;
 DEF_ISEL(SHA256MSG2_XMMi32_MEMi32_SHA) = SHA256MSG2<V128W, V128, MV128>;
+
+namespace {
+
+ALWAYS_INLINE static uint32_t Sha256BigSigma0(uint32_t value) {
+  return UXor(UXor(ShaRor32(value, 2_u32), ShaRor32(value, 13_u32)),
+              ShaRor32(value, 22_u32));
+}
+
+ALWAYS_INLINE static uint32_t Sha256BigSigma1(uint32_t value) {
+  return UXor(UXor(ShaRor32(value, 6_u32), ShaRor32(value, 11_u32)),
+              ShaRor32(value, 25_u32));
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHA256RNDS2, D dst, S1 src1, S2 src2) {
+  auto cdgh_vec = UReadV32(src1);
+  auto abef_vec = UReadV32(src2);
+  auto message_vec = state.vec[0].xmm.dwords;
+
+  auto a = UExtractV32(abef_vec, 3);
+  auto b = UExtractV32(abef_vec, 2);
+  auto e = UExtractV32(abef_vec, 1);
+  auto f = UExtractV32(abef_vec, 0);
+  auto c = UExtractV32(cdgh_vec, 3);
+  auto d = UExtractV32(cdgh_vec, 2);
+  auto g = UExtractV32(cdgh_vec, 1);
+  auto h = UExtractV32(cdgh_vec, 0);
+
+#define SHA256RNDS2_ROUND(message_index) \
+  do { \
+    auto t1 = UAdd( \
+        UAdd(UAdd(h, Sha256BigSigma1(e)), Sha1Choose(e, f, g)), \
+        UExtractV32(message_vec, message_index)); \
+    auto t2 = UAdd(Sha256BigSigma0(a), Sha1Majority(a, b, c)); \
+    h = g; \
+    g = f; \
+    f = e; \
+    e = UAdd(d, t1); \
+    d = c; \
+    c = b; \
+    b = a; \
+    a = UAdd(t1, t2); \
+  } while (false)
+
+  SHA256RNDS2_ROUND(0);
+  SHA256RNDS2_ROUND(1);
+
+#undef SHA256RNDS2_ROUND
+
+  auto dst_vec = UClearV32(UReadV32(dst));
+  dst_vec = UInsertV32(dst_vec, 0, f);
+  dst_vec = UInsertV32(dst_vec, 1, e);
+  dst_vec = UInsertV32(dst_vec, 2, b);
+  dst_vec = UInsertV32(dst_vec, 3, a);
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(SHA256RNDS2_XMMi32_XMMi32_SHA) = SHA256RNDS2<V128W, V128, V128>;
+DEF_ISEL(SHA256RNDS2_XMMi32_MEMi32_SHA) = SHA256RNDS2<V128W, V128, MV128>;
