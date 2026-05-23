@@ -2202,6 +2202,67 @@ DEF_ISEL(ROUNDSD_XMMq_MEMq_IMMb) = ROUNDSD<V128W, V128, MV64>;
 
 namespace {
 
+template <typename D, typename S1, typename S2>
+DEF_SEM(DPPS, D dst, S1 src1, S2 src2, I8 src3) {
+  auto src1_vec = FReadV32(src1);
+  auto src2_vec = FReadV32(src2);
+  auto imm = Read(src3);
+
+  float32_t products[4] = {};
+  _Pragma("unroll") for (std::size_t i = 0; i < 4; ++i) {
+    auto bit = UAnd8(UShr8(imm, TruncTo<uint8_t>(i + 4)), 1_u8);
+    auto product = FMul(FExtractV32(src1_vec, i), FExtractV32(src2_vec, i));
+    products[i] = Select<float32_t>(bit != 0_u8, product, 0.0f);
+  }
+
+  auto low_sum = FAdd(products[0], products[1]);
+  auto high_sum = FAdd(products[2], products[3]);
+  auto dot = FAdd(low_sum, high_sum);
+  auto dst_vec = FClearV32(FReadV32(dst));
+  _Pragma("unroll") for (std::size_t i = 0; i < 4; ++i) {
+    auto bit = UAnd8(UShr8(imm, TruncTo<uint8_t>(i)), 1_u8);
+    dst_vec = FInsertV32(dst_vec, i,
+                         Select<float32_t>(bit != 0_u8, dot, 0.0f));
+  }
+
+  FWriteV32(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(DPPD, D dst, S1 src1, S2 src2, I8 src3) {
+  auto src1_vec = FReadV64(src1);
+  auto src2_vec = FReadV64(src2);
+  auto imm = Read(src3);
+
+  auto bit0 = UAnd8(UShr8(imm, 4_u8), 1_u8);
+  auto bit1 = UAnd8(UShr8(imm, 5_u8), 1_u8);
+  auto product0 = FMul(FExtractV64(src1_vec, 0), FExtractV64(src2_vec, 0));
+  auto product1 = FMul(FExtractV64(src1_vec, 1), FExtractV64(src2_vec, 1));
+  auto dot = FAdd(Select<float64_t>(bit0 != 0_u8, product0, 0.0),
+                  Select<float64_t>(bit1 != 0_u8, product1, 0.0));
+
+  auto dst_vec = FClearV64(FReadV64(dst));
+  _Pragma("unroll") for (std::size_t i = 0; i < 2; ++i) {
+    auto bit = UAnd8(UShr8(imm, TruncTo<uint8_t>(i)), 1_u8);
+    dst_vec = FInsertV64(dst_vec, i,
+                         Select<float64_t>(bit != 0_u8, dot, 0.0));
+  }
+
+  FWriteV64(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(DPPS_XMMdq_XMMdq_IMMb) = DPPS<V128W, V128, V128>;
+DEF_ISEL(DPPS_XMMdq_MEMdq_IMMb) = DPPS<V128W, V128, MV128>;
+
+DEF_ISEL(DPPD_XMMdq_XMMdq_IMMb) = DPPD<V128W, V128, V128>;
+DEF_ISEL(DPPD_XMMdq_MEMdq_IMMb) = DPPD<V128W, V128, MV128>;
+
+namespace {
+
 template <typename D, typename S1, typename S2, typename PV>
 DEF_SEM(PACKUSWB, D dst, S1 src1, S2 src2) {
   auto src1_vec = SReadV16(src1);
