@@ -3220,3 +3220,70 @@ DEF_SEM(SHA1RNDS4, D dst, S1 src1, S2 src2, I8 src3) {
 
 DEF_ISEL(SHA1RNDS4_XMMi32_XMMi32_IMM8_SHA) = SHA1RNDS4<V128W, V128, V128>;
 DEF_ISEL(SHA1RNDS4_XMMi32_MEMi32_IMM8_SHA) = SHA1RNDS4<V128W, V128, MV128>;
+
+namespace {
+
+ALWAYS_INLINE static uint32_t Sha256SmallSigma0(uint32_t value) {
+  return UXor(UXor(ShaRor32(value, 7_u32), ShaRor32(value, 18_u32)),
+              UShr(value, 3_u32));
+}
+
+ALWAYS_INLINE static uint32_t Sha256SmallSigma1(uint32_t value) {
+  return UXor(UXor(ShaRor32(value, 17_u32), ShaRor32(value, 19_u32)),
+              UShr(value, 10_u32));
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHA256MSG1, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto dst_vec = UClearV32(UReadV32(dst));
+
+  dst_vec = UInsertV32(
+      dst_vec, 0,
+      UAdd(UExtractV32(src1_vec, 0),
+           Sha256SmallSigma0(UExtractV32(src1_vec, 1))));
+  dst_vec = UInsertV32(
+      dst_vec, 1,
+      UAdd(UExtractV32(src1_vec, 1),
+           Sha256SmallSigma0(UExtractV32(src1_vec, 2))));
+  dst_vec = UInsertV32(
+      dst_vec, 2,
+      UAdd(UExtractV32(src1_vec, 2),
+           Sha256SmallSigma0(UExtractV32(src1_vec, 3))));
+  dst_vec = UInsertV32(
+      dst_vec, 3,
+      UAdd(UExtractV32(src1_vec, 3),
+           Sha256SmallSigma0(UExtractV32(src2_vec, 0))));
+
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHA256MSG2, D dst, S1 src1, S2 src2) {
+  auto src1_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+
+  auto word0 = UAdd(UExtractV32(src1_vec, 0),
+                    Sha256SmallSigma1(UExtractV32(src2_vec, 2)));
+  auto word1 = UAdd(UExtractV32(src1_vec, 1),
+                    Sha256SmallSigma1(UExtractV32(src2_vec, 3)));
+  auto word2 = UAdd(UExtractV32(src1_vec, 2), Sha256SmallSigma1(word0));
+  auto word3 = UAdd(UExtractV32(src1_vec, 3), Sha256SmallSigma1(word1));
+
+  auto dst_vec = UClearV32(UReadV32(dst));
+  dst_vec = UInsertV32(dst_vec, 0, word0);
+  dst_vec = UInsertV32(dst_vec, 1, word1);
+  dst_vec = UInsertV32(dst_vec, 2, word2);
+  dst_vec = UInsertV32(dst_vec, 3, word3);
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(SHA256MSG1_XMMi32_XMMi32_SHA) = SHA256MSG1<V128W, V128, V128>;
+DEF_ISEL(SHA256MSG1_XMMi32_MEMi32_SHA) = SHA256MSG1<V128W, V128, MV128>;
+DEF_ISEL(SHA256MSG2_XMMi32_XMMi32_SHA) = SHA256MSG2<V128W, V128, V128>;
+DEF_ISEL(SHA256MSG2_XMMi32_MEMi32_SHA) = SHA256MSG2<V128W, V128, MV128>;
