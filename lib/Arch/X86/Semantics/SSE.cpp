@@ -612,12 +612,15 @@ DEF_ISEL(VPCMPEQD_YMMqq_YMMqq_YMMqq) = PCMPEQD<VV256W, V256, V256>;
 
 namespace {
 
-template <typename D, typename S1, typename S2>
+template <bool kUseFullPredicate, typename D, typename S1, typename S2>
 DEF_SEM(CMPSS, D dst, S1 src1, S2 src2, I8 src3) {
   auto src1_vec = FReadV32(src1);
   auto src2_vec = FReadV32(src2);
   auto dst_vec = UClearV32(UReadV32(dst));
   auto op = Read(src3);
+  if (!kUseFullPredicate) {
+    op = UAnd8(op, 7_u8);
+  }
   if (op >= 32) {
     StopFailure();
   }
@@ -632,12 +635,15 @@ DEF_SEM(CMPSS, D dst, S1 src1, S2 src2, I8 src3) {
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
+template <bool kUseFullPredicate, typename D, typename S1, typename S2>
 DEF_SEM(CMPSD, D dst, S1 src1, S2 src2, I8 src3) {
   auto src1_vec = FReadV64(src1);
   auto src2_vec = FReadV64(src2);
   auto dst_vec = UClearV64(UReadV64(dst));
   auto op = Read(src3);
+  if (!kUseFullPredicate) {
+    op = UAnd8(op, 7_u8);
+  }
   if (op >= 32) {
     StopFailure();
   }
@@ -655,29 +661,32 @@ DEF_SEM(CMPSD, D dst, S1 src1, S2 src2, I8 src3) {
 
 }  // namespace
 
-DEF_ISEL(CMPSS_XMMss_MEMss_IMMb) = CMPSS<V128W, V128, MV32>;
-DEF_ISEL(CMPSS_XMMss_XMMss_IMMb) = CMPSS<V128W, V128, V128>;
+DEF_ISEL(CMPSS_XMMss_MEMss_IMMb) = CMPSS<false, V128W, V128, MV32>;
+DEF_ISEL(CMPSS_XMMss_XMMss_IMMb) = CMPSS<false, V128W, V128, V128>;
 
 #if HAS_FEATURE_AVX
-DEF_ISEL(VCMPSS_XMMdq_XMMdq_MEMd_IMMb) = CMPSS<VV128W, V128, MV32>;
-DEF_ISEL(VCMPSS_XMMdq_XMMdq_XMMd_IMMb) = CMPSS<VV128W, V128, V128>;
+DEF_ISEL(VCMPSS_XMMdq_XMMdq_MEMd_IMMb) = CMPSS<true, VV128W, V128, MV32>;
+DEF_ISEL(VCMPSS_XMMdq_XMMdq_XMMd_IMMb) = CMPSS<true, VV128W, V128, V128>;
 #endif  // HAS_FEATURE_AVX
 
-DEF_ISEL(CMPSD_XMM_XMMsd_MEMsd_IMMb) = CMPSD<V128W, V128, MV64>;
-DEF_ISEL(CMPSD_XMM_XMMsd_XMMsd_IMMb) = CMPSD<V128W, V128, V128>;
+DEF_ISEL(CMPSD_XMM_XMMsd_MEMsd_IMMb) = CMPSD<false, V128W, V128, MV64>;
+DEF_ISEL(CMPSD_XMM_XMMsd_XMMsd_IMMb) = CMPSD<false, V128W, V128, V128>;
 
 #if HAS_FEATURE_AVX
-DEF_ISEL(VCMPSD_XMMdq_XMMdq_MEMq_IMMb) = CMPSD<VV128W, V128, MV64>;
-DEF_ISEL(VCMPSD_XMMdq_XMMdq_XMMq_IMMb) = CMPSD<VV128W, V128, V128>;
+DEF_ISEL(VCMPSD_XMMdq_XMMdq_MEMq_IMMb) = CMPSD<true, VV128W, V128, MV64>;
+DEF_ISEL(VCMPSD_XMMdq_XMMdq_XMMq_IMMb) = CMPSD<true, VV128W, V128, V128>;
 #endif  // HAS_FEATURE_AVX
 
 namespace {
-template <typename D, typename S1, typename S2>
+template <bool kUseFullPredicate, typename D, typename S1, typename S2>
 DEF_SEM(CMPPS, D dst, S1 src1, S2 src2, I8 src3) {
   auto src1_vec = FReadV32(src1);
   auto src2_vec = FReadV32(src2);
   auto dst_vec = UClearV32(UReadV32(dst));
   auto op = Read(src3);
+  if (!kUseFullPredicate) {
+    op = UAnd8(op, 7_u8);
+  }
   if (op >= 32) {
     StopFailure();
   }
@@ -697,12 +706,15 @@ DEF_SEM(CMPPS, D dst, S1 src1, S2 src2, I8 src3) {
   return memory;
 }
 
-template <typename D, typename S1, typename S2>
+template <bool kUseFullPredicate, typename D, typename S1, typename S2>
 DEF_SEM(CMPPD, D dst, S1 src1, S2 src2, I8 src3) {
   auto src1_vec = FReadV64(src1);
   auto src2_vec = FReadV64(src2);
   auto dst_vec = UClearV64(UReadV64(dst));
   auto op = Read(src3);
+  if (!kUseFullPredicate) {
+    op = UAnd8(op, 7_u8);
+  }
   if (op >= 32) {
     StopFailure();
   }
@@ -724,24 +736,24 @@ DEF_SEM(CMPPD, D dst, S1 src1, S2 src2, I8 src3) {
 
 }  // namespace
 
-DEF_ISEL(CMPPS_XMMps_MEMps_IMMb) = CMPPS<V128W, V128, MV128>;
-DEF_ISEL(CMPPS_XMMps_XMMps_IMMb) = CMPPS<V128W, V128, V128>;
+DEF_ISEL(CMPPS_XMMps_MEMps_IMMb) = CMPPS<false, V128W, V128, MV128>;
+DEF_ISEL(CMPPS_XMMps_XMMps_IMMb) = CMPPS<false, V128W, V128, V128>;
 
 #if HAS_FEATURE_AVX
-DEF_ISEL(VCMPPS_XMMdq_XMMdq_MEMdq_IMMb) = CMPPS<VV128W, V128, MV128>;
-DEF_ISEL(VCMPPS_XMMdq_XMMdq_XMMdq_IMMb) = CMPPS<VV128W, V128, V128>;
-DEF_ISEL(VCMPPS_YMMqq_YMMqq_MEMqq_IMMb) = CMPPS<VV256W, V256, MV256>;
-DEF_ISEL(VCMPPS_YMMqq_YMMqq_YMMqq_IMMb) = CMPPS<VV256W, V256, V256>;
+DEF_ISEL(VCMPPS_XMMdq_XMMdq_MEMdq_IMMb) = CMPPS<true, VV128W, V128, MV128>;
+DEF_ISEL(VCMPPS_XMMdq_XMMdq_XMMdq_IMMb) = CMPPS<true, VV128W, V128, V128>;
+DEF_ISEL(VCMPPS_YMMqq_YMMqq_MEMqq_IMMb) = CMPPS<true, VV256W, V256, MV256>;
+DEF_ISEL(VCMPPS_YMMqq_YMMqq_YMMqq_IMMb) = CMPPS<true, VV256W, V256, V256>;
 #endif  // HAS_FEATURE_AVX
 
-DEF_ISEL(CMPPD_XMMpd_MEMpd_IMMb) = CMPPD<V128W, V128, MV128>;
-DEF_ISEL(CMPPD_XMMpd_XMMpd_IMMb) = CMPPD<V128W, V128, V128>;
+DEF_ISEL(CMPPD_XMMpd_MEMpd_IMMb) = CMPPD<false, V128W, V128, MV128>;
+DEF_ISEL(CMPPD_XMMpd_XMMpd_IMMb) = CMPPD<false, V128W, V128, V128>;
 
 #if HAS_FEATURE_AVX
-DEF_ISEL(VCMPPD_XMMdq_XMMdq_MEMdq_IMMb) = CMPPD<VV128W, V128, MV128>;
-DEF_ISEL(VCMPPD_XMMdq_XMMdq_XMMdq_IMMb) = CMPPD<VV128W, V128, V128>;
-DEF_ISEL(VCMPPD_YMMqq_YMMqq_MEMqq_IMMb) = CMPPD<VV256W, V256, MV256>;
-DEF_ISEL(VCMPPD_YMMqq_YMMqq_YMMqq_IMMb) = CMPPD<VV256W, V256, V256>;
+DEF_ISEL(VCMPPD_XMMdq_XMMdq_MEMdq_IMMb) = CMPPD<true, VV128W, V128, MV128>;
+DEF_ISEL(VCMPPD_XMMdq_XMMdq_XMMdq_IMMb) = CMPPD<true, VV128W, V128, V128>;
+DEF_ISEL(VCMPPD_YMMqq_YMMqq_MEMqq_IMMb) = CMPPD<true, VV256W, V256, MV256>;
+DEF_ISEL(VCMPPD_YMMqq_YMMqq_YMMqq_IMMb) = CMPPD<true, VV256W, V256, V256>;
 #endif  // HAS_FEATURE_AVX
 
 namespace {
