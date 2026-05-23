@@ -264,6 +264,93 @@ DEF_SEM(SHUFPD, D dst, S1 src1, S2 src2, I8 src3) {
 
 DEF_ISEL(SHUFPD_XMMpd_XMMpd_IMMb) = SHUFPD<V128W, V128, V128>;
 
+namespace {
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(BLENDPS, D dst, S1 src1, S2 src2, I8 src3) {
+  auto dst_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto imm = Read(src3);
+  auto num_groups = NumVectorElems(dst_vec);
+
+  _Pragma("unroll") for (std::size_t i = 0; i < num_groups; ++i) {
+    auto bit = UAnd8(UShr8(imm, TruncTo<uint8_t>(i)), 1_u8);
+    auto val = Select(bit != 0_u8, UExtractV32(src2_vec, i),
+                      UExtractV32(dst_vec, i));
+    dst_vec = UInsertV32(dst_vec, i, val);
+  }
+
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(BLENDPD, D dst, S1 src1, S2 src2, I8 src3) {
+  auto dst_vec = UReadV64(src1);
+  auto src2_vec = UReadV64(src2);
+  auto imm = Read(src3);
+  auto num_groups = NumVectorElems(dst_vec);
+
+  _Pragma("unroll") for (std::size_t i = 0; i < num_groups; ++i) {
+    auto bit = UAnd8(UShr8(imm, TruncTo<uint8_t>(i)), 1_u8);
+    auto val = Select(bit != 0_u8, UExtractV64(src2_vec, i),
+                      UExtractV64(dst_vec, i));
+    dst_vec = UInsertV64(dst_vec, i, val);
+  }
+
+  UWriteV64(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(BLENDVPS, D dst, S1 src1, S2 src2) {
+  auto dst_vec = UReadV32(src1);
+  auto src2_vec = UReadV32(src2);
+  auto mask_vec = state.vec[0].xmm.dwords;
+  auto num_groups = NumVectorElems(dst_vec);
+
+  _Pragma("unroll") for (std::size_t i = 0; i < num_groups; ++i) {
+    auto mask = mask_vec.elems[i];
+    auto val = Select(UShr(mask, 31_u32) != 0_u32, UExtractV32(src2_vec, i),
+                      UExtractV32(dst_vec, i));
+    dst_vec = UInsertV32(dst_vec, i, val);
+  }
+
+  UWriteV32(dst, dst_vec);
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(BLENDVPD, D dst, S1 src1, S2 src2) {
+  auto dst_vec = UReadV64(src1);
+  auto src2_vec = UReadV64(src2);
+  auto mask_vec = state.vec[0].xmm.qwords;
+  auto num_groups = NumVectorElems(dst_vec);
+
+  _Pragma("unroll") for (std::size_t i = 0; i < num_groups; ++i) {
+    auto mask = mask_vec.elems[i];
+    auto val = Select(UShr(mask, 63_u64) != 0_u64, UExtractV64(src2_vec, i),
+                      UExtractV64(dst_vec, i));
+    dst_vec = UInsertV64(dst_vec, i, val);
+  }
+
+  UWriteV64(dst, dst_vec);
+  return memory;
+}
+
+}  // namespace
+
+DEF_ISEL(BLENDPS_XMMdq_XMMdq_IMMb) = BLENDPS<V128W, V128, V128>;
+DEF_ISEL(BLENDPS_XMMdq_MEMdq_IMMb) = BLENDPS<V128W, V128, MV128>;
+
+DEF_ISEL(BLENDPD_XMMdq_XMMdq_IMMb) = BLENDPD<V128W, V128, V128>;
+DEF_ISEL(BLENDPD_XMMdq_MEMdq_IMMb) = BLENDPD<V128W, V128, MV128>;
+
+DEF_ISEL(BLENDVPS_XMMdq_XMMdq) = BLENDVPS<V128W, V128, V128>;
+DEF_ISEL(BLENDVPS_XMMdq_MEMdq) = BLENDVPS<V128W, V128, MV128>;
+
+DEF_ISEL(BLENDVPD_XMMdq_XMMdq) = BLENDVPD<V128W, V128, V128>;
+DEF_ISEL(BLENDVPD_XMMdq_MEMdq) = BLENDVPD<V128W, V128, MV128>;
 
 namespace {
 
