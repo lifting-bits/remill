@@ -53,6 +53,8 @@ ExternalProject_Add(llvm
         ${LLVM_URL}
     URL_HASH
         "SHA256=${LLVM_SHA256}"
+    PATCH_COMMAND
+        ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_LIST_DIR}/patches/patch_llvm_cstdint.cmake"
     CMAKE_CACHE_ARGS
         ${CMAKE_ARGS}
         ${LLVM_ARGS}
