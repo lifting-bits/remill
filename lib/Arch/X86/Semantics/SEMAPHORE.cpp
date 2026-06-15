@@ -46,8 +46,15 @@ DEF_SEM(DoCMPXCHG8B_MEMq, M64W dst, M64 src1) {
   auto check_val = UOr(UShl(ZExt(xdx), 32), ZExt(xax));
   auto swap_flag = UCmpXchg(dst, check_val, desired_val);
   Write(FLAG_ZF, swap_flag);
-  Write(REG_EDX, Trunc(UShr(check_val, 32)));
-  Write(REG_EAX, Trunc(check_val));
+  if (!swap_flag) {
+#if 64 == ADDRESS_SIZE_BITS
+    WriteZExt(REG_RDX, Trunc(UShr(check_val, 32)));
+    WriteZExt(REG_RAX, Trunc(check_val));
+#else
+    Write(REG_EDX, Trunc(UShr(check_val, 32)));
+    Write(REG_EAX, Trunc(check_val));
+#endif
+  }
   return memory;
 }
 
