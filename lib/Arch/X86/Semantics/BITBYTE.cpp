@@ -161,6 +161,21 @@ namespace {
   } while (false)
 
 template <typename S1, typename S2>
+ALWAYS_INLINE static auto BTMemoryIndex(Memory *&memory, S1, S2 src2) {
+  using ElementT = typename BaseType<S1>::BT;
+  constexpr unsigned kBitIndexShift = sizeof(ElementT) == 8 ? 6u :
+                                      sizeof(ElementT) == 4 ? 5u :
+                                      sizeof(ElementT) == 2 ? 4u : 3u;
+  auto signed_index = SShr(SExtTo<S1>(Read(src2)), SLiteral<S1>(kBitIndexShift));
+  return static_cast<addr_t>(signed_index);
+}
+
+template <typename S1, typename T>
+ALWAYS_INLINE static addr_t BTMemoryIndex(Memory *&, S1, In<T>) {
+  return 0;
+}
+
+template <typename S1, typename S2>
 DEF_SEM(BTreg, S1 src1, S2 src2) {
   auto val = Read(src1);
   auto bit = ZExtTo<S1>(Read(src2));
@@ -174,7 +189,7 @@ template <typename S1, typename S2>
 DEF_SEM(BTmem, S1 src1, S2 src2) {
   auto bit = ZExtTo<S1>(Read(src2));
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
-  auto index = UDiv(bit, BitSizeOf(src1));
+  auto index = BTMemoryIndex(memory, src1, src2);
   auto val = Read(GetElementPtr(src1, index));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
   _BTClearUndefFlags();
@@ -196,7 +211,7 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(BTSmem, D dst, S1 src1, S2 src2) {
   auto bit = ZExtTo<S1>(Read(src2));
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
-  auto index = UDiv(bit, BitSizeOf(src1));
+  auto index = BTMemoryIndex(memory, src1, src2);
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UOr(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
@@ -219,7 +234,7 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(BTRmem, D dst, S1 src1, S2 src2) {
   auto bit = ZExtTo<S1>(Read(src2));
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
-  auto index = UDiv(bit, BitSizeOf(src1));
+  auto index = BTMemoryIndex(memory, src1, src2);
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UAnd(val, UNot(bit_mask)));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
@@ -242,7 +257,7 @@ template <typename D, typename S1, typename S2>
 DEF_SEM(BTCmem, D dst, S1 src1, S2 src2) {
   auto bit = ZExtTo<S1>(Read(src2));
   auto bit_mask = UShl(Literal<S1>(1), URem(bit, BitSizeOf(src1)));
-  auto index = UDiv(bit, BitSizeOf(src1));
+  auto index = BTMemoryIndex(memory, src1, src2);
   auto val = Read(GetElementPtr(src1, index));
   Write(GetElementPtr(dst, index), UXor(val, bit_mask));
   Write(FLAG_CF, UCmpNeq(UAnd(val, bit_mask), Literal<S1>(0)));
