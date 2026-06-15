@@ -311,15 +311,16 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
   auto wide_op_size = ZExt(op_size);
   auto wide_shift = ZExt(masked_shift);
 
+  auto concat = UOr(UShl(ZExt(val2), wide_op_size), ZExt(val1));
+
   if (UCmpLt(op_size, masked_shift)) {
     auto excess = USub(masked_shift, op_size);
-    auto wide_excess = ZExt(excess);
-    auto src_concat = UOr(UShl(ZExt(val2), wide_op_size), ZExt(val2));
-    auto res = TruncTo<S1>(UShr(src_concat, wide_excess));
+    auto remaining = USub(op_size, excess);
+    auto res = TruncTo<S1>(UOr(UShl(ZExt(val1), ZExt(remaining)),
+                                UShr(ZExt(val2), ZExt(excess))));
 
     WriteZExt(dst, res);
-
-    Write(FLAG_CF, false);
+    Write(FLAG_CF, SHRDCarryFlag(concat, wide_shift));
     Write(FLAG_PF, ParityFlag(res));
     Write(FLAG_AF, BUndefined());
     Write(FLAG_ZF, ZeroFlag(res));
@@ -328,7 +329,6 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
     return memory;
   }
 
-  auto concat = UOr(UShl(ZExt(val2), wide_op_size), ZExt(val1));
   auto res = TruncTo<S1>(UShr(concat, wide_shift));
 
   WriteZExt(dst, res);
@@ -383,15 +383,16 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
   auto wide_op_size = ZExt(op_size);
   auto wide_shift = ZExt(masked_shift);
 
+  auto concat = UOr(UShl(ZExt(val1), wide_op_size), ZExt(val2));
+
   if (UCmpLt(op_size, masked_shift)) {
     auto excess = USub(masked_shift, op_size);
-    auto wide_excess = ZExt(excess);
-    auto src_concat = UOr(UShl(ZExt(val2), wide_op_size), ZExt(val2));
-    auto res = TruncTo<S1>(UShr(UShl(src_concat, wide_excess), wide_op_size));
+    auto remaining = USub(op_size, excess);
+    auto res = TruncTo<S1>(UOr(UShr(ZExt(val1), ZExt(remaining)),
+                                UShl(ZExt(val2), ZExt(excess))));
 
     WriteZExt(dst, res);
-
-    Write(FLAG_CF, false);
+    Write(FLAG_CF, SHLDCarryFlag(concat, wide_op_size, wide_shift));
     Write(FLAG_PF, ParityFlag(res));
     Write(FLAG_AF, BUndefined());
     Write(FLAG_ZF, ZeroFlag(res));
@@ -400,7 +401,6 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
     return memory;
   }
 
-  auto concat = UOr(UShl(ZExt(val1), wide_op_size), ZExt(val2));
   auto res = TruncTo<S1>(UShr(UShl(concat, wide_shift), wide_op_size));
 
   WriteZExt(dst, res);
