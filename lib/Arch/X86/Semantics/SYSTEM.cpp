@@ -92,6 +92,13 @@ DEF_SEM(VERR, S src) {
                                   SyncHyperCall::kX86VerifySegmentReadable);
 }
 
+template <typename S>
+DEF_SEM(VERW, S src) {
+  state.addr_to_load = ZExtTo<uint64_t>(TruncTo<uint16_t>(Read(src)));
+  return __remill_sync_hyper_call(state, memory,
+                                  SyncHyperCall::kX86VerifySegmentWritable);
+}
+
 DEF_SEM(LGDT, M32 src) {
   memory =
       __remill_sync_hyper_call(state, memory, SyncHyperCall::kAssertPrivileged);
@@ -250,6 +257,8 @@ DEF_ISEL(LSL_GPRv_GPRz_32) = LSL<R32W, R32, R32>;
 IF_64BIT(DEF_ISEL(LSL_GPRv_GPRz_64) = LSL<R64W, R64, R32>;)
 DEF_ISEL(VERR_MEMw) = VERR<M16>;
 DEF_ISEL(VERR_GPR16) = VERR<R16>;
+DEF_ISEL(VERW_MEMw) = VERW<M16>;
+DEF_ISEL(VERW_GPR16) = VERW<R16>;
 DEF_ISEL(MOV_CR_CR_GPR32_CR0) =
     WRITE_CONTROL_REG_32<SyncHyperCall::kX86SetControlReg0>;
 DEF_ISEL(MOV_CR_CR_GPR32_CR1) =
