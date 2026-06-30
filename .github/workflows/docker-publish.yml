@@ -57,7 +57,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.llvm
+          file: ./Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -73,7 +73,7 @@ jobs:
           docker build \
             --build-arg LLVM_VERSION=${{ matrix.llvm }} \
             --build-arg UBUNTU_VERSION=24.04 \
-            -f Dockerfile.llvm \
+            -f Dockerfile \
             -t test-image .
           docker run --rm test-image --version
           docker run --rm test-image --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000

@@ -1,56 +1,110 @@
-# Choose your LLVM version
-ARG LLVM_VERSION=17
+# Dockerfile for building remill with specific LLVM versions from apt.llvm.org
+# This approach supports newer LLVM versions (19, 22, etc.)
+
+ARG LLVM_VERSION=22
 ARG UBUNTU_VERSION=24.04
-ARG DISTRO_BASE=ubuntu${UBUNTU_VERSION}
-ARG BUILD_BASE=ubuntu:${UBUNTU_VERSION}
-ARG LIBRARIES=/opt/trailofbits
 
+FROM ubuntu:${UBUNTU_VERSION} AS builder
 
-# Run-time dependencies go here
-FROM ${BUILD_BASE} as base
-
-# Build-time dependencies go here
-# See here for full list of those dependencies
-# https://github.com/lifting-bits/cxx-common/blob/master/docker/Dockerfile.ubuntu.vcpkg
-FROM ghcr.io/lifting-bits/cxx-common/vcpkg-builder-ubuntu-v2:${UBUNTU_VERSION} as deps
-ARG UBUNTU_VERSION
 ARG LLVM_VERSION
-ARG LIBRARIES
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && \
-    apt-get install -qqy python3 python3-pip libc6-dev wget liblzma-dev zlib1g-dev curl git build-essential ninja-build libselinux1-dev libbsd-dev ccache pixz xz-utils make rpm && \
-    if [ "$(uname -m)" = "x86_64" ]; then dpkg --add-architecture i386 && apt-get update && apt-get install -qqy gcc-multilib g++-multilib zip zlib1g-dev:i386; fi && \
-    rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    lsb-release \
+    wget \
+    software-properties-common \
+    gnupg \
+    cmake \
+    ninja-build \
+    python-is-python3 \
+    python3-pip \
+    python3-setuptools \
+    python3-venv \
+    git \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Source code build
-FROM deps as build
-ARG LLVM_VERSION
+# Install LLVM from apt.llvm.org
+RUN wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && \
+    ./llvm.sh ${LLVM_VERSION} && \
+    apt-get install -y --no-install-recommends llvm-${LLVM_VERSION}-dev && \
+    rm -rf /var/lib/apt/lists/* llvm.sh
+
+# Set environment variables for build
+ENV LLVM_VERSION=${LLVM_VERSION}
+ENV CC=clang-${LLVM_VERSION}
+ENV CXX=clang++-${LLVM_VERSION}
 
 WORKDIR /remill
-COPY ./ ./
 
-RUN git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com" && git config --global user.name "github-actions[bot]"
+# Copy source code
+COPY . .
 
-RUN ./scripts/build.sh \
-    --llvm-version ${LLVM_VERSION} \
-    --prefix /opt/trailofbits \
-    --extra-cmake-args "-DCMAKE_BUILD_TYPE=Release" \
-    --disable-package
+# Configure git (needed for version detection)
+RUN git config --global user.email "docker@remill.local" && \
+    git config --global user.name "Docker Build" && \
+    git config --global --add safe.directory /remill
 
-RUN pip3 install ./scripts/diff_tester_export_insns
+# Get LLVM prefix
+RUN echo "LLVM_PREFIX=$(llvm-config-${LLVM_VERSION} --prefix)" > /tmp/llvm_env
 
-# NOTE: At time of writing, tests only pass on x86_64 architecture
-RUN cd remill-build && \
-    cmake --build . --target test_dependencies -- -j $(nproc) && \
-    CTEST_OUTPUT_ON_FAILURE=1 cmake --build . --verbose --target test -- -j $(nproc) || [ "$(uname -m)" != "x86_64" ] && \
-    cmake --build . --target install
+# Build dependencies (XED, etc.)
+RUN . /tmp/llvm_env && \
+    cmake -G Ninja -S dependencies -B dependencies/build \
+        -DUSE_EXTERNAL_LLVM=ON \
+        "-DCMAKE_PREFIX_PATH=${LLVM_PREFIX}" && \
+    cmake --build dependencies/build
 
-# Small installation image
-FROM base as install
+# Setup Python venv for tests
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir scripts/diff_tester_export_insns
+
+# Build remill
+RUN . /tmp/llvm_env && \
+    . /opt/venv/bin/activate && \
+    cmake -G Ninja -B build \
+        "-DCMAKE_PREFIX_PATH=${LLVM_PREFIX};/remill/dependencies/install" \
+        "-DCMAKE_INSTALL_PREFIX=/opt/remill" \
+        -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build
+
+# Run tests
+RUN cmake --build build --target test_dependencies && \
+    env CTEST_OUTPUT_ON_FAILURE=1 cmake --build build --target test
+
+# Install
+RUN cmake --install build
+
+# Runtime image
+FROM ubuntu:${UBUNTU_VERSION} AS runtime
+
 ARG LLVM_VERSION
+ARG DEBIAN_FRONTEND=noninteractive
 
-COPY --from=build /opt/trailofbits /opt/trailofbits
-COPY scripts/docker-lifter-entrypoint.sh /opt/trailofbits
-ENV LLVM_VERSION=llvm${LLVM_VERSION} \
-    PATH=/opt/trailofbits/bin
-ENTRYPOINT ["/opt/trailofbits/docker-lifter-entrypoint.sh"]
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    gnupg \
+    lsb-release \
+    software-properties-common \
+    ca-certificates \
+    && wget https://apt.llvm.org/llvm.sh \
+    && chmod +x llvm.sh \
+    && ./llvm.sh ${LLVM_VERSION} \
+    && apt-get install -y --no-install-recommends llvm-${LLVM_VERSION} \
+    && rm -rf /var/lib/apt/lists/* llvm.sh
+
+# Copy remill installation
+COPY --from=builder /opt/remill /opt/remill
+
+# Set environment
+ENV LLVM_VERSION=${LLVM_VERSION}
+ENV PATH="/opt/remill/bin:${PATH}"
+
+# Create entrypoint script
+RUN echo '#!/bin/sh\nexec remill-lift-'${LLVM_VERSION}' "$@"' > /usr/local/bin/entrypoint.sh && \
+    chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
