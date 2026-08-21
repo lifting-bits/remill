@@ -485,7 +485,9 @@ bool TraceLifter::Impl::Lift(
         direct_func_call:
           try_add_delay_slot(true, block);
           if (inst.branch_not_taken_pc != inst.branch_taken_pc) {
-            trace_work_list.insert(inst.branch_taken_pc);
+            if (inst.branch_taken_pc != trace_addr) {
+              trace_work_list.insert(inst.branch_taken_pc);
+            }
             auto target_trace = get_trace_decl(inst.branch_taken_pc);
             AddCall(block, target_trace, *intrinsics);
           }
@@ -524,7 +526,9 @@ bool TraceLifter::Impl::Lift(
           llvm::BranchInst::Create(taken_block, not_taken_block,
                                    LoadBranchTaken(block), block);
 
-          trace_work_list.insert(inst.branch_taken_pc);
+          if (inst.branch_taken_pc != trace_addr) {
+            trace_work_list.insert(inst.branch_taken_pc);
+          }
           auto target_trace = get_trace_decl(inst.branch_taken_pc);
 
           AddCall(taken_block, intrinsics->function_call, *intrinsics);
