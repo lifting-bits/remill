@@ -113,6 +113,48 @@ DEF_SEM(CVTDQ2PD, D dst, S1 src) {
 typedef float32_t (*FloatConv32)(float32_t);
 typedef float64_t (*FloatConv64)(float64_t);
 
+ALWAYS_INLINE static bool IsInvalidInt32Result(float32_t val) {
+  return IsNaN(val) || val >= 2147483648.0f || val < -2147483648.0f;
+}
+
+ALWAYS_INLINE static bool IsInvalidInt32Result(float64_t val) {
+  return IsNaN(val) || val >= 2147483648.0 || val < -2147483648.0;
+}
+
+ALWAYS_INLINE static bool IsInvalidInt64Result(float32_t val) {
+  return IsNaN(val) || val >= 9223372036854775808.0f ||
+         val < -9223372036854775808.0f;
+}
+
+ALWAYS_INLINE static bool IsInvalidInt64Result(float64_t val) {
+  return IsNaN(val) || val >= 9223372036854775808.0 ||
+         val < -9223372036854775808.0;
+}
+
+ALWAYS_INLINE static int32_t X86FloatToInt32(float32_t val) {
+  return Select<int32_t>(IsInvalidInt32Result(val),
+                         static_cast<int32_t>(0x80000000U),
+                         Float32ToInt32(val));
+}
+
+ALWAYS_INLINE static int32_t X86FloatToInt32(float64_t val) {
+  return Select<int32_t>(IsInvalidInt32Result(val),
+                         static_cast<int32_t>(0x80000000U),
+                         Float64ToInt32(val));
+}
+
+ALWAYS_INLINE static int64_t X86FloatToInt64(float32_t val) {
+  return Select<int64_t>(IsInvalidInt64Result(val),
+                         static_cast<int64_t>(0x8000000000000000ULL),
+                         Float32ToInt64(val));
+}
+
+ALWAYS_INLINE static int64_t X86FloatToInt64(float64_t val) {
+  return Select<int64_t>(IsInvalidInt64Result(val),
+                         static_cast<int64_t>(0x8000000000000000ULL),
+                         Float64ToInt64(val));
+}
+
 }  // namespace
 
 DEF_ISEL(CVTDQ2PD_XMMpd_MEMq) = CVTDQ2PD<V128W, MV64, 2>;
@@ -154,7 +196,7 @@ DEF_SEM(CVTPD2DQ, D dst, S1 src) {
   auto dst_vec = SClearV32(SReadV32(dst));
   _Pragma("unroll") for (size_t i = 0; i < num_to_convert; ++i) {
     float64_t rounded_elem = FRound(FExtractV64(src_vec, i));
-    auto entry = Float64ToInt32(rounded_elem);
+    auto entry = X86FloatToInt32(rounded_elem);
     dst_vec = SInsertV32(dst_vec, i, entry);
   }
   SWriteV32(dst, dst_vec);
@@ -190,7 +232,7 @@ DEF_SEM(CVTPS2DQ, D dst, S1 src) {
   auto dst_vec = SClearV32(SReadV32(dst));
   _Pragma("unroll") for (size_t i = 0; i < num_to_convert; ++i) {
     float32_t rounded_elem = FRound(FExtractV32(src_vec, i));
-    dst_vec = SInsertV32(dst_vec, i, Float32ToInt32(rounded_elem));
+    dst_vec = SInsertV32(dst_vec, i, X86FloatToInt32(rounded_elem));
   }
   SWriteV32(dst, dst_vec);
   return memory;
@@ -221,7 +263,7 @@ namespace {
 template <typename S, FloatConv32 FRound = FRoundUsingMode32>
 DEF_SEM(CVTSS2SI_32, R32W dst, S src) {
   float32_t rounded_val = FRound(FExtractV32(FReadV32(src), 0));
-  WriteZExt(dst, Unsigned(Float32ToInt32(rounded_val)));
+  WriteZExt(dst, Unsigned(X86FloatToInt32(rounded_val)));
   return memory;
 }
 
@@ -229,7 +271,7 @@ DEF_SEM(CVTSS2SI_32, R32W dst, S src) {
 template <typename S, FloatConv32 FRound = FRoundUsingMode32>
 DEF_SEM(CVTSS2SI_64, R64W dst, S src) {
   float32_t rounded_val = FRound(FExtractV32(FReadV32(src), 0));
-  Write(dst, Unsigned(Float32ToInt64(rounded_val)));
+  Write(dst, Unsigned(X86FloatToInt64(rounded_val)));
   return memory;
 }
 #endif  // ADDRESS_SIZE_BITS
@@ -265,7 +307,7 @@ namespace {
 template <typename S, FloatConv64 FRound = FRoundUsingMode64>
 DEF_SEM(CVTSD2SI_32, R32W dst, S src) {
   auto rounded_val = FRound(FExtractV64(FReadV64(src), 0));
-  WriteZExt(dst, Unsigned(Float64ToInt32(rounded_val)));
+  WriteZExt(dst, Unsigned(X86FloatToInt32(rounded_val)));
   return memory;
 }
 
@@ -273,7 +315,7 @@ DEF_SEM(CVTSD2SI_32, R32W dst, S src) {
 template <typename S, FloatConv64 FRound = FRoundUsingMode64>
 DEF_SEM(CVTSD2SI_64, R64W dst, S src) {
   auto rounded_val = FRound(FExtractV64(FReadV64(src), 0));
-  Write(dst, Unsigned(Float64ToInt64(rounded_val)));
+  Write(dst, Unsigned(X86FloatToInt64(rounded_val)));
   return memory;
 }
 #endif  // ADDRESS_SIZE_BITS

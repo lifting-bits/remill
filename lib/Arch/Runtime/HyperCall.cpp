@@ -155,6 +155,19 @@ Memory *__remill_sync_hyper_call(State &state, Memory *mem,
       break;
     }
 
+    case SyncHyperCall::kX86VerifySegmentWritable: {
+      const auto selector = static_cast<uint16_t>(state.addr_to_load);
+      uint8_t zf = 0;
+      asm volatile("verw %[src] \n\t"
+                   "setz %[zf]"
+                   : [zf] "=qm"(zf)
+                   : [src] "rm"(selector)
+                   : "cc");
+      state.rflag.zf = zf;
+      state.aflag.zf = zf;
+      break;
+    }
+
     case SyncHyperCall::kX86ReadModelSpecificRegister:
       asm volatile("rdmsr"
                    : "=c"(state.gpr.rcx.dword)

@@ -175,6 +175,34 @@ DEF_SEM(SHLX, D dst, S1 src1, S2 src2) {
   WriteZExt(dst, UShl(val, masked_shift));
   return memory;
 }
+
+// BMI2 variable shifts do not write flags and take the count from the low byte
+// of the third operand, masked according to the data operand width.
+template <typename D, typename S1, typename S2>
+DEF_SEM(SHRX, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto shift = ZExtTo<S1>(TruncTo<uint8_t>(Read(src2)));
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+  WriteZExt(dst, UShr(val, masked_shift));
+  return memory;
+}
+
+template <typename D, typename S1, typename S2>
+DEF_SEM(SARX, D dst, S1 src1, S2 src2) {
+  auto val = Read(src1);
+  auto shift = ZExtTo<S1>(TruncTo<uint8_t>(Read(src2)));
+  auto long_mask = Literal<S1>(0x3F);
+  auto short_mask = Literal<S1>(0x1F);
+  auto op_size = BitSizeOf(src1);
+  auto shift_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
+  auto masked_shift = UAnd(shift, shift_mask);
+  WriteZExt(dst, Unsigned(SShr(Signed(val), Signed(masked_shift))));
+  return memory;
+}
 }  // namespace
 
 DEF_ISEL(SHR_MEMb_IMMb) = SHR<M8W, M8, I8>;
@@ -237,11 +265,30 @@ IF_64BIT(DEF_ISEL(SHLX_GPR64q_GPR64q_GPR64q) = SHLX<R64W, R64, R64>;)
 IF_64BIT(DEF_ISEL(SHLX_VGPR64q_MEMq_VGPR64q) = SHLX<R64W, M64, R64>;)
 IF_64BIT(DEF_ISEL(SHLX_VGPR64q_VGPR64q_VGPR64q) = SHLX<R64W, R64, R64>;)
 
+DEF_ISEL(SHRX_GPR32d_MEMd_GPR32d) = SHRX<R32W, M32, R32>;
+DEF_ISEL(SHRX_GPR32d_GPR32d_GPR32d) = SHRX<R32W, R32, R32>;
+DEF_ISEL(SHRX_VGPR32d_MEMd_VGPR32d) = SHRX<R32W, M32, R32>;
+DEF_ISEL(SHRX_VGPR32d_VGPR32d_VGPR32d) = SHRX<R32W, R32, R32>;
+IF_64BIT(DEF_ISEL(SHRX_GPR64q_MEMq_GPR64q) = SHRX<R64W, M64, R64>;)
+IF_64BIT(DEF_ISEL(SHRX_GPR64q_GPR64q_GPR64q) = SHRX<R64W, R64, R64>;)
+IF_64BIT(DEF_ISEL(SHRX_VGPR64q_MEMq_VGPR64q) = SHRX<R64W, M64, R64>;)
+IF_64BIT(DEF_ISEL(SHRX_VGPR64q_VGPR64q_VGPR64q) = SHRX<R64W, R64, R64>;)
+
+DEF_ISEL(SARX_GPR32d_MEMd_GPR32d) = SARX<R32W, M32, R32>;
+DEF_ISEL(SARX_GPR32d_GPR32d_GPR32d) = SARX<R32W, R32, R32>;
+DEF_ISEL(SARX_VGPR32d_MEMd_VGPR32d) = SARX<R32W, M32, R32>;
+DEF_ISEL(SARX_VGPR32d_VGPR32d_VGPR32d) = SARX<R32W, R32, R32>;
+IF_64BIT(DEF_ISEL(SARX_GPR64q_MEMq_GPR64q) = SARX<R64W, M64, R64>;)
+IF_64BIT(DEF_ISEL(SARX_GPR64q_GPR64q_GPR64q) = SARX<R64W, R64, R64>;)
+IF_64BIT(DEF_ISEL(SARX_VGPR64q_MEMq_VGPR64q) = SARX<R64W, M64, R64>;)
+IF_64BIT(DEF_ISEL(SARX_VGPR64q_VGPR64q_VGPR64q) = SARX<R64W, R64, R64>;)
+
 namespace {
 
 template <typename T>
-ALWAYS_INLINE static uint8_t SHRDCarryFlag(T val, T count) {
-  return UCmpEq(UAnd(UShr(val, USub(count, 1)), 1), 1);
+ALWAYS_INLINE static uint8_t SHRDCarryFlag(T concat, T count) {
+  auto one = Literal<T>(1);
+  return UCmpEq(UAnd(UShr(concat, USub(count, one)), one), one);
 }
 
 template <typename D, typename S1, typename S2, typename S3>
@@ -259,26 +306,34 @@ DEF_SEM(SHRD, D dst, S1 src1, S2 src2, S3 src3) {
   if (UCmpEq(masked_shift, 0)) {
     WriteZExt(dst, val1);
     return memory;
+  }
 
-  } else if (UCmpLt(op_size, masked_shift)) {
-    ClearArithFlags();
+  auto wide_op_size = ZExt(op_size);
+  auto wide_shift = ZExt(masked_shift);
 
-    // `dst` is undefined; leave as-is, except w.r.t. zero-
-    // extension.
-    //
-    // TODO(pag): Update `dst` anyway because it may be readable but not
-    //            writable?
-    WriteZExt(dst, val1);
+  auto concat = UOr(UShl(ZExt(val2), wide_op_size), ZExt(val1));
+
+  if (UCmpLt(op_size, masked_shift)) {
+    auto excess = USub(masked_shift, op_size);
+    auto remaining = USub(op_size, excess);
+    auto res = TruncTo<S1>(UOr(UShl(ZExt(val1), ZExt(remaining)),
+                                UShr(ZExt(val2), ZExt(excess))));
+
+    WriteZExt(dst, res);
+    Write(FLAG_CF, SHRDCarryFlag(concat, wide_shift));
+    Write(FLAG_PF, ParityFlag(res));
+    Write(FLAG_AF, BUndefined());
+    Write(FLAG_ZF, ZeroFlag(res));
+    Write(FLAG_SF, SignFlag(res));
+    Write(FLAG_OF, BUndefined());
     return memory;
   }
 
-  auto left = UShl(val2, USub(op_size, masked_shift));
-  auto right = UShr(val1, masked_shift);
-  auto res = UOr(left, right);
+  auto res = TruncTo<S1>(UShr(concat, wide_shift));
 
   WriteZExt(dst, res);
 
-  Write(FLAG_CF, SHRDCarryFlag(val1, masked_shift));
+  Write(FLAG_CF, SHRDCarryFlag(concat, wide_shift));
   Write(FLAG_PF, ParityFlag(res));
   Write(FLAG_AF, BUndefined());
   Write(FLAG_ZF, ZeroFlag(res));
@@ -301,8 +356,11 @@ DEF_ISEL_RnW_Rn_Rn_Rn(SHRD_GPRv_GPRv_CL, SHRD);
 namespace {
 
 template <typename T>
-ALWAYS_INLINE static uint8_t SHLDCarryFlag(T val, T count) {
-  return UCmpEq(UAnd(UShr(val, USub(BitSizeOf(count), count)), 1), 1);
+ALWAYS_INLINE static uint8_t SHLDCarryFlag(T concat, T op_size, T count) {
+  auto one = Literal<T>(1);
+  auto two_op_size = UAdd(op_size, op_size);
+  auto bit_index = USub(two_op_size, count);
+  return UCmpEq(UAnd(UShr(concat, bit_index), one), one);
 }
 
 template <typename D, typename S1, typename S2, typename S3>
@@ -320,27 +378,34 @@ DEF_SEM(SHLD, D dst, S1 src1, S2 src2, S3 src3) {
   if (UCmpEq(masked_shift, 0)) {
     WriteZExt(dst, val1);
     return memory;
+  }
 
-  } else if (UCmpLt(op_size, masked_shift)) {
-    ClearArithFlags();
+  auto wide_op_size = ZExt(op_size);
+  auto wide_shift = ZExt(masked_shift);
 
-    // `dst` is undefined; leave as-is, except w.r.t
-    // zero-extension.
-    //
-    // TODO(pag): Update `dst` anyway because it may be readable but not
-    //            writable?
-    WriteZExt(dst, val1);
+  auto concat = UOr(UShl(ZExt(val1), wide_op_size), ZExt(val2));
 
+  if (UCmpLt(op_size, masked_shift)) {
+    auto excess = USub(masked_shift, op_size);
+    auto remaining = USub(op_size, excess);
+    auto res = TruncTo<S1>(UOr(UShr(ZExt(val1), ZExt(remaining)),
+                                UShl(ZExt(val2), ZExt(excess))));
+
+    WriteZExt(dst, res);
+    Write(FLAG_CF, SHLDCarryFlag(concat, wide_op_size, wide_shift));
+    Write(FLAG_PF, ParityFlag(res));
+    Write(FLAG_AF, BUndefined());
+    Write(FLAG_ZF, ZeroFlag(res));
+    Write(FLAG_SF, SignFlag(res));
+    Write(FLAG_OF, BUndefined());
     return memory;
   }
 
-  auto left = UShl(val1, masked_shift);
-  auto right = UShr(val2, USub(op_size, masked_shift));
-  auto res = UOr(left, right);
+  auto res = TruncTo<S1>(UShr(UShl(concat, wide_shift), wide_op_size));
 
   WriteZExt(dst, res);
 
-  Write(FLAG_CF, SHLDCarryFlag(val1, masked_shift));
+  Write(FLAG_CF, SHLDCarryFlag(concat, wide_op_size, wide_shift));
   Write(FLAG_PF, ParityFlag(res));
   Write(FLAG_AF, BUndefined());
   Write(FLAG_ZF, ZeroFlag(res));
