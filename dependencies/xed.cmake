@@ -23,6 +23,12 @@ set(MFILE_ARGS
     "--compiler=${compiler}"
 )
 
+# build XED with --opt=2 for release (or anything but debug), since
+# mbuild uses --opt=noopt unless specified otherwise.
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    list(APPEND MFILE_ARGS "--opt=2")
+endif()
+
 # XED is built by mbuild, not CMake, so it does not honor
 # CMAKE_MSVC_RUNTIME_LIBRARY. mbuild also ties "--static" to /MT by default.
 # Dna.LLVMInterop and the CMake-built dependencies use the DLL CRT (/MD), so
