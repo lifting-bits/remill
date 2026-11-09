@@ -29,14 +29,17 @@ DEF_SEM(ROL, D dst, S1 src1, S2 src2) {
   auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_count = UAnd(count, count_mask);
   auto temp_count = URem(masked_count, op_size);
-  if (temp_count) {
-    auto new_val =
-        UOr(UShl(val, temp_count), UShr(val, USub(op_size, temp_count)));
+  if (masked_count) {
+    auto new_val = val;
+    if (temp_count) {
+      new_val =
+          UOr(UShl(val, temp_count), UShr(val, USub(op_size, temp_count)));
+    }
     WriteZExt(dst, new_val);
     Write(FLAG_CF, UCmpEq(UAnd(new_val, one), one));
-    if (1 == temp_count) {
+    if (1 == masked_count) {
       Write(FLAG_OF, BXor(FLAG_CF, SignFlag(new_val)));
-    // OF undefined for `1 != temp_count`.
+      // OF undefined for `1 != masked_count`.
     } else {
       Write(FLAG_OF, BUndefined());
     }
@@ -57,13 +60,16 @@ DEF_SEM(ROR, D dst, S1 src1, S2 src2) {
   auto count_mask = Select(UCmpEq(op_size, 64), long_mask, short_mask);
   auto masked_count = UAnd(count, count_mask);
   auto temp_count = URem(masked_count, op_size);
-  if (temp_count) {
-    auto new_val =
-        UOr(UShr(val, temp_count), UShl(val, USub(op_size, temp_count)));
+  if (masked_count) {
+    auto new_val = val;
+    if (temp_count) {
+      new_val =
+          UOr(UShr(val, temp_count), UShl(val, USub(op_size, temp_count)));
+    }
     WriteZExt(dst, new_val);
     Write(FLAG_CF, SignFlag(new_val));
-    // OF undefined for `1 != temp_count`.
-    if (temp_count == 1)
+    // OF undefined for `1 != masked_count`.
+    if (masked_count == 1)
       Write(FLAG_OF, BXor(FLAG_CF, SignFlag(UShl(new_val, one))));
     else
       Write(FLAG_OF, BUndefined());

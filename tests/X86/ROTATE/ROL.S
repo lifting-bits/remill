@@ -158,6 +158,89 @@ TEST_INPUTS(
     rol al, 2
 TEST_END
 
+/* Number of bits is a multiple of the number of bits in the src/dst reg, the
+ * value stays the same but CF is still updated */
+TEST_BEGIN(ROLr8i8_8, 1)
+TEST_IGNORE_FLAGS(OF)
+TEST_INPUTS(
+    0,
+    1,
+    0x80,
+    0x55,
+    0xAA,
+    0x0F,
+    0xF7,
+    0xFE)
+
+    mov eax, ARG1_32
+    rol al, 8
+TEST_END
+
+TEST_BEGIN(ROLr8i8_16, 1)
+TEST_IGNORE_FLAGS(OF)
+TEST_INPUTS(
+    0,
+    1,
+    0x80,
+    0x55,
+    0xAA,
+    0x0F,
+    0xF7,
+    0xFE)
+
+    mov eax, ARG1_32
+    rol al, 16
+TEST_END
+
+TEST_BEGIN(ROLr8i8_24, 1)
+TEST_IGNORE_FLAGS(OF)
+TEST_INPUTS(
+    0,
+    1,
+    0x80,
+    0x55,
+    0xAA,
+    0x0F,
+    0xF7,
+    0xFE)
+
+    mov eax, ARG1_32
+    rol al, 24
+TEST_END
+
+TEST_BEGIN(ROLr8cl_size_multiple, 2)
+TEST_IGNORE_FLAGS(OF)
+TEST_INPUTS(
+    0, 8,
+    1, 8,
+    0x80, 8,
+    0x55, 8,
+    0xAA, 8,
+    0x0F, 8,
+    0xF7, 8,
+    0xFE, 8,
+    0, 16,
+    1, 16,
+    0x80, 16,
+    0x55, 16,
+    0xAA, 16,
+    0x0F, 16,
+    0xF7, 16,
+    0xFE, 16,
+    0, 24,
+    1, 24,
+    0x80, 24,
+    0x55, 24,
+    0xAA, 24,
+    0x0F, 24,
+    0xF7, 24,
+    0xFE, 24)
+
+    mov eax, ARG1_32
+    mov ecx, ARG2_32
+    rol al, cl
+TEST_END
+
 TEST_BEGIN(ROLr16cl, 2)
 TEST_IGNORE_FLAGS(OF)
 TEST_INPUTS(
@@ -244,6 +327,41 @@ TEST_INPUTS(
 
     mov eax, ARG1_32
     rol ax, 0xFF
+TEST_END
+
+/* Number of bits is equal to the number of bits in the src/dst reg, the value
+ * stays the same but CF is still updated */
+TEST_BEGIN(ROLr16i8_16, 1)
+TEST_IGNORE_FLAGS(OF)
+TEST_INPUTS(
+    0,
+    1,
+    0x8000,
+    0x5500,
+    0xAA00,
+    0x0F0F,
+    0xF7F7,
+    0xFEFE)
+
+    mov eax, ARG1_32
+    rol ax, 16
+TEST_END
+
+TEST_BEGIN(ROLr16cl_16, 2)
+TEST_IGNORE_FLAGS(OF)
+TEST_INPUTS(
+    0, 16,
+    1, 16,
+    0x8000, 16,
+    0x5500, 16,
+    0xAA00, 16,
+    0x0F0F, 16,
+    0xF7F7, 16,
+    0xFEFE, 16)
+
+    mov eax, ARG1_32
+    mov ecx, ARG2_32
+    rol ax, cl
 TEST_END
 
 TEST_BEGIN(ROLr32i8_1, 1)
