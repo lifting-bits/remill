@@ -60,6 +60,8 @@ add_library(remill_arch_sleigh STATIC
   AArch64Arch.h
   AArch64Base.cpp
 
+  SPARC.h
+
   SPARC32Arch.cpp
   SPARC32Arch.h
   SPARC32Base.cpp

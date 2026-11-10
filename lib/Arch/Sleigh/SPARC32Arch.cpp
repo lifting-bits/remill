@@ -17,6 +17,7 @@
 
 #include <remill/Arch/ArchBase.h>  // For `ArchImpl`.
 
+#include "SPARC.h"
 #include "SPARC32Arch.h"
 
 namespace remill {
@@ -77,7 +78,11 @@ bool SPARC32Arch::DecodeInstruction(uint64_t address,
   inst.operands.clear();
   inst.flows = Instruction::InvalidInsn();
 
-  return this->decoder.DecodeInstruction(address, inst_bytes, inst, context);
+  if (!this->decoder.DecodeInstruction(address, inst_bytes, inst, context)) {
+    return false;
+  }
+  sparc::CategorizeStructReturn(inst);
+  return true;
 }
 
 DecodingContext SPARC32Arch::CreateInitialContext(void) const {

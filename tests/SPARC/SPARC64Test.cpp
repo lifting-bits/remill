@@ -109,6 +109,32 @@ TEST(SPARC64Lifts, ReturnWithDelaySlot) {
                {{"o0", uint64_t(12)}, {"pc", uint64_t(0x2008)}}, Accessors()));
 }
 
+// jmp %o7 + 12; nop (delay slot): a leaf function returning a structure
+// returns past the `unimp` after the delay slot of its call.
+TEST(SPARC64Lifts, LeafReturnPastUnimp) {
+  RunSpec(Spec(0x1000, Bytes("\x81\xc3\xe0\x0c\x01\x00\x00\x00"),
+               Category::kCategoryFunctionReturn,
+               {{"o7", uint64_t(0x2000)}, {"pc", uint64_t(0x1000)}},
+               {{"pc", uint64_t(0x200c)}}, Accessors()));
+}
+
+// jmp %i7 + 12; restore (delay slot): the same in a non-leaf function.
+TEST(SPARC64Lifts, ReturnPastUnimp) {
+  RunSpec(Spec(0x1000, Bytes("\x81\xc7\xe0\x0c\x81\xe8\x00\x00"),
+               Category::kCategoryFunctionReturn,
+               {{"i7", uint64_t(0x3000)}, {"pc", uint64_t(0x1000)}},
+               {{"o7", uint64_t(0x3000)}, {"pc", uint64_t(0x300c)}},
+               Accessors()));
+}
+
+// jmp %o7 + 16; nop: any other displacement is an indirect jump.
+TEST(SPARC64Lifts, JumpPastReturnAddress) {
+  RunSpec(Spec(0x1000, Bytes("\x81\xc3\xe0\x10\x01\x00\x00\x00"),
+               Category::kCategoryIndirectJump,
+               {{"o7", uint64_t(0x2000)}, {"pc", uint64_t(0x1000)}},
+               {{"pc", uint64_t(0x2010)}}, Accessors()));
+}
+
 // call 0x1010; add %o0, 1, %o0 (delay slot)
 TEST(SPARC64Lifts, CallWithDelaySlot) {
   RunSpec(Spec(0x1000, Bytes("\x40\x00\x00\x04\x90\x02\x20\x01"),

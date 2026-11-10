@@ -26,6 +26,8 @@
 #include <iterator>
 #include <string>
 
+#include "SPARC.h"
+
 // clang-format off
 #include <remill/Arch/SPARC64/Runtime/State.h>
 // clang-format on
@@ -243,7 +245,11 @@ bool SPARC64Arch::DecodeInstruction(uint64_t address,
   inst.operands.clear();
   inst.flows = Instruction::InvalidInsn();
 
-  return this->decoder.DecodeInstruction(address, inst_bytes, inst, context);
+  if (!this->decoder.DecodeInstruction(address, inst_bytes, inst, context)) {
+    return false;
+  }
+  sparc::CategorizeStructReturn(inst);
+  return true;
 }
 
 Arch::ArchPtr Arch::GetSPARC64Sleigh(llvm::LLVMContext *context_,
