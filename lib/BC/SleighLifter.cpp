@@ -1547,8 +1547,16 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return LiftStatus::kLiftedLifterError;
     }
 
-    auto should_branch = bldr.CreateZExtOrTrunc(
-        *maybe_should_branch, llvm::IntegerType::get(this->context, 8));
+    // An inverted variable is the condition of a branch to the fallthrough,
+    // so the instruction's branch is taken when it is false.
+    llvm::Value *is_true = bldr.CreateICmpNE(
+        *maybe_should_branch,
+        llvm::Constant::getNullValue((*maybe_should_branch)->getType()));
+    if (btaken_var.invert) {
+      is_true = bldr.CreateNot(is_true);
+    }
+    auto should_branch =
+        bldr.CreateZExt(is_true, llvm::IntegerType::get(this->context, 8));
     auto branch_taken_ref = this->GetBranchTakenRef();
     bldr.CreateStore(should_branch, branch_taken_ref);
     return LiftStatus::kLiftedInstruction;

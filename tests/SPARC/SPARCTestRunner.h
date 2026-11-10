@@ -24,6 +24,7 @@
 #include <remill/Arch/Instruction.h>
 #include <remill/Arch/Name.h>
 #include <remill/BC/Optimizer.h>
+#include <remill/BC/Util.h>
 #include <remill/OS/OS.h>
 #include <test_runner/TestOutputSpec.h>
 #include <test_runner/TestRunner.h>
@@ -31,6 +32,7 @@
 #include <functional>
 #include <sstream>
 #include <string>
+#include <variant>
 
 namespace sparc_test {
 
@@ -54,6 +56,7 @@ class TestSpecRunner {
         lifter.GetArch()->CreateInitialContext());
     ASSERT_TRUE(maybe_func.has_value());
     auto lifted_func = maybe_func->first;
+    DispatchOnBranchTaken(lifted_func, maybe_func->second);
 
     // Optimize a copy of the module to drop the unused intrinsics, and run
     // the lifted function from a module of its own.
@@ -84,6 +87,42 @@ class TestSpecRunner {
   }
 
  private:
+  // The lifted function sets `PC` to `NEXT_PC`. For a conditional instruction,
+  // set it the way a trace lifter would instead: to the taken target (or to
+  // `NEXT_PC` when that is not known) if `BRANCH_TAKEN` is set, and to the
+  // fallthrough otherwise. The expected `PC` then also checks
+  // `BRANCH_TAKEN`.
+  void DispatchOnBranchTaken(llvm::Function *func,
+                             const remill::Instruction &inst) {
+    const auto cond =
+        std::get_if<remill::Instruction::ConditionalInstruction>(&inst.flows);
+    if (!cond) {
+      return;
+    }
+
+    auto &entry = func->getEntryBlock();
+    llvm::IRBuilder<> ir(entry.getTerminator());
+    const auto pc_type = lifter.GetArch()->AddressType();
+    const auto pc_ref = remill::LoadProgramCounterRef(&entry);
+    const auto next_pc_ref = remill::LoadNextProgramCounterRef(&entry);
+    const auto branch_taken_ref = remill::LoadBranchTakenRef(&entry);
+
+    llvm::Value *taken_pc = ir.CreateLoad(pc_type, next_pc_ref);
+    if (std::holds_alternative<remill::Instruction::DirectJump>(
+            cond->taken_branch) ||
+        std::holds_alternative<remill::Instruction::DirectFunctionCall>(
+            cond->taken_branch)) {
+      taken_pc = llvm::ConstantInt::get(pc_type, inst.branch_taken_pc);
+    }
+    const auto not_taken_pc =
+        llvm::ConstantInt::get(pc_type, inst.branch_not_taken_pc);
+    const auto branch_taken = ir.CreateLoad(
+        llvm::Type::getInt8Ty(func->getContext()), branch_taken_ref);
+    ir.CreateStore(ir.CreateSelect(ir.CreateIsNotNull(branch_taken), taken_pc,
+                                   not_taken_pc),
+                   pc_ref);
+  }
+
   test_runner::LiftingTester lifter;
   std::function<uint64_t(S *)> program_counter;
   test_runner::random_bytes_engine rbe;

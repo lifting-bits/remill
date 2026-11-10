@@ -191,6 +191,25 @@ TEST(SPARC64Lifts, BranchOnZeroNotTaken) {
                {{"o1", uint64_t(20)}, {"pc", uint64_t(0x1008)}}, Accessors()));
 }
 
+// brz,a %o0, 0x100c; mov 20, %o1: the delay slot is annulled (skipped)
+// when the branch is not taken. Its p-code first branches to the fallthrough
+// when the condition is false, so `BRANCH_TAKEN` is the inverted condition.
+TEST(SPARC64Lifts, AnnulledBranchTaken) {
+  RunSpec(
+      Spec(0x1000, Bytes("\x22\xc2\x00\x03\x92\x10\x20\x14"),
+           Category::kCategoryConditionalBranch,
+           {{"o0", uint64_t(0)}, {"o1", uint64_t(7)}, {"pc", uint64_t(0x1000)}},
+           {{"o1", uint64_t(20)}, {"pc", uint64_t(0x100c)}}, Accessors()));
+}
+
+TEST(SPARC64Lifts, AnnulledBranchNotTaken) {
+  RunSpec(
+      Spec(0x1000, Bytes("\x22\xc2\x00\x03\x92\x10\x20\x14"),
+           Category::kCategoryConditionalBranch,
+           {{"o0", uint64_t(5)}, {"o1", uint64_t(7)}, {"pc", uint64_t(0x1000)}},
+           {{"o1", uint64_t(7)}, {"pc", uint64_t(0x1008)}}, Accessors()));
+}
+
 // fcmps %fcc0, %f1, %f3: 1.0 < 2.0
 TEST(SPARC64Lifts, FloatCompareSetsFcc0) {
   RunSpec(Spec(0x1000, Bytes("\x81\xa8\x4a\x23"), Category::kCategoryNormal,
