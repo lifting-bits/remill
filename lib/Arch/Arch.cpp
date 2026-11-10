@@ -114,6 +114,7 @@ ArchLocker Arch::Lock(ArchName arch_name_) {
     case ArchName::kArchAArch64LittleEndian_SLEIGH:
     case ArchName::kArchAMD64_SLEIGH:
     case ArchName::kArchX86_SLEIGH:
+    case ArchName::kArchSparc32:
     case ArchName::kArchSparc32_SLEIGH:
     case ArchName::kArchSparc64:
     case ArchName::kArchPPC: return &gSleighArchLock;
@@ -227,18 +228,17 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
       return GetX86(context_, os_name_, arch_name_);
     }
 
-    case kArchSparc32: {
-      DLOG(INFO) << "Using architecture: 32-bit SPARC";
-      return GetSPARC32(context_, os_name_, arch_name_);
-    }
 
     case kArchSparc64: {
       DLOG(INFO) << "Using architecture: 64-bit SPARC";
       return GetSPARC64Sleigh(context_, os_name_, arch_name_);
     }
 
+    // `sparc32_sleigh` is the same architecture: it predates the removal of
+    // the hand-written SPARC32 implementation.
+    case kArchSparc32:
     case kArchSparc32_SLEIGH: {
-      DLOG(INFO) << "Using architecture: 32-bit SPARC32_Sleigh";
+      DLOG(INFO) << "Using architecture: 32-bit SPARC";
       return GetSPARC32Sleigh(context_, os_name_, arch_name_);
     }
 

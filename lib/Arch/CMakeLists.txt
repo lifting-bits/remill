@@ -37,7 +37,6 @@ add_subdirectory(X86)
 target_link_libraries(remill_arch PUBLIC
   remill_arch_aarch64
   remill_arch_sleigh
-  remill_arch_sparc32
   remill_arch_x86
 )
 

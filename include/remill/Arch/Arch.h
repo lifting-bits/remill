@@ -442,11 +442,7 @@ class Arch {
   static ArchPtr GetSleighPPC(llvm::LLVMContext *context, OSName os,
                               ArchName arch_name);
 
-  // Defined in `lib/Arch/SPARC32/Arch.cpp`.
-  static ArchPtr GetSPARC32(llvm::LLVMContext *context, OSName os,
-                          ArchName arch_name);
-
-  // Defined in `lib/Arch/Sleigh/SPARC32/SPARC32Arch.cpp
+  // Defined in `lib/Arch/Sleigh/SPARC32Arch.cpp`.
   static ArchPtr GetSPARC32Sleigh(llvm::LLVMContext *context, OSName os,
                                 ArchName arch_name);
 
