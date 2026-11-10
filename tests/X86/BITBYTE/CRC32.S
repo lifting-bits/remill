@@ -22,9 +22,11 @@ TEST_INPUTS(
     0x89ABCDEF, 0x80,
     0xDEADBEEF, 0x01)
 
+    SAVE_CPUID_REGS
     mov eax, 0x00000001
     cpuid
     test ecx, 0x00100000
+    RESTORE_CPUID_REGS
     jz crc32_nop1
 
     mov eax, ARG1_32
@@ -42,9 +44,11 @@ TEST_INPUTS(
     0x89ABCDEF, 0x80000000,
     0xDEADBEEF, 0x01020304)
 
+    SAVE_CPUID_REGS
     mov eax, 0x00000001
     cpuid
     test ecx, 0x00100000
+    RESTORE_CPUID_REGS
     jz crc32_nop2
 
     mov eax, ARG1_32
@@ -62,9 +66,11 @@ TEST_INPUTS(
     0x89ABCDEF01234567, 0x80,
     0xDEADBEEFCAFEBABE, 0x01)
 
+    SAVE_CPUID_REGS
     mov eax, 0x00000001
     cpuid
     test ecx, 0x00100000
+    RESTORE_CPUID_REGS
     jz crc32_nop3
 
     mov rax, ARG1_64
@@ -82,9 +88,11 @@ TEST_INPUTS(
     0x89ABCDEF01234567, 0x8000000000000000,
     0xDEADBEEFCAFEBABE, 0x0102030405060708)
 
+    SAVE_CPUID_REGS
     mov eax, 0x00000001
     cpuid
     test ecx, 0x00100000
+    RESTORE_CPUID_REGS
     jz crc32_nop4
 
     mov rax, ARG1_64

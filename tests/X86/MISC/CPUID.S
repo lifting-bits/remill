@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef __APPLE__
+#ifdef __linux__
 TEST_BEGIN(CPUID, 2)
 TEST_INPUTS(
+    0x01, 0,
     0x07, 0,
     0x05, 0,
     0x0A, 0,

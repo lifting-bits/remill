@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#  define _GNU_SOURCE
+#endif
 #define _XOPEN_SOURCE
 
 #include <dlfcn.h>
@@ -23,6 +26,10 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <ucontext.h>
+
+#ifdef __linux__
+#  include <sched.h>
+#endif
 
 #include <cfenv>
 #include <cmath>
@@ -50,6 +57,23 @@ DEFINE_bool(
     "by default since it is commonly broken in virtualized environments.");
 
 namespace {
+
+static void PinTestRunnerToCurrentCPU(void) {
+#ifdef __linux__
+  const auto cpu = sched_getcpu();
+  PCHECK(cpu >= 0) << "Cannot determine the test runner's CPU";
+
+  const auto num_cpus = static_cast<size_t>(cpu) + 1;
+  const auto set_size = CPU_ALLOC_SIZE(num_cpus);
+  auto cpus = CPU_ALLOC(num_cpus);
+  PCHECK(cpus != nullptr) << "Cannot allocate the test runner's CPU mask";
+  CPU_ZERO_S(set_size, cpus);
+  CPU_SET_S(cpu, set_size, cpus);
+  PCHECK(sched_setaffinity(0, set_size, cpus) == 0)
+      << "Cannot pin the test runner to CPU " << cpu;
+  CPU_FREE(cpus);
+#endif
+}
 
 // SIGSTKSZ is no longer constant in glibc 2.34+
 const size_t REMILL_SIGSTKSZ = 4096 * 16;
@@ -1376,6 +1400,8 @@ static void SetupSignals(void) {
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
+
+  PinTestRunnerToCurrentCPU();
 
   InitFlags();
 
