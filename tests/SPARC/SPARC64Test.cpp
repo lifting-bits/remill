@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Instructions.h>
 #include <remill/Arch/SPARC64/Runtime/State.h>
+#include <remill/BC/ABI.h>
+#include <remill/BC/Util.h>
 
 #include <unordered_map>
 
@@ -181,6 +185,45 @@ TEST(SPARC64Lifts, DoubleOverlaysSingles) {
             {"fs1", uint32_t(0x55667788)},
             {"pc", uint64_t(0x1004)}},
            Accessors()));
+}
+
+// st %o0, [%o1]: Sleigh reads the low word of `o0` as the register varnode
+// `(o0 + 4, 4)`. The lifted code must take it from the value of `o0`, not
+// load the first 4 bytes of `o0`, which are its high word in SPARC's
+// big-endian layout. The test runner executes with the host's byte order, so
+// this is checked on the lifted code: every load of `o0` loads all of it.
+TEST(SPARC64Lifts, StoreWordReadsLowWordOfRegister) {
+  llvm::LLVMContext context;
+  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
+                                    remill::kArchSparc64);
+  auto lifted = lifter.LiftInstructionFunction(
+      "store_word", Bytes("\xd0\x22\x40\x00"), 0x1000,
+      lifter.GetArch()->CreateInitialContext());
+  ASSERT_TRUE(lifted.has_value());
+
+  auto module = llvm::CloneModule(*lifted->first->getParent());
+  remill::OptimizeBareModule(module.get());
+  auto func = module->getFunction("store_word");
+  ASSERT_NE(func, nullptr);
+
+  const auto &dl = module->getDataLayout();
+  const auto state = remill::NthArgument(func, remill::kStatePointerArgNum);
+  const auto o0 = lifter.GetArch()->RegisterByName("O0");
+  auto num_o0_loads = 0u;
+  for (auto &inst : llvm::instructions(*func)) {
+    auto load = llvm::dyn_cast<llvm::LoadInst>(&inst);
+    if (!load) {
+      continue;
+    }
+    llvm::APInt offset(dl.getIndexTypeSizeInBits(state->getType()), 0);
+    auto base = load->getPointerOperand()->stripAndAccumulateConstantOffsets(
+        dl, offset, true);
+    if (base == state && offset == o0->offset) {
+      EXPECT_EQ(dl.getTypeStoreSize(load->getType()), o0->size);
+      ++num_o0_loads;
+    }
+  }
+  EXPECT_GT(num_o0_loads, 0u);
 }
 
 int main(int argc, char **argv) {
