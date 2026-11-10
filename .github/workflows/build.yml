@@ -87,6 +87,8 @@ jobs:
           install/bin/remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
           install/bin/remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
           install/bin/remill-lift-${{ matrix.llvm }} --arch aarch32 --ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
+          install/bin/remill-lift-${{ matrix.llvm }} --arch sparc32 --ir_out /dev/stdout --bytes 81c3e00890020009
+          install/bin/remill-lift-${{ matrix.llvm }} --arch sparc64 --ir_out /dev/stdout --bytes 9de3bf504000000490062001
 
       - name: Test remill
         run: |
@@ -124,6 +126,8 @@ jobs:
           ./result/bin/remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
           ./result/bin/remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
           ./result/bin/remill-lift-${{ matrix.llvm }} --arch aarch32 --ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
+          ./result/bin/remill-lift-${{ matrix.llvm }} --arch sparc32 --ir_out /dev/stdout --bytes 81c3e00890020009
+          ./result/bin/remill-lift-${{ matrix.llvm }} --arch sparc64 --ir_out /dev/stdout --bytes 9de3bf504000000490062001
 
   macos:
     # Skip building pull requests from the same repository
@@ -182,6 +186,8 @@ jobs:
           install/bin/remill-lift-${{ matrix.llvm }} --arch amd64 --ir_out /dev/stdout --bytes c704ba01000000
           install/bin/remill-lift-${{ matrix.llvm }} --arch aarch64 --ir_out /dev/stdout --address 0x400544 --bytes FD7BBFA90000009000601891FD030091B7FFFF97E0031F2AFD7BC1A8C0035FD6
           install/bin/remill-lift-${{ matrix.llvm }} --arch aarch32 -ir_out /dev/stderr --bytes 0cd04de208008de504108de500208de508309de504009de500109de5903122e0c20fa0e110109fe5001091e5002081e5040081e50cd08de21eff2fe14000000000000000
+          install/bin/remill-lift-${{ matrix.llvm }} --arch sparc32 --ir_out /dev/stdout --bytes 81c3e00890020009
+          install/bin/remill-lift-${{ matrix.llvm }} --arch sparc64 --ir_out /dev/stdout --bytes 9de3bf504000000490062001
 
       - name: Test remill
         run: |

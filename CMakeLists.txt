@@ -353,6 +353,11 @@ if(REMILL_ENABLE_TESTING)
     add_subdirectory(tests/PPC)
   endif()
 
+  if(REMILL_ENABLE_TESTING_SLEIGH_SPARC)
+    message(STATUS "sparc tests enabled")
+    add_subdirectory(tests/SPARC)
+  endif()
+
   if(REMILL_ENABLE_TESTING_X86)
     message(STATUS "X86 tests enabled")
     add_subdirectory(tests/X86)
