@@ -14,6 +14,6 @@
 
 # SPARC64 is lifted with Sleigh (see lib/Arch/Sleigh/SPARC64Arch.cpp). This
 # directory only builds its runtime, the semantics module `sparc64.bc`.
-if(${REMILL_BUILD_SPARC64_RUNTIME} AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   add_subdirectory(Runtime)
 endif()

@@ -15,6 +15,4 @@
 # SPARC32 is lifted with Sleigh (see lib/Arch/Sleigh/SPARC32Arch.cpp). This
 # directory only builds its runtime: the semantics modules `sparc32.bc` and
 # `sparc32_sleigh.bc`, which provide the `State` type and intrinsics.
-if(${REMILL_BUILD_SPARC32_RUNTIME})
-  add_subdirectory(Runtime)
-endif()
+add_subdirectory(Runtime)
