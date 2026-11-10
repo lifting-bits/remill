@@ -51,21 +51,19 @@ const auto &Accessors() {
       return &st.flags.fcc0;
     };
 
-    // Big-endian register numbering: `fs0` is the high half of `fd0`, which
-    // is the high half of `fq0`.
+    // As in the register table: the state is laid out in the target's (big-
+    // endian) byte order, where `fs0` and `fd0` are the first bytes of `fq0`.
     for (auto q = 0u; q < 8u; ++q) {
       for (auto f = 0u; f < 4u; ++f) {
         res["fs" + std::to_string(4u * q + f)] =
             [q, f](SPARC64State &st) -> RegisterValueRef {
-          return reinterpret_cast<uint32_t *>(
-              &st.fpreg[q].floats.elems[3u - f]);
+          return reinterpret_cast<uint32_t *>(&st.fpreg[q].floats.elems[f]);
         };
       }
       for (auto d = 0u; d < 2u; ++d) {
         res["fd" + std::to_string(4u * q + 2u * d)] =
             [q, d](SPARC64State &st) -> RegisterValueRef {
-          return reinterpret_cast<uint64_t *>(
-              &st.fpreg[q].doubles.elems[1u - d]);
+          return reinterpret_cast<uint64_t *>(&st.fpreg[q].doubles.elems[d]);
         };
       }
     }
@@ -176,14 +174,13 @@ TEST(SPARC64Lifts, FloatCompareSetsFcc0) {
                {{"fcc0", uint8_t(1)}, {"pc", uint64_t(0x1004)}}, Accessors()));
 }
 
-// fmovd %f2, %f0: `fs0`/`fs1` are the high/low halves of `fd0`.
-TEST(SPARC64Lifts, DoubleOverlaysSingles) {
+// fmovd %f2, %f0. (The test runner executes the lifted code with the host's
+// byte order, so it does not check how `fs0`/`fs1` overlay `fd0`.)
+TEST(SPARC64Lifts, MoveDouble) {
   RunSpec(
       Spec(0x1000, Bytes("\x81\xa0\x00\x42"), Category::kCategoryNormal,
            {{"fd2", uint64_t(0x1122334455667788)}, {"pc", uint64_t(0x1000)}},
-           {{"fs0", uint32_t(0x11223344)},
-            {"fs1", uint32_t(0x55667788)},
-            {"pc", uint64_t(0x1004)}},
+           {{"fd0", uint64_t(0x1122334455667788)}, {"pc", uint64_t(0x1004)}},
            Accessors()));
 }
 

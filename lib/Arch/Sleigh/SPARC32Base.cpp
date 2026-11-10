@@ -201,19 +201,18 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   REG(state, FQ28, fpreg.v[7], u128);
 
   // Ghidra numbers the floating-point registers big-endian: `fs(4q)` is the
-  // high half of `fd(4q)`, which is the high half of `fq(4q)`. The state
-  // holds host-order (little-endian) values, so the halves are swapped.
+  // high half of `fd(4q)`, which is the high half of `fq(4q)`. Like the
+  // semantics, the state is laid out in SPARC's big-endian byte order, so
+  // the high halves come first.
   for (auto q = 0u; q < 8u; ++q) {
     const auto quad = "FQ" + std::to_string(4u * q);
     for (auto d = 0u; d < 2u; ++d) {
       AddRegister(("FD" + std::to_string(4u * q + 2u * d)).c_str(), f64,
-                  OFFSET_OF(state, fpreg.v[q].doubles.elems[1u - d]),
-                  quad.c_str());
+                  OFFSET_OF(state, fpreg.v[q].doubles.elems[d]), quad.c_str());
     }
     for (auto f = 0u; f < 4u; ++f) {
       AddRegister(("FS" + std::to_string(4u * q + f)).c_str(), f32,
-                  OFFSET_OF(state, fpreg.v[q].floats.elems[3u - f]),
-                  quad.c_str());
+                  OFFSET_OF(state, fpreg.v[q].floats.elems[f]), quad.c_str());
     }
   }
 

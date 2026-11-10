@@ -179,19 +179,20 @@ void SPARC64Arch::PopulateRegisterTable(void) const {
   AddRegister("DIDRESTORE", u8, OFFSET_OF(flags.didrestore), nullptr);
 
   // Ghidra numbers the floating-point registers big-endian: `fs(4q)` is the
-  // high half of `fd(4q)`, which is the high half of `fq(4q)`. The state
-  // holds host-order (little-endian) values, so the halves are swapped. Only
-  // `fq0`-`fq28` have single-precision halves.
+  // high half of `fd(4q)`, which is the high half of `fq(4q)`. Like the
+  // semantics, the state is laid out in SPARC's big-endian byte order, so
+  // the high halves come first. Only `fq0`-`fq28` have single-precision
+  // halves.
   for (auto q = 0u; q < std::size(state.fpreg); ++q) {
     const auto quad = "FQ" + std::to_string(4u * q);
     AddRegister(quad.c_str(), u128, OFFSET_OF(fpreg[q]), nullptr);
     for (auto d = 0u; d < 2u; ++d) {
       AddRegister(("FD" + std::to_string(4u * q + 2u * d)).c_str(), f64,
-                  OFFSET_OF(fpreg[q].doubles.elems[1u - d]), quad.c_str());
+                  OFFSET_OF(fpreg[q].doubles.elems[d]), quad.c_str());
     }
     for (auto f = 0u; q < 8u && f < 4u; ++f) {
       AddRegister(("FS" + std::to_string(4u * q + f)).c_str(), f32,
-                  OFFSET_OF(fpreg[q].floats.elems[3u - f]), quad.c_str());
+                  OFFSET_OF(fpreg[q].floats.elems[f]), quad.c_str());
     }
   }
 
