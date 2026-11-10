@@ -70,9 +70,11 @@ bool SPARC32ArchBase::NextInstructionIsDelayed(const Instruction &inst,
 }
 
 // Maximum number of bytes in an instruction.
+// Sleigh decodes a delayed control transfer together with the instruction in
+// its delay slot, so an instruction can be 8 bytes long.
 uint64_t SPARC32ArchBase::MaxInstructionSize(const DecodingContext &,
-                            bool permit_fuse_idioms) const {
-  return permit_fuse_idioms ? 8 : 4;  // To handle `SET` idioms.
+                                             bool) const {
+  return 8;
 }
 
 // Default calling convention for this architecture.

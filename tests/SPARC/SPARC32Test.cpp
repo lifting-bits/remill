@@ -222,6 +222,24 @@ TEST(SPARC32Lifts, MoveDouble) {
            Accessors()));
 }
 
+// With fusion off, the decoder must be offered 8 bytes: a delayed control
+// transfer is decoded together with its delay slot.
+TEST(SPARC32Arch, MaxInstructionSizeIncludesDelaySlot) {
+  llvm::LLVMContext context;
+  test_runner::LiftingTester lifter(context, remill::OSName::kOSLinux,
+                                    remill::kArchSparc32);
+  const auto &arch = lifter.GetArch();
+  const auto ctx = arch->CreateInitialContext();
+  EXPECT_EQ(arch->MaxInstructionSize(ctx, false), 8u);
+
+  // call 0x1010; nop
+  const auto call = Bytes("\x40\x00\x00\x04\x01\x00\x00\x00");
+  remill::Instruction inst;
+  EXPECT_FALSE(arch->DecodeInstruction(0x1000, call.substr(0, 4), inst, ctx));
+  ASSERT_TRUE(arch->DecodeInstruction(0x1000, call, inst, ctx));
+  EXPECT_EQ(inst.category, Category::kCategoryDirectFunctionCall);
+}
+
 // `CBRANCH <end of p-code>, cond; RETURN target`: the branch leaves the
 // instruction (it falls through), so this is a conditional return whose
 // branch is taken when `cond` is false, not an unconditional return.
