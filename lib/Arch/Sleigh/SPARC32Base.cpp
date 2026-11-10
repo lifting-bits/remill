@@ -20,6 +20,8 @@
 #include <remill/BC/ABI.h>
 #include <remill/BC/Util.h>
 
+#include <string>
+
 namespace remill {
 // Returns the name of the stack pointer register.
 std::string_view SPARC32ArchBase::StackPointerRegisterName(void) const {
@@ -181,10 +183,10 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   REG(state, X_ZF, ccr.xcc.x_zf, u8);
   REG(state, X_NF, ccr.xcc.x_nf, u8);
 
-  REG(state, ccf_fcc0, fsr.fcc0, u8);
-  REG(state, ccf_fcc1, fsr.fcc1, u8);
-  REG(state, ccf_fcc2, fsr.fcc2, u8);
-  REG(state, ccf_fcc3, fsr.fcc3, u8);
+  REG(state, FCC0, fsr.fcc0, u8);
+  REG(state, FCC1, fsr.fcc1, u8);
+  REG(state, FCC2, fsr.fcc2, u8);
+  REG(state, FCC3, fsr.fcc3, u8);
 
   REG(state, fsr_aexc, fsr.aexc, u8);
   REG(state, fsr_cexc, fsr.cexc, u8);
@@ -198,57 +200,23 @@ void SPARC32ArchBase::PopulateRegisterTable(void) const {
   REG(state, FQ24, fpreg.v[6], u128);
   REG(state, FQ28, fpreg.v[7], u128);
 
-  SUB_REG(state, FS0, fpreg.v[0].floats.elems[0], f32, FQ0);
-  SUB_REG(state, FS1, fpreg.v[0].floats.elems[1], f32, FQ0);
-  SUB_REG(state, FS2, fpreg.v[0].floats.elems[2], f32, FQ0);
-  SUB_REG(state, FS3, fpreg.v[0].floats.elems[3], f32, FQ0);
-  SUB_REG(state, FS4, fpreg.v[1].floats.elems[0], f32, FQ4);
-  SUB_REG(state, FS5, fpreg.v[1].floats.elems[1], f32, FQ4);
-  SUB_REG(state, FS6, fpreg.v[1].floats.elems[2], f32, FQ4);
-  SUB_REG(state, FS7, fpreg.v[1].floats.elems[3], f32, FQ4);
-  SUB_REG(state, FS8, fpreg.v[2].floats.elems[0], f32, FQ8);
-  SUB_REG(state, FS9, fpreg.v[2].floats.elems[1], f32, FQ8);
-  SUB_REG(state, FS10, fpreg.v[2].floats.elems[2], f32, FQ8);
-  SUB_REG(state, FS11, fpreg.v[2].floats.elems[3], f32, FQ8);
-  SUB_REG(state, FS12, fpreg.v[3].floats.elems[0], f32, FQ12);
-  SUB_REG(state, FS13, fpreg.v[3].floats.elems[1], f32, FQ12);
-  SUB_REG(state, FS14, fpreg.v[3].floats.elems[2], f32, FQ12);
-  SUB_REG(state, FS15, fpreg.v[3].floats.elems[3], f32, FQ12);
-  SUB_REG(state, FS16, fpreg.v[4].floats.elems[0], f32, FQ16);
-  SUB_REG(state, FS17, fpreg.v[4].floats.elems[1], f32, FQ16);
-  SUB_REG(state, FS18, fpreg.v[4].floats.elems[2], f32, FQ16);
-  SUB_REG(state, FS19, fpreg.v[4].floats.elems[3], f32, FQ16);
-  SUB_REG(state, FS20, fpreg.v[5].floats.elems[0], f32, FQ20);
-  SUB_REG(state, FS21, fpreg.v[5].floats.elems[1], f32, FQ20);
-  SUB_REG(state, FS22, fpreg.v[5].floats.elems[2], f32, FQ20);
-  SUB_REG(state, FS23, fpreg.v[5].floats.elems[3], f32, FQ20);
-  SUB_REG(state, FS24, fpreg.v[6].floats.elems[0], f32, FQ24);
-  SUB_REG(state, FS25, fpreg.v[6].floats.elems[1], f32, FQ24);
-  SUB_REG(state, FS26, fpreg.v[6].floats.elems[2], f32, FQ24);
-  SUB_REG(state, FS27, fpreg.v[6].floats.elems[3], f32, FQ24);
-  SUB_REG(state, FS28, fpreg.v[7].floats.elems[0], f32, FQ28);
-  SUB_REG(state, FS29, fpreg.v[7].floats.elems[1], f32, FQ28);
-  SUB_REG(state, FS30, fpreg.v[7].floats.elems[2], f32, FQ28);
-  SUB_REG(state, FS31, fpreg.v[7].floats.elems[3], f32, FQ28);
+  // Ghidra numbers the floating-point registers big-endian: `fs(4q)` is the
+  // high half of `fd(4q)`, which is the high half of `fq(4q)`. The state
+  // holds host-order (little-endian) values, so the halves are swapped.
+  for (auto q = 0u; q < 8u; ++q) {
+    const auto quad = "FQ" + std::to_string(4u * q);
+    for (auto d = 0u; d < 2u; ++d) {
+      AddRegister(("FD" + std::to_string(4u * q + 2u * d)).c_str(), f64,
+                  OFFSET_OF(state, fpreg.v[q].doubles.elems[1u - d]),
+                  quad.c_str());
+    }
+    for (auto f = 0u; f < 4u; ++f) {
+      AddRegister(("FS" + std::to_string(4u * q + f)).c_str(), f32,
+                  OFFSET_OF(state, fpreg.v[q].floats.elems[3u - f]),
+                  quad.c_str());
+    }
+  }
 
-  SUB_REG(state, FD0, fpreg.v[0].doubles.elems[0], f64, FQ0);
-  SUB_REG(state, FD2, fpreg.v[0].doubles.elems[1], f64, FQ0);
-  SUB_REG(state, FD4, fpreg.v[1].doubles.elems[0], f64, FQ4);
-  SUB_REG(state, FD6, fpreg.v[1].doubles.elems[1], f64, FQ4);
-  SUB_REG(state, FD8, fpreg.v[2].doubles.elems[0], f64, FQ8);
-  SUB_REG(state, FD10, fpreg.v[2].doubles.elems[1], f64, FQ8);
-  SUB_REG(state, FD12, fpreg.v[3].doubles.elems[0], f64, FQ12);
-  SUB_REG(state, FD14, fpreg.v[3].doubles.elems[1], f64, FQ12);
-  SUB_REG(state, FD16, fpreg.v[4].doubles.elems[0], f64, FQ16);
-  SUB_REG(state, FD18, fpreg.v[4].doubles.elems[1], f64, FQ16);
-  SUB_REG(state, FD20, fpreg.v[5].doubles.elems[0], f64, FQ20);
-  SUB_REG(state, FD22, fpreg.v[5].doubles.elems[1], f64, FQ20);
-  SUB_REG(state, FD24, fpreg.v[6].doubles.elems[0], f64, FQ24);
-  SUB_REG(state, FD26, fpreg.v[6].doubles.elems[1], f64, FQ24);
-  SUB_REG(state, FD28, fpreg.v[7].doubles.elems[0], f64, FQ28);
-  SUB_REG(state, FD30, fpreg.v[7].doubles.elems[1], f64, FQ28);
-  
-  REG(state, DECOMPILE_MODE, decompile_mode, u8);
   REG(state, DIDRESTORE, didrestore, u8);
 }
 

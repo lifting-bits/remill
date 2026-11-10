@@ -416,7 +416,8 @@ bool Arch::IsAArch64(void) const {
 }
 
 bool Arch::IsSPARC32(void) const {
-  return remill::kArchSparc32 == arch_name;
+  return remill::kArchSparc32 == arch_name ||
+         remill::kArchSparc32_SLEIGH == arch_name;
 }
 
 bool Arch::IsSPARC64(void) const {
