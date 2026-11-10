@@ -38,6 +38,8 @@ add_library(remill_arch_sleigh STATIC
   "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC32/Runtime/Types.h"
   "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC32/SPARC32Base.h"
 
+  "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC64/Runtime/State.h"
+
   "${REMILL_INCLUDE_DIR}/remill/Arch/PPC/Runtime/State.h"
 
   Arch.h
@@ -61,6 +63,9 @@ add_library(remill_arch_sleigh STATIC
   SPARC32Arch.cpp
   SPARC32Arch.h
   SPARC32Base.cpp
+
+  SPARC64Arch.cpp
+  SPARC64Arch.h
 )
 
 add_dependencies(remill_arch_sleigh sleigh_custom_specs)

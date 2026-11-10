@@ -12,32 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(remill_arch_sparc64 STATIC
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Definitions.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/HyperCall.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Intrinsics.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Operators.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Runtime.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/State.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Types.h"
-
-  "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC64/Runtime/State.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC64/Runtime/Types.h"
-
-  "${REMILL_LIB_DIR}/Arch/SPARC32/Decode.h"
-
-  Arch.cpp
-  Decode.h
-  Extract.cpp
-)
-
-target_link_libraries(remill_arch_sparc64 PUBLIC
-  remill_settings
-)
-
-if(REMILL_ENABLE_INSTALL_TARGET)
-  install(
-    TARGETS remill_arch_sparc64
-    EXPORT remillTargets
-  )
+# SPARC64 is lifted with Sleigh (see lib/Arch/Sleigh/SPARC64Arch.cpp). This
+# directory only builds its runtime, the semantics module `sparc64.bc`.
+if(${REMILL_BUILD_SPARC64_RUNTIME} AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+  add_subdirectory(Runtime)
 endif()

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Trail of Bits, Inc.
+ * Copyright (c) 2026 Trail of Bits, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,347 +16,94 @@
 
 #pragma once
 
+// Machine state of the 64-bit SPARC architecture (`kArchSparc64`), which is
+// lifted with Sleigh. It holds the registers of Ghidra's `SparcV9_64.sla`
+// that the register table in `lib/Arch/Sleigh/SPARC64Arch.cpp` names; Sleigh
+// registers without a field (the register window backing store, hypervisor
+// state) become function-local values in lifted code.
+//
+// Every register is preceded by `volatile` padding, as in the other states,
+// so that the optimizer never merges accesses to adjacent registers.
+
 #pragma clang diagnostic push
 #pragma clang diagnostic fatal "-Wpadded"
 
 #include "remill/Arch/Runtime/State.h"
 #include "remill/Arch/Runtime/Types.h"
 
-struct Reg final {
-  addr_t qword;
+struct SPARC64Reg final {
+  volatile uint64_t _pad;
+  uint64_t qword;
 } __attribute__((packed));
 
-static_assert(sizeof(Reg) == 8, "Invalid size of `Reg`.");
+static_assert(16 == sizeof(SPARC64Reg), "Invalid packing of `SPARC64Reg`.");
 
-union PtrReg final {
-  addr_t qword;
-} __attribute__((packed));
-
-static_assert(sizeof(PtrReg) == 8, "Invalid size of `PtrReg`.");
-
-struct GPR {
-
-  // Prevents LLVM from casting a `GPR` into an `i64` to access `I0`.
-  volatile addr_t _0;
-  Reg i0;
-  volatile addr_t _1;
-  Reg i1;
-  volatile addr_t _2;
-  Reg i2;
-  volatile addr_t _3;
-  Reg i3;
-  volatile addr_t _4;
-  Reg i4;
-  volatile addr_t _5;
-  Reg i5;
-  volatile addr_t _6;
-  Reg i6;
-  volatile addr_t _7;
-  Reg i7;
-
-  volatile addr_t _8;
-  Reg l0;
-  volatile addr_t _9;
-  Reg l1;
-  volatile addr_t _10;
-  Reg l2;
-  volatile addr_t _11;
-  Reg l3;
-  volatile addr_t _12;
-  Reg l4;
-  volatile addr_t _13;
-  Reg l5;
-  volatile addr_t _14;
-  Reg l6;
-  volatile addr_t _15;
-  Reg l7;
-
-  volatile addr_t _16;
-  Reg o0;
-  volatile addr_t _17;
-  Reg o1;
-  volatile addr_t _18;
-  Reg o2;
-  volatile addr_t _19;
-  Reg o3;
-  volatile addr_t _20;
-  Reg o4;
-  volatile addr_t _21;
-  Reg o5;
-  volatile addr_t _22;
-  Reg o6;
-  volatile addr_t _23;
-  Reg o7;
-
-  volatile addr_t _24;
-  Reg g0;
-  volatile addr_t _25;
-  Reg g1;
-  volatile addr_t _26;
-  Reg g2;
-  volatile addr_t _27;
-  Reg g3;
-  volatile addr_t _28;
-  Reg g4;
-  volatile addr_t _29;
-  Reg g5;
-  volatile addr_t _30;
-  Reg g6;
-  volatile addr_t _31;
-  Reg g7;
-};
-
-static_assert(512 == sizeof(GPR), "Invalid packing of `struct GPR`.");
-
-enum AlternativeSpaceIdentifier : uint32_t {
-  ASI_PST8_PRIMARY = 0xc0,
-  ASI_PST8_SECONDARY,
-  ASI_PST16_PRIMARY,
-  ASI_PST16_SECONDARY,
-  ASI_PST32_PRIMARY,
-  ASI_PST32_SECONDARY,
-  ASI_FL8_PRIMARY = 0xd0,
-  ASI_FL8_SECONDARY,
-  ASI_FL16_PRIMARY,
-  ASI_FL16_SECONDARY,
-  ASI_BLOCK_COMMIT_PRIMARY = 0xe0,
-  ASI_TWINX_P = 0xe2,
-  ASI_TWINX_S,
-  ASI_BLOCK_PRIMARY = 0xf0,
-  ASI_BLOCK_SECONDARY,
-};
-
-struct FPURegs final {
-  vec128_t v[16];
-} __attribute__((packed));
-
-static_assert(((128 * 16) / 8) == sizeof(struct FPURegs),
-              "Invalid packing of `struct FPURegs`.");
-
-struct FSRReg final {
+// Integer condition codes, floating-point condition codes and other one-byte
+// registers.
+struct SPARC64Flags final {
   volatile uint8_t _0;
-  uint8_t cexc;
+  uint8_t x_nf;
   volatile uint8_t _1;
-  uint8_t aexc;
+  uint8_t x_zf;
   volatile uint8_t _2;
-  uint8_t fcc0;
+  uint8_t x_vf;
   volatile uint8_t _3;
-  uint8_t reserve;
+  uint8_t x_cf;
   volatile uint8_t _4;
-  uint8_t ftt;
+  uint8_t i_nf;
   volatile uint8_t _5;
-  uint8_t ver;
+  uint8_t i_zf;
   volatile uint8_t _6;
-  uint8_t ns;
+  uint8_t i_vf;
   volatile uint8_t _7;
-  uint8_t tem;
+  uint8_t i_cf;
   volatile uint8_t _8;
-  uint8_t rd;
+  uint8_t fcc0;
   volatile uint8_t _9;
   uint8_t fcc1;
   volatile uint8_t _10;
   uint8_t fcc2;
   volatile uint8_t _11;
   uint8_t fcc3;
+  volatile uint8_t _12;
+  uint8_t asi;
+  volatile uint8_t _13;
+  uint8_t fprs;
+  volatile uint8_t _14;
+  uint8_t didrestore;  // Fake register of the Sleigh specification.
+  volatile uint8_t _15;
+  volatile uint8_t _16;
 } __attribute__((packed));
 
-static_assert(24 == sizeof(struct FSRReg),
-              "Invalid packing of `struct FSRReg`.");
-
-// Integer condition code register flags
-struct ICCRFlags final {
-  struct {
-    volatile uint8_t _0;
-    bool c;
-    volatile uint8_t _1;
-    bool v;
-    volatile uint8_t _2;
-    bool z;
-    volatile uint8_t _3;
-    bool n;
-  } __attribute__((packed)) icc, xcc;
-} __attribute__((packed));
-
-static_assert(16 == sizeof(struct ICCRFlags),
-              "Invalid packing of `struct ICCRFlags`.");
-
-union GSRFlags final {
-  uint64_t flat;
-  struct {
-    uint64_t align : 3;
-    uint64_t scale : 5;
-    uint64_t reserved_0 : 17;
-    uint64_t irnd : 2;
-    uint64_t im : 1;
-    uint64_t reserved_1 : 4;
-    uint64_t mask : 32;
-  } __attribute__((packed));
-} __attribute__((packed));
-
-struct ASR final {
-  Reg yreg;  // ASR 0
-  volatile uint64_t _0;
-  ICCRFlags ccr;  // ASR 2
-  volatile uint64_t _1;
-  union {
-    uint64_t asi_flat;
-    struct {
-      uint64_t asi : 8;  // ASR 3
-      uint64_t padding_1 : 56;
-    } __attribute__((packed));
-  } __attribute__((packed));
-  volatile uint64_t _2;
-  uint64_t tick;  // ASR 4
-  volatile uint64_t _3;
-  union {
-    uint64_t fprs_flat;
-    struct {
-      uint64_t fprs : 3;  // ASR 6
-      uint64_t padding_2 : 61;
-    } __attribute__((packed));
-  } __attribute__((packed));
-  volatile uint64_t _4;
-  GSRFlags gsr;
-  volatile uint64_t _5;
-  uint64_t softint;  // ASR 20
-  volatile uint64_t _6;
-  uint64_t stick;  // ASR 24
-  volatile uint64_t _7;
-  uint64_t stick_cmpr;  // ASR 25
-  volatile uint64_t _8;
-  uint64_t cfr;  // ASR 26
-  volatile uint64_t _9;
-  uint64_t pause;  // ASR 27
-  volatile uint64_t _10;
-  uint64_t mwait;  // ASR 28
-};
-
-static_assert(192 == sizeof(struct ASR), "Invalid packing of `struct ASR`.");
-
-struct CSR {
-  uint8_t ccc;
-  uint8_t padding0;
-  uint16_t padding1;
-  uint32_t padding2;
-} __attribute__((packed));
-
-static_assert(8 == sizeof(struct CSR), "Invalid packing of `struct CSR`.");
-
-struct PSR {
-  uint64_t tpc;
-  uint64_t tnpc;
-  uint64_t tstate;
-  uint64_t tick;
-  uint64_t tba;
-  volatile uint8_t _0;  //padding
-  uint8_t tt;
-  uint8_t tl;
-  union {
-    uint16_t pstate;
-    struct {
-      uint16_t res1 : 1;
-      uint16_t ie : 1;
-      uint16_t priv : 1;
-      uint16_t am : 1;
-      uint16_t pef : 1;
-      uint16_t res2 : 1;
-      uint16_t mm : 1;
-      uint16_t tle : 1;
-      uint16_t cle : 1;
-      uint16_t res3 : 1;
-      uint16_t res4 : 1;
-      uint16_t tct : 1;
-      uint16_t padding : 4;
-    } __attribute__((packed)) ps;
-  } __attribute__((packed));
-  volatile uint8_t _1;
-  uint8_t pil;
-  uint8_t cwp;
-  uint8_t cansave;
-  volatile uint8_t _2;
-  uint8_t canrestore;
-  uint8_t cleanwin;
-  uint8_t otherwin;
-  volatile uint8_t _3;
-  union {
-    uint8_t wstate;
-    struct {
-      uint8_t normal : 2;
-      uint8_t other : 3;
-      uint8_t padding : 3;
-    } __attribute__((packed)) ws;
-  } __attribute__((packed));
-  uint8_t gl;
-} __attribute__((packed));
-
-struct RegisterWindow {
-  volatile addr_t _0;
-  addr_t l0;
-  volatile addr_t _1;
-  addr_t l1;
-  volatile addr_t _2;
-  addr_t l2;
-  volatile addr_t _3;
-  addr_t l3;
-  volatile addr_t _4;
-  addr_t l4;
-  volatile addr_t _5;
-  addr_t l5;
-  volatile addr_t _6;
-  addr_t l6;
-  volatile addr_t _7;
-  addr_t l7;
-
-  volatile addr_t _8;
-  addr_t i0;
-  volatile addr_t _9;
-  addr_t i1;
-  volatile addr_t _10;
-  addr_t i2;
-  volatile addr_t _11;
-  addr_t i3;
-  volatile addr_t _12;
-  addr_t i4;
-  volatile addr_t _13;
-  addr_t i5;
-  volatile addr_t _14;
-  addr_t i6;
-  volatile addr_t _15;
-  addr_t i7;
-
-  volatile addr_t _16;
-  RegisterWindow *prev_window;
-};
+static_assert(32 == sizeof(SPARC64Flags), "Invalid packing of `SPARC64Flags`.");
 
 struct alignas(16) SPARC64State : public ArchState {
-  FPURegs fpreg;  // 512 bytes
-  volatile uint64_t _0;
-  GPR gpr;  // 512 bytes
-  volatile uint64_t _1;
-  ASR asr;  // 176 bytes
-  volatile uint64_t _2;
-  PSR psr;  // 56 bytes
-  volatile uint64_t _3;
-  FSRReg fsr;  // 24 bytes
-  volatile uint64_t _4;
-  CSR csr;  // 8 bytes
-  volatile uint64_t _5;
-  Reg pc;  // 8 bytes
-  volatile uint64_t _6;
-  Reg next_pc;  // 8 bytes
-  volatile uint64_t _7;
 
-  // NOTE(pag): This *must* go at the end, as if we change the target arch/data
-  //            layout, then we want to make sure that the offset of this
-  //            remains the same and doesn't shift other things around.
-#if defined(INCLUDED_FROM_REMILL)
-  uint64_t window;
-#else
-  RegisterWindow *window;  // smuggled.
-  static_assert(sizeof(RegisterWindow *) == 8,
-                "Invalid size of `RegisterWindow`");
-#endif
+  // `fq0`-`fq60`; `fd0`-`fd62` and `fs0`-`fs31` overlay them.
+  vec128_t fpreg[16];
+
+  // `g0`-`g7`, `o0`-`o5`, `sp`, `o7`, `l0`-`l7`, `i0`-`i5`, `fp`, `i7`.
+  SPARC64Reg gpr[32];
+
+  SPARC64Reg pc;
+  SPARC64Reg npc;
+  SPARC64Reg fsr;
+
+  // Ancillary state registers: `TICK`, `Y`, `CCR`, `PCR`, `PIC`, `GSR`,
+  // `SOFTINT_SET`, `SOFTINT_CLR`, `SOFTINT`, `TICK_CMPR`, `STICK`,
+  // `STICK_CMPR`.
+  SPARC64Reg asr[12];
+
+  // Privileged registers, in the order of Ghidra's register space from `TPC1`
+  // to `GL` (see `SPARC64Arch::PopulateRegisterTable`).
+  SPARC64Reg priv[30];
+
+  SPARC64Flags flags;
 };
+
+static_assert(16 + 256 + 32 * 16 + 3 * 16 + 12 * 16 + 30 * 16 + 32 ==
+                  sizeof(SPARC64State),
+              "Invalid packing of `SPARC64State`.");
 
 struct State : public SPARC64State {};
 

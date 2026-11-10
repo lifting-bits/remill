@@ -115,6 +115,7 @@ ArchLocker Arch::Lock(ArchName arch_name_) {
     case ArchName::kArchAMD64_SLEIGH:
     case ArchName::kArchX86_SLEIGH:
     case ArchName::kArchSparc32_SLEIGH:
+    case ArchName::kArchSparc64:
     case ArchName::kArchPPC: return &gSleighArchLock;
     default: return ArchLocker();
   }
@@ -233,7 +234,7 @@ auto Arch::GetArchByName(llvm::LLVMContext *context_, OSName os_name_,
 
     case kArchSparc64: {
       DLOG(INFO) << "Using architecture: 64-bit SPARC";
-      return GetSPARC64(context_, os_name_, arch_name_);
+      return GetSPARC64Sleigh(context_, os_name_, arch_name_);
     }
 
     case kArchSparc32_SLEIGH: {
