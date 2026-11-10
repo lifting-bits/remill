@@ -323,6 +323,25 @@ SYMBOL(__x86_save_state_after):
 SYMBOL(__x86_test_table_begin):
     TEXT_SECTION
 
+/* RSP avoids 16-bit addressing during 32-bit lifting. */
+#if 32 == ADDRESS_SIZE_BITS
+# define SAVE_CPUID_REGS \
+    lea SP_ADDR, [rsp - 16]; \
+    mov DWORD PTR [rsp], eax; \
+    mov DWORD PTR [rsp + 4], ebx; \
+    mov DWORD PTR [rsp + 8], ecx; \
+    mov DWORD PTR [rsp + 12], edx;
+# define RESTORE_CPUID_REGS \
+    mov edx, DWORD PTR [rsp + 12]; \
+    mov ecx, DWORD PTR [rsp + 8]; \
+    mov ebx, DWORD PTR [rsp + 4]; \
+    mov eax, DWORD PTR [rsp]; \
+    lea SP_ADDR, [rsp + 16];
+#else
+# define SAVE_CPUID_REGS push rax; push rbx; push rcx; push rdx;
+# define RESTORE_CPUID_REGS pop rdx; pop rcx; pop rbx; pop rax;
+#endif
+
 /* For argument register and return register definitions. */
 
 #include "tests/X86/ABI.S"

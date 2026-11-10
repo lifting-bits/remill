@@ -24,9 +24,11 @@ TEST_INPUTS(
     0xAAAA,
     0x5555)
 
+    SAVE_CPUID_REGS
     mov eax, 0x00000001
     cpuid
     test ecx, 0x00800000
+    RESTORE_CPUID_REGS
     jz popcnt_nop1
 
     mov eax, ARG1_32
@@ -45,9 +47,11 @@ TEST_INPUTS(
     0xAAAAAAAA,
     0x55555555)
 
+    SAVE_CPUID_REGS
     mov eax, 0x00000001
     cpuid
     test ecx, 0x00800000
+    RESTORE_CPUID_REGS
     jz popcnt_nop2
 
     mov eax, ARG1_32
@@ -66,9 +70,11 @@ TEST_INPUTS(
     0xAAAAAAAAAAAAAAAA,
     0x5555555555555555)
 
+    SAVE_CPUID_REGS
     mov eax, 0x00000001
     cpuid
     test ecx, 0x00800000
+    RESTORE_CPUID_REGS
     jz popcnt_nop3
 
     mov rax, ARG1_64
