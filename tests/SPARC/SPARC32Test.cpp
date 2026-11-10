@@ -296,6 +296,40 @@ TEST(SleighControlFlow, BranchToEndOfPcodeFallsThrough) {
   EXPECT_EQ(res->second->index, 0u);
 }
 
+// `CBRANCH +2, a; CBRANCH <address>, b; COPY`: when `a` holds, the conditional
+// exit is skipped and would not set `BRANCH_TAKEN`, so this is not
+// categorized as a conditional jump.
+TEST(SleighControlFlow, SkippableConditionalExitIsRejected) {
+  remill::sleigh::SingleInstructionSleighContext sleigh_ctx("SparcV9_32.sla",
+                                                            "SparcV9.pspec");
+  auto &engine = sleigh_ctx.GetEngine();
+  const auto a = engine.getRegister("didrestore");
+  const auto b = engine.getRegister("DECOMPILE_MODE");
+  const auto o0 = engine.getRegister("o0");
+  const auto o1 = engine.getRegister("o1");
+
+  VarnodeData skip;
+  skip.space = engine.getConstantSpace();
+  skip.offset = 2;
+  skip.size = 4;
+
+  VarnodeData target;
+  target.space = engine.getDefaultCodeSpace();
+  target.offset = 0x2000;
+  target.size = 4;
+
+  const std::vector<remill::sleigh::RemillPcodeOp> ops = {
+      {CPUI_CBRANCH, std::nullopt, {skip, a}},
+      {CPUI_CBRANCH, std::nullopt, {target, b}},
+      {CPUI_COPY, o0, {o1}},
+  };
+
+  const std::unordered_map<std::string, std::string> no_context_regs;
+  remill::sleigh::ControlFlowStructureAnalysis analysis(no_context_regs,
+                                                        engine);
+  EXPECT_FALSE(analysis.ComputeCategory(ops, 0x1004, {}).has_value());
+}
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

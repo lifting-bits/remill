@@ -434,6 +434,19 @@ After we find coarse categories and the flows follow these patterns, we determin
 Finally we pass these coarse flows to a final categorizer to attempt to print these into a flow type
 */
 
+// Returns `true` if an intra-instruction branch before op `index` can skip
+// over it, i.e. if op `index` does not execute on every path through the ops.
+static bool CanBeSkipped(const std::vector<RemillPcodeOp> &ops, size_t index) {
+  for (size_t i = 0; i < index; ++i) {
+    const auto &op = ops[i];
+    if ((op.op == CPUI_BRANCH || op.op == CPUI_CBRANCH) &&
+        isVarnodeInConstantSpace(op.vars[0]) && i + op.vars[0].offset > index) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // The p-code CFG sends `CALL`/`CALLIND` straight to the instruction exit (see
 // `PcodeCFGBuilder`), so the ops after the first call never execute unless an
 // intra-instruction branch targets them. Some specifications put code there
@@ -454,13 +467,8 @@ DropOpsAfterFirstCall(const std::vector<RemillPcodeOp> &ops) {
   }
 
   const auto call_index = static_cast<size_t>(first_call - ops.begin());
-  for (size_t i = 0; i < call_index; ++i) {
-    const auto &op = ops[i];
-    if ((op.op == CPUI_BRANCH || op.op == CPUI_CBRANCH) &&
-        isVarnodeInConstantSpace(op.vars[0]) &&
-        i + op.vars[0].offset > call_index) {
-      return ops;
-    }
+  if (CanBeSkipped(ops, call_index)) {
+    return ops;
   }
 
   return {ops.begin(), first_call + 1};
@@ -507,6 +515,15 @@ ControlFlowStructureAnalysis::ComputeCategory(
     }
     if (!cc.empty()) {
       maybe_ccategory = CoarseCategoryFromFlows(cc);
+    }
+
+    // The branch taken variable is set by the conditional exit, so it must
+    // execute on every path through the instruction.
+    if (maybe_ccategory == CoarseCategory::kCatConditionalAbnormal &&
+        CanBeSkipped(ops, cc.begin()->first)) {
+      DLOG(ERROR) << "Conditional exit can be skipped by an intra-instruction "
+                  << "branch";
+      maybe_ccategory = std::nullopt;
     }
   }
 
