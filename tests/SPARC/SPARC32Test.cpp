@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+#include <lib/Arch/Sleigh/Arch.h>
+#include <lib/Arch/Sleigh/ControlFlowStructuring.h>
 #include <remill/Arch/SPARC32/Runtime/State.h>
 
 #include <unordered_map>
+#include <variant>
 
 #include "SPARCTestRunner.h"
 
@@ -217,6 +220,43 @@ TEST(SPARC32Lifts, MoveDouble) {
            {{"fd2", uint64_t(0x1122334455667788)}, {"pc", uint32_t(0x1000)}},
            {{"fd0", uint64_t(0x1122334455667788)}, {"pc", uint32_t(0x1004)}},
            Accessors()));
+}
+
+// `CBRANCH <end of p-code>, cond; RETURN target`: the branch leaves the
+// instruction (it falls through), so this is a conditional return whose
+// branch is taken when `cond` is false, not an unconditional return.
+TEST(SleighControlFlow, BranchToEndOfPcodeFallsThrough) {
+  remill::sleigh::SingleInstructionSleighContext sleigh_ctx("SparcV9_32.sla",
+                                                            "SparcV9.pspec");
+  auto &engine = sleigh_ctx.GetEngine();
+  const auto cond = engine.getRegister("didrestore");
+  const auto target = engine.getRegister("o7");
+
+  VarnodeData to_end;
+  to_end.space = engine.getConstantSpace();
+  to_end.offset = 2;  // Relative to the `CBRANCH`, which is op 0 of 2.
+  to_end.size = 4;
+
+  const std::vector<remill::sleigh::RemillPcodeOp> ops = {
+      {CPUI_CBRANCH, std::nullopt, {to_end, cond}},
+      {CPUI_RETURN, std::nullopt, {target}},
+  };
+
+  const std::unordered_map<std::string, std::string> no_context_regs;
+  remill::sleigh::ControlFlowStructureAnalysis analysis(no_context_regs,
+                                                        engine);
+  const auto res = analysis.ComputeCategory(ops, 0x1004, {});
+  ASSERT_TRUE(res.has_value());
+
+  const auto cond_insn =
+      std::get_if<remill::Instruction::ConditionalInstruction>(&res->first);
+  ASSERT_NE(cond_insn, nullptr);
+  EXPECT_TRUE(std::holds_alternative<remill::Instruction::FunctionReturn>(
+      cond_insn->taken_branch));
+
+  ASSERT_TRUE(res->second.has_value());
+  EXPECT_TRUE(res->second->invert);
+  EXPECT_EQ(res->second->index, 0u);
 }
 
 int main(int argc, char **argv) {

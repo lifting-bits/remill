@@ -55,8 +55,10 @@ static CoarseEffect EffectFromDirectControlFlowOp(const RemillPcodeOp &op,
                                       : CoarseEffect::kAbnormal;
 }
 
+// `index` is the index of `op` in the instruction's `num_ops` p-code ops.
 static std::optional<CoarseFlow>
-CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
+CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc,
+                            size_t index, size_t num_ops) {
   if (op.op == CPUI_CALL || op.op == CPUI_CALLIND || op.op == CPUI_BRANCHIND ||
       op.op == CPUI_RETURN) {
     return {{CoarseEffect::kAbnormal, false}};
@@ -68,6 +70,12 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
 
   auto is_conditional = op.op == CPUI_CBRANCH;
   if (isVarnodeInConstantSpace(op.vars[0])) {
+
+    // A branch to the end of the p-code leaves the instruction: it falls
+    // through to the next instruction.
+    if (index + op.vars[0].offset == num_ops) {
+      return {{CoarseEffect::kNormal, is_conditional}};
+    }
     return {{CoarseEffect::kIntraInstruction, is_conditional}};
   }
 
@@ -81,7 +89,7 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
   size_t ind = 0;
   for (auto op : ops) {
     if (ControlFlowStructureAnalysis::isControlFlowPcodeOp(op.op)) {
-      auto cc = CoarseFlowFromControlFlowOp(op, next_pc);
+      auto cc = CoarseFlowFromControlFlowOp(op, next_pc, ind, ops.size());
       if (!cc) {
         return std::nullopt;
       }

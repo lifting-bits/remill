@@ -28,5 +28,7 @@ foreach(arch IN ITEMS sparc32 sparc64)
     test-runner
     glog::glog
   )
+  # For the internal Sleigh headers (lib/Arch/Sleigh).
+  target_include_directories(run-${arch}-tests PRIVATE "${REMILL_SOURCE_DIR}")
   set_property(TARGET run-${arch}-tests PROPERTY ENABLE_EXPORTS ON)
 endforeach()

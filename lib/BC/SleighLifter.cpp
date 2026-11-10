@@ -1611,7 +1611,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     // we have a problem with block terminators where a cbranch <relative> -> fallthrough, need to either exit to the exit block
     // or transfer to a block. So really our cfg needs to tell us how to terminate a block
     // either exit (means real control flow), to block (fake control flow)
-    size_t index = 0;
+    // The branch taken variable is identified by the index of its op among
+    // all of the instruction's p-code ops.
+    size_t index = blk.base_index;
     for (auto pc : blk.ops) {
       this->LiftBtakenIfReached(bldr, pc.op, index);
       this->LiftPcodeOp(bldr, pc.op, pc.outvar, pc.vars.data(), pc.vars.size());

@@ -162,6 +162,14 @@ PcodeCFG PcodeCFGBuilder::Build() const {
   }
 
   for (size_t i = 0; i < starts.size(); i++) {
+
+    // A branch to the end of the p-code exits the instruction: the block
+    // there is empty and exits.
+    if (starts[i] >= linear_ops.size()) {
+      blocks.emplace(starts[i], PcodeBlock(starts[i]));
+      continue;
+    }
+
     auto next_start =
         (i + 1) < starts.size() ? starts[i + 1] : linear_ops.size();
     blocks.emplace(starts[i], BuildBlock(starts[i], next_start));
