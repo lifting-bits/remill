@@ -43,6 +43,16 @@ PcodeBlock PcodeCFGBuilder::BuildBlock(size_t start_ind,
   std::copy(linear_ops.begin() + start_ind, linear_ops.begin() + next_start,
             std::back_inserter(ops));
 
+  // A block that does not end in a control-flow op ends because the next op
+  // is the target of an intra-instruction branch (e.g. the `<end>` label of
+  // `if (!cond) goto <end>; x = y; <end>: ...`). It falls through to that
+  // op, not out of the instruction.
+  if (!GetControlFlowExitsForIndex(next_start - 1) &&
+      next_start < linear_ops.size()) {
+    return PcodeBlock(start_ind, std::move(ops),
+                      Exit{IntrainstructionIndex{next_start}});
+  }
+
   return PcodeBlock(start_ind, std::move(ops),
                     GetBlockExitsForIndex(next_start - 1));
 }

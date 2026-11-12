@@ -222,6 +222,28 @@ TEST(SPARC32Lifts, AnnulledBranchNotTaken) {
            {{"o1", uint32_t(7)}, {"pc", uint32_t(0x1008)}}, Accessors()));
 }
 
+// retl; movl %fcc0, 10, %o0 (delay slot): the conditional move skips to a
+// label inside the instruction, after which the return must still happen.
+TEST(SPARC32Lifts, ReturnWithConditionalMoveDone) {
+  RunSpec(Spec(0x1000, Bytes("\x81\xc3\xe0\x08\x91\x61\x20\x0a"),
+               Category::kCategoryFunctionReturn,
+               {{"fcc0", uint8_t(1)},
+                {"o0", uint32_t(3)},
+                {"o7", uint32_t(0x2000)},
+                {"pc", uint32_t(0x1000)}},
+               {{"o0", uint32_t(10)}, {"pc", uint32_t(0x2008)}}, Accessors()));
+}
+
+TEST(SPARC32Lifts, ReturnWithConditionalMoveSkipped) {
+  RunSpec(Spec(0x1000, Bytes("\x81\xc3\xe0\x08\x91\x61\x20\x0a"),
+               Category::kCategoryFunctionReturn,
+               {{"fcc0", uint8_t(2)},
+                {"o0", uint32_t(3)},
+                {"o7", uint32_t(0x2000)},
+                {"pc", uint32_t(0x1000)}},
+               {{"o0", uint32_t(3)}, {"pc", uint32_t(0x2008)}}, Accessors()));
+}
+
 // fcmps %fcc0, %f1, %f3: 1.0 < 2.0
 TEST(SPARC32Lifts, FloatCompareSetsFcc0) {
   RunSpec(Spec(0x1000, Bytes("\x81\xa8\x4a\x23"), Category::kCategoryNormal,
