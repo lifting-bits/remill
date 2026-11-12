@@ -1,0 +1,48 @@
+From cd9f275c3b492698887b94b62c0c783e28081288 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 12 Nov 2026 01:26:25 +0000
+Subject: [PATCH] SPARC: sdiv and sdivcc divide by the signed low word of the
+ operand
+
+Their divisor was the operand ANDed with 0xffffffff, i.e. zero-extended:
+on SPARC64, 7 / -2 divided by 4294967294 and gave 0 instead of -3. (On
+32-bit SPARC the operand is already one word, and the AND had no effect.)
+---
+ .../Processors/Sparc/data/languages/SparcV9.sinc   | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/Ghidra/Processors/Sparc/data/languages/SparcV9.sinc b/Ghidra/Processors/Sparc/data/languages/SparcV9.sinc
+index b78bff554c..a642f89b6b 100644
+--- a/Ghidra/Processors/Sparc/data/languages/SparcV9.sinc
++++ b/Ghidra/Processors/Sparc/data/languages/SparcV9.sinc
+@@ -897,7 +897,12 @@ callreloff: reloc  is disp30 [reloc=inst_start+4*disp30;] { export *:$(SIZE) rel
+ :sdiv    RS1,regorimm,RD             is op=2 & RD & op3=0x0f & RS1 & regorimm 
+ {
+ 	numerator:$(SIZE)= (Y << 32) + (RS1 & 0xffffffff);
+-	denom:$(SIZE) = regorimm & 0xffffffff;
++# The divisor is the signed low word of the operand.
++@if SIZE=="8"
++	denom:$(SIZE) = sext(regorimm:4);
++@else
++	denom:$(SIZE) = regorimm;
++@endif
+ 	RD = numerator s/ denom;
+ }                                         					 
+ 
+@@ -915,7 +920,12 @@ callreloff: reloc  is disp30 [reloc=inst_start+4*disp30;] { export *:$(SIZE) rel
+ :sdivcc    RS1,regorimm,RD           is op=2 & RD & op3=0x1f & RS1 & regorimm 
+ {
+ 	numerator:$(SIZE)= (Y << 32) + (RS1 & 0xffffffff);
+-	denom:$(SIZE) = regorimm & 0xffffffff;
++# The divisor is the signed low word of the operand.
++@if SIZE=="8"
++	denom:$(SIZE) = sext(regorimm:4);
++@else
++	denom:$(SIZE) = regorimm;
++@endif
+ 	RD = numerator s/ denom;
+ 	zeroflags(RD);
+ 	i_vf = (RD s>= 0x80000000) || (RD s<= -0x7ffffffff);
+-- 
+2.34.1
+

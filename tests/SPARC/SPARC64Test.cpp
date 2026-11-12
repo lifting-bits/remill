@@ -44,6 +44,9 @@ const auto &Accessors() {
         return &st.gpr[i].qword;
       };
     }
+    res["y"] = [](SPARC64State &st) -> RegisterValueRef {
+      return &st.asr[1].qword;
+    };
     res["pc"] = [](SPARC64State &st) -> RegisterValueRef {
       return &st.pc.qword;
     };
@@ -230,6 +233,28 @@ TEST(SPARC64Lifts, ReturnWithConditionalMoveSkipped) {
                 {"o7", uint64_t(0x2000)},
                 {"pc", uint64_t(0x1000)}},
                {{"o0", uint64_t(3)}, {"pc", uint64_t(0x2008)}}, Accessors()));
+}
+
+// sdiv %o0, %o1, %o0 divides `%y:%o0` by the signed low word of %o1:
+// 7 / -2 and -7 / 2 are -3.
+TEST(SPARC64Lifts, SignedDivideByNegative) {
+  RunSpec(Spec(0x1000, Bytes("\x90\x7a\x00\x09"), Category::kCategoryNormal,
+               {{"o0", uint64_t(7)},
+                {"o1", uint64_t(0xfffffffffffffffe)},
+                {"y", uint64_t(0)},
+                {"pc", uint64_t(0x1000)}},
+               {{"o0", uint64_t(0xfffffffffffffffd)}, {"pc", uint64_t(0x1004)}},
+               Accessors()));
+}
+
+TEST(SPARC64Lifts, SignedDivideNegative) {
+  RunSpec(Spec(0x1000, Bytes("\x90\x7a\x00\x09"), Category::kCategoryNormal,
+               {{"o0", uint64_t(0xfffffffffffffff9)},
+                {"o1", uint64_t(2)},
+                {"y", uint64_t(0xffffffffffffffff)},
+                {"pc", uint64_t(0x1000)}},
+               {{"o0", uint64_t(0xfffffffffffffffd)}, {"pc", uint64_t(0x1004)}},
+               Accessors()));
 }
 
 // fcmps %fcc0, %f1, %f3: 1.0 < 2.0
