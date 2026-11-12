@@ -12,34 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(remill_arch_sparc32 STATIC
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Definitions.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/HyperCall.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Intrinsics.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Operators.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Runtime.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/State.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/Runtime/Types.h"
-
-  "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC32/Runtime/State.h"
-  "${REMILL_INCLUDE_DIR}/remill/Arch/SPARC32/Runtime/Types.h"
-
-  Arch.cpp
-  Decode.h
-  Extract.cpp
-)
-
-if(${REMILL_BUILD_SPARC32_RUNTIME})
-  add_subdirectory(Runtime)
-endif()
-
-target_link_libraries(remill_arch_sparc32 PUBLIC
-  remill_settings
-)
-
-if(REMILL_ENABLE_INSTALL_TARGET)
-  install(
-    TARGETS remill_arch_sparc32
-    EXPORT remillTargets
-  )
-endif()
+# SPARC32 is lifted with Sleigh (see lib/Arch/Sleigh/SPARC32Arch.cpp). This
+# directory only builds its runtime: the semantics modules `sparc32.bc` and
+# `sparc32_sleigh.bc`, which provide the `State` type and intrinsics.
+add_subdirectory(Runtime)

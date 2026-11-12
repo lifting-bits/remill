@@ -55,8 +55,10 @@ static CoarseEffect EffectFromDirectControlFlowOp(const RemillPcodeOp &op,
                                       : CoarseEffect::kAbnormal;
 }
 
+// `index` is the index of `op` in the instruction's `num_ops` p-code ops.
 static std::optional<CoarseFlow>
-CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
+CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc,
+                            size_t index, size_t num_ops) {
   if (op.op == CPUI_CALL || op.op == CPUI_CALLIND || op.op == CPUI_BRANCHIND ||
       op.op == CPUI_RETURN) {
     return {{CoarseEffect::kAbnormal, false}};
@@ -68,6 +70,12 @@ CoarseFlowFromControlFlowOp(const RemillPcodeOp &op, uint64_t next_pc) {
 
   auto is_conditional = op.op == CPUI_CBRANCH;
   if (isVarnodeInConstantSpace(op.vars[0])) {
+
+    // A branch to the end of the p-code leaves the instruction: it falls
+    // through to the next instruction.
+    if (index + op.vars[0].offset == num_ops) {
+      return {{CoarseEffect::kNormal, is_conditional}};
+    }
     return {{CoarseEffect::kIntraInstruction, is_conditional}};
   }
 
@@ -81,7 +89,7 @@ CoarseFlows(const std::vector<RemillPcodeOp> &ops, uint64_t next_pc) {
   size_t ind = 0;
   for (auto op : ops) {
     if (ControlFlowStructureAnalysis::isControlFlowPcodeOp(op.op)) {
-      auto cc = CoarseFlowFromControlFlowOp(op, next_pc);
+      auto cc = CoarseFlowFromControlFlowOp(op, next_pc, ind, ops.size());
       if (!cc) {
         return std::nullopt;
       }
@@ -426,11 +434,61 @@ After we find coarse categories and the flows follow these patterns, we determin
 Finally we pass these coarse flows to a final categorizer to attempt to print these into a flow type
 */
 
+// Returns `true` if an intra-instruction branch before op `index` can skip
+// over it, i.e. if op `index` does not execute on every path through the ops.
+static bool CanBeSkipped(const std::vector<RemillPcodeOp> &ops, size_t index) {
+  for (size_t i = 0; i < index; ++i) {
+    const auto &op = ops[i];
+    if ((op.op == CPUI_BRANCH || op.op == CPUI_CBRANCH) &&
+        isVarnodeInConstantSpace(op.vars[0]) && i + op.vars[0].offset > index) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// The p-code CFG sends `CALL`/`CALLIND` straight to the instruction exit (see
+// `PcodeCFGBuilder`), so the ops after the first call never execute unless an
+// intra-instruction branch targets them. Some specifications put code there
+// that models what happens once the callee returns, e.g. SPARC's `call`:
+//
+//    o7 = inst_start; didrestore = 0; delayslot(1); call target;
+//    if (didrestore == 0) goto inst_next; return [o7];
+//
+// Returns the ops up to and including the first call when that is the case.
+static std::vector<RemillPcodeOp>
+DropOpsAfterFirstCall(const std::vector<RemillPcodeOp> &ops) {
+  auto is_call = [](const RemillPcodeOp &op) {
+    return op.op == CPUI_CALL || op.op == CPUI_CALLIND;
+  };
+  const auto first_call = std::find_if(ops.begin(), ops.end(), is_call);
+  if (first_call == ops.end()) {
+    return ops;
+  }
+
+  const auto call_index = static_cast<size_t>(first_call - ops.begin());
+  if (CanBeSkipped(ops, call_index)) {
+    return ops;
+  }
+
+  return {ops.begin(), first_call + 1};
+}
+
+static bool HasContextUpdates(const std::vector<RemillPcodeOp> &ops,
+                              ContextUpdater &context_updater) {
+  return std::any_of(
+      ops.begin(), ops.end(), [&context_updater](const RemillPcodeOp &op) {
+        return op.outvar.has_value() &&
+               context_updater.GetRemillReg(*op.outvar).has_value();
+      });
+}
+
 ControlFlowStructureAnalysis::SleighDecodingResult
 ControlFlowStructureAnalysis::ComputeCategory(
-    const std::vector<RemillPcodeOp> &ops, uint64_t fallthrough_addr,
+    const std::vector<RemillPcodeOp> &all_ops, uint64_t fallthrough_addr,
     DecodingContext entry_context) {
 
+  const auto ops = DropOpsAfterFirstCall(all_ops);
   auto maybe_cc = CoarseFlows(ops, fallthrough_addr);
   if (!maybe_cc) {
     DLOG(ERROR) << "No coarse flow found";
@@ -438,24 +496,46 @@ ControlFlowStructureAnalysis::ComputeCategory(
   }
 
   auto cc = std::move(*maybe_cc);
+  auto context_updater = BuildContextUpdater(entry_context);
 
   auto maybe_ccategory = CoarseCategoryFromFlows(cc);
+
+  // Intra-instruction branches only route control within the instruction, so
+  // when they are mixed with exits (e.g. SPARC's `ret` with `restore` in its
+  // delay slot, which skips the register window spill), categorize the
+  // instruction by its exits. The decoding contexts of the exits are computed
+  // linearly, so this requires that no context register is written.
+  if (!maybe_ccategory && !HasContextUpdates(ops, context_updater)) {
+    for (auto it = cc.begin(); it != cc.end();) {
+      if (it->second.eff == CoarseEffect::kIntraInstruction) {
+        it = cc.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    if (!cc.empty()) {
+      maybe_ccategory = CoarseCategoryFromFlows(cc);
+    }
+
+    // The branch taken variable is set by the conditional exit, so it must
+    // execute on every path through the instruction.
+    if (maybe_ccategory == CoarseCategory::kCatConditionalAbnormal &&
+        CanBeSkipped(ops, cc.begin()->first)) {
+      DLOG(ERROR) << "Conditional exit can be skipped by an intra-instruction "
+                  << "branch";
+      maybe_ccategory = std::nullopt;
+    }
+  }
+
   if (!maybe_ccategory) {
     DLOG(ERROR) << "No coarse category found";
     return std::nullopt;
   }
-  auto context_updater = BuildContextUpdater(entry_context);
 
   if (*maybe_ccategory == CoarseCategory::kCatNormalWithIntraInstructionFlow) {
     // our control flow analysis for decoding contexts doesnt handle intraprocedural control flow,
     // so if we have a normal instruction with no decoding context updates then we are fine otherwise bail
-    auto no_context_updates = std::all_of(
-        ops.begin(), ops.end(), [&context_updater](const RemillPcodeOp &op) {
-          return !op.outvar.has_value() ||
-                 !context_updater.GetRemillReg(*op.outvar).has_value();
-        });
-
-    if (no_context_updates) {
+    if (!HasContextUpdates(ops, context_updater)) {
       Instruction::NormalInsn norm_insn(
           (Instruction::FallthroughFlow(entry_context)));
       Instruction::InstructionFlowCategory ifc = norm_insn;

@@ -269,6 +269,71 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
   };
 
 
+  // A register-space varnode that is part of a larger register, such as the
+  // low 32 bits of a 64-bit SPARC V9 register (which Sleigh accesses as
+  // `(register, o0 + 4, 4)`). It is accessed through the value of the whole
+  // register, so the result does not depend on the byte order of the state
+  // structure in memory.
+  class RegisterPieceValue : public Parameter {
+   private:
+    ParamPtr whole;
+    llvm::IntegerType *whole_type;
+    llvm::IntegerType *piece_type;
+    unsigned shift;
+
+    std::optional<llvm::Value *> LiftAsInParamNoConvert(llvm::IRBuilder<> &bldr,
+                                                        llvm::Type *) override {
+      auto val = whole->LiftAsInParam(bldr, whole_type);
+      if (!val) {
+        return std::nullopt;
+      }
+      return bldr.CreateTrunc(bldr.CreateLShr(*val, shift), piece_type);
+    }
+
+    LiftStatus StoreIntoParam(llvm::IRBuilder<> &bldr,
+                              llvm::Value *inner_lifted) override {
+      auto old_val = whole->LiftAsInParam(bldr, whole_type);
+      if (!old_val) {
+        return LiftStatus::kLiftedUnsupportedInstruction;
+      }
+      if (!inner_lifted->getType()->isIntegerTy()) {
+        inner_lifted = bldr.CreateBitCast(inner_lifted, piece_type);
+      }
+      auto piece = bldr.CreateZExt(
+          bldr.CreateZExtOrTrunc(inner_lifted, piece_type), whole_type);
+      auto mask = llvm::APInt::getBitsSet(whole_type->getBitWidth(), shift,
+                                          shift + piece_type->getBitWidth());
+      auto new_val = bldr.CreateOr(
+          bldr.CreateAnd(*old_val, llvm::ConstantInt::get(whole_type, ~mask)),
+          bldr.CreateShl(piece, shift));
+      return whole->StoreIntoParam(bldr, new_val);
+    }
+
+   public:
+    RegisterPieceValue(ParamPtr whole, llvm::IntegerType *whole_type,
+                       llvm::IntegerType *piece_type, unsigned shift)
+        : Parameter(piece_type, true),
+          whole(std::move(whole)),
+          whole_type(whole_type),
+          piece_type(piece_type),
+          shift(shift) {}
+
+    // `piece` is a part of the register varnode `reg`.
+    static ParamPtr Create(ParamPtr whole, llvm::LLVMContext &context,
+                           const VarnodeData &reg, const VarnodeData &piece) {
+      const auto byte_offset = piece.offset - reg.offset;
+      const auto shift_bytes = reg.space->isBigEndian()
+                                   ? reg.size - byte_offset - piece.size
+                                   : byte_offset;
+      return std::make_shared<RegisterPieceValue>(
+          std::move(whole), llvm::IntegerType::get(context, reg.size * 8),
+          llvm::IntegerType::get(context, piece.size * 8),
+          static_cast<unsigned>(shift_bytes * 8));
+    }
+
+    virtual ~RegisterPieceValue() {}
+  };
+
   class Memory : public Parameter {
    public:
     virtual ~Memory() {}
@@ -596,11 +661,25 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
 
       return this->CreateMemoryAddress(constant_offset, vnode);
     } else if (space_name == "register") {
-      auto reg_name = this->insn_lifter_parent.GetEngine().getRegisterName(
-          vnode.space, vnode.offset, vnode.size);
+      const auto &engine = this->insn_lifter_parent.GetEngine();
+      auto reg_name =
+          engine.getRegisterName(vnode.space, vnode.offset, vnode.size);
 
       DLOG(INFO) << "Looking for reg name " << reg_name << " from offset "
                  << vnode.offset;
+
+      // `getRegisterName` names the smallest register that contains the
+      // varnode. If the varnode is only a part of it, then access that part
+      // through the value of the whole register.
+      if (!reg_name.empty()) {
+        const auto &reg = engine.getRegister(reg_name);
+        if (reg.offset != vnode.offset || reg.size != vnode.size) {
+          return RegisterPieceValue::Create(
+              this->LiftNormalRegisterOrCreateUnique(bldr, reg_name, reg),
+              this->context, reg, vnode);
+        }
+      }
+
       return this->LiftNormalRegisterOrCreateUnique(bldr, reg_name, vnode);
     } else if (space_name == "const") {
 
@@ -1468,8 +1547,16 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
       return LiftStatus::kLiftedLifterError;
     }
 
-    auto should_branch = bldr.CreateZExtOrTrunc(
-        *maybe_should_branch, llvm::IntegerType::get(this->context, 8));
+    // An inverted variable is the condition of a branch to the fallthrough,
+    // so the instruction's branch is taken when it is false.
+    llvm::Value *is_true = bldr.CreateICmpNE(
+        *maybe_should_branch,
+        llvm::Constant::getNullValue((*maybe_should_branch)->getType()));
+    if (btaken_var.invert) {
+      is_true = bldr.CreateNot(is_true);
+    }
+    auto should_branch =
+        bldr.CreateZExt(is_true, llvm::IntegerType::get(this->context, 8));
     auto branch_taken_ref = this->GetBranchTakenRef();
     bldr.CreateStore(should_branch, branch_taken_ref);
     return LiftStatus::kLiftedInstruction;
@@ -1532,7 +1619,9 @@ class SleighLifter::PcodeToLLVMEmitIntoBlock {
     // we have a problem with block terminators where a cbranch <relative> -> fallthrough, need to either exit to the exit block
     // or transfer to a block. So really our cfg needs to tell us how to terminate a block
     // either exit (means real control flow), to block (fake control flow)
-    size_t index = 0;
+    // The branch taken variable is identified by the index of its op among
+    // all of the instruction's p-code ops.
+    size_t index = blk.base_index;
     for (auto pc : blk.ops) {
       this->LiftBtakenIfReached(bldr, pc.op, index);
       this->LiftPcodeOp(bldr, pc.op, pc.outvar, pc.vars.data(), pc.vars.size());

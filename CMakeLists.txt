@@ -133,7 +133,6 @@ endif()
 # Configuration options for semantics
 #
 option(REMILL_BARRIER_AS_NOP "Remove compiler barriers (inline assembly) in semantics" OFF)
-option(REMILL_BUILD_SPARC32_RUNTIME "Build the Runtime for SPARC32. Turn this off if you have include errors with <bits/c++config.h>, or read the README for a fix" ON)
 
 #
 # target settings
@@ -350,6 +349,11 @@ if(REMILL_ENABLE_TESTING)
   if(REMILL_ENABLE_TESTING_SLEIGH_PPC)
     message(STATUS "ppc tests enabled")
     add_subdirectory(tests/PPC)
+  endif()
+
+  if(REMILL_ENABLE_TESTING_SLEIGH_SPARC)
+    message(STATUS "sparc tests enabled")
+    add_subdirectory(tests/SPARC)
   endif()
 
   if(REMILL_ENABLE_TESTING_X86)
