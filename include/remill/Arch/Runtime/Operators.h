@@ -1684,6 +1684,7 @@ MAKE_BUILTIN(Exp2,__builtin_exp2)
 MAKE_BUILTIN(Log2,__builtin_log2)
 
 MAKE_BUILTIN(FRoundUsingMode, __builtin_nearbyint);
+MAKE_BUILTIN(FRoundEven, __builtin_roundeven);
 MAKE_BUILTIN(FTruncTowardZero, __builtin_trunc);
 MAKE_BUILTIN(FRoundAwayFromZero, __builtin_round);
 MAKE_BUILTIN(FRoundToPositiveInfinity, __builtin_ceil);

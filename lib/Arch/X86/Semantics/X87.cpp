@@ -725,34 +725,37 @@ DEF_ISEL(FIDIVR_ST0_MEMmem16int) = FIDIVR<M16>;
 
 namespace {
 
+ALWAYS_INLINE static float80_t RoundUsingX87Control(const State &state,
+                                                  float80_t val) {
+  switch (state.x87.fxsave.cwd.rc) {
+    case kFPURoundDownNegInf: return FRoundToNegativeInfinity80(val);
+    case kFPURoundUpInf: return FRoundToPositiveInfinity80(val);
+    case kFPURoundToZero: return FTruncTowardZero80(val);
+    default: return FRoundEven80(val);
+  }
+}
+
 DEF_FPU_SEM(FBSTP, MBCD80W dst, RF80W src) {
   SetFPUIpOp();
   bcd80_t out_bcd = {};
 
   auto read = Read(src);
-  auto rounded = FRoundUsingMode(read);
+  auto rounded = RoundUsingX87Control(state, read);
   auto rounded_abs = FAbs(rounded);
 
-  // Any larger double aliases an integer out of 80-bit packed BCD range.
-  constexpr native_float80_t max_bcd80_float = 1e18 - 65;
-  auto out_of_range = rounded_abs > max_bcd80_float;
+  // An exclusive bound also works on hosts approximating float80 with double.
+  constexpr native_float80_t bcd_limit = 1000000000000000000ULL;
+  auto out_of_range = rounded_abs >= bcd_limit;
 
   if (out_of_range || IsNaN(read) || IsInfinite(read)) {
     state.sw.ie = 1;
-    state.sw.pe = 0;
+    state.sw.c1 = 0;
     (void) POP_X87_STACK();
     return WriteBCD80Indefinite(dst);
   }
 
-  // Was it rounded?
-  if (rounded != read) {
-    state.sw.pe = 1;
-
-    // Was it rounded up (towards infinity)?
-    if (read < rounded) {
-      state.sw.c1 = 1;
-    }
-  }
+  state.sw.pe |= static_cast<uint8_t>(rounded != read);
+  state.sw.c1 = static_cast<uint8_t>(rounded_abs > FAbs80(read));
 
   if (IsNegative(rounded)) {
     out_bcd.is_negative = true;
@@ -804,37 +807,30 @@ DEF_FPU_SEM(FSTPmem, T dst, RF80W src) {
   return FSTP(memory, state, dst, src, pc, fop);
 }
 
-template <typename C1, typename C2>
-DEF_HELPER(ConvertToInt, C1 cast, C2 convert, native_float80_t input)
-    ->decltype(cast(input)) {
-  auto rounded = FRoundUsingMode80(input);
-  auto casted = CheckedFloatUnaryOp(state, cast, rounded);
-  auto converted = convert(rounded);
-  auto back = static_cast<native_float80_t>(converted);
-
-  if (!state.sw.ie && !state.sw.pe) {
-    if (converted != casted || IsInfinite(input) || IsNaN(input)) {
-      state.sw.ie = 1;
-      state.sw.pe = 0;
-    } else {
-      if (back != rounded) {
-        state.sw.ie = static_cast<uint8_t>(FAbs80(back) < FAbs80(input));
-        state.sw.pe = 1 - state.sw.ie;
-      } else {
-        state.sw.pe = static_cast<uint8_t>(rounded != input);
-        state.sw.ie = 0;
-      }
-    }
+template <typename T>
+DEF_HELPER(ConvertToInt, float80_t input, bool truncate = false) -> T {
+  const native_float80_t rounded = truncate ? FTruncTowardZero80(input)
+                                           : RoundUsingX87Control(state, input);
+  // Check the rounded result before casting: out-of-range FP-to-int casts
+  // produce LLVM poison, not the architectural integer indefinite value.
+  constexpr auto minimum = std::numeric_limits<T>::min();
+  constexpr auto lower = static_cast<native_float80_t>(minimum);
+  constexpr auto upper = -lower;
+  state.sw.c1 = 0;
+  if (IsNaN(input) || IsInfinite(input) || rounded < lower || rounded >= upper) {
+    state.sw.ie = 1;
+    return minimum;
   }
-
-  return converted;
+  state.sw.pe |= static_cast<uint8_t>(rounded != input);
+  state.sw.c1 = static_cast<uint8_t>(FAbs80(rounded) > FAbs80(input));
+  return static_cast<T>(rounded);
 }
 
 DEF_FPU_SEM(FISTm16, M16W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int16<float80_t>, Float80ToInt16, Read(src));
+      ConvertToInt<int16_t>(memory, state, Read(src));
   Write(dst, Unsigned(res));
   return memory;
 }
@@ -842,7 +838,7 @@ DEF_FPU_SEM(FISTm16, M16W dst, RF80W src) {
 DEF_FPU_SEM(FISTm32, M32W dst, RF80W src) {
   SetFPUIpOp();
   auto res =
-      ConvertToInt(memory, state, Int32<float80_t>, Float80ToInt32, Read(src));
+      ConvertToInt<int32_t>(memory, state, Read(src));
   Write(dst, Unsigned(res));
   return memory;
 }
@@ -863,7 +859,7 @@ DEF_FPU_SEM(FISTPm64, M64W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      ConvertToInt(memory, state, Int64<float80_t>, Float80ToInt64, Read(src));
+      ConvertToInt<int64_t>(memory, state, Read(src));
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -904,38 +900,12 @@ DEF_ISEL(FINCSTP) = DoFINCSTP;
 // TODO(pag): According to XED: empty top of stack behavior differs from FSTP
 IF_32BIT(DEF_ISEL(FSTPNCE_X87_ST0) = FSTP<RF80W>;)
 
-template <typename C1, typename C2>
-DEF_HELPER(TruncateToInt, C1 cast, C2 convert, float80_t input)
-    ->decltype(cast(input)) {
-  auto truncated = FTruncTowardZero80(input);
-  auto casted = CheckedFloatUnaryOp(state, cast, truncated);
-  auto converted = convert(truncated);
-  auto back = static_cast<float80_t>(converted);
-
-  if (!state.sw.ie && !state.sw.pe) {
-    if (converted != casted || IsInfinite(input) || IsNaN(input)) {
-      state.sw.ie = 1;
-      state.sw.pe = 0;
-    } else {
-      if (back != truncated) {
-        state.sw.ie = static_cast<uint8_t>(FAbs80(back) < FAbs80(input));
-        state.sw.pe = 1 - state.sw.ie;
-      } else {
-        state.sw.pe = static_cast<uint8_t>(truncated != input);
-        state.sw.ie = 0;
-      }
-    }
-  }
-
-  return converted;
-}
-
 namespace {
 DEF_FPU_SEM(FISTTPm16, M16W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int16<float80_t>, Float80ToInt16, Read(src));
+      ConvertToInt<int16_t>(memory, state, Read(src), true);
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -945,7 +915,7 @@ DEF_FPU_SEM(FISTTPm32, M32W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int32<float80_t>, Float80ToInt32, Read(src));
+      ConvertToInt<int32_t>(memory, state, Read(src), true);
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -955,7 +925,7 @@ DEF_FPU_SEM(FISTTPm64, M64W dst, RF80W src) {
   SetFPUIpOp();
   SetFPUDp(dst);
   auto res =
-      TruncateToInt(memory, state, Int64<float80_t>, Float80ToInt64, Read(src));
+      ConvertToInt<int64_t>(memory, state, Read(src), true);
   Write(dst, Unsigned(res));
   (void) POP_X87_STACK();
   return memory;
@@ -1355,14 +1325,14 @@ namespace {
 DEF_FPU_SEM(DoFRNDINT) {
   SetFPUIpOp();
   auto st0 = Read(X87_ST0);
-  auto rounded = FRoundUsingMode(st0);
+  auto rounded = RoundUsingX87Control(state, st0);
   state.sw.ie |= IsSignalingNaN(st0);
   state.sw.de |= IsDenormal(st0);
   if (!IsNaN(rounded)) {
-    state.sw.pe = st0 != rounded;
+    state.sw.pe |= static_cast<uint8_t>(st0 != rounded);
   }
 
-  //state.sw.c1 = __builtin_isgreater(FAbs(rounded), FAbs(st0)) ? 1_u8 : 0_u8;
+  state.sw.c1 = static_cast<uint8_t>(FAbs80(rounded) > FAbs80(st0));
   Write(X87_ST0, rounded);
   return memory;
 }
