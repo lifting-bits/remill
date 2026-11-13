@@ -83,11 +83,11 @@ DEF_ISEL(CVTPI2PD_XMMpd_MMXq) = CVTPI2PD<V64>;
 namespace {
 
 template <typename S>
-DEF_SEM(CVTPI2PS, V128W dst, S src) {
-  auto src_vec = UReadV32(src);
+DEF_SEM(CVTPI2PS, V128W dst, V128 src1, S src2) {
+  auto src_vec = UReadV32(src2);
   auto a = Float32(SExtractV32(src_vec, 0));
   auto b = Float32(SExtractV32(src_vec, 1));
-  FWriteV32(dst, FInsertV32(FInsertV32(FReadV32(dst), 0, a), 1, b));
+  FWriteV32(dst, FInsertV32(FInsertV32(FReadV32(src1), 0, a), 1, b));
   return memory;
 }
 
