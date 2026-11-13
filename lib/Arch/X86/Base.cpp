@@ -431,6 +431,9 @@ void X86ArchBase::PopulateRegisterTable(void) const {
     SUB_REG(state, XMM31, vec[31].xmm, v128, YMM31);
   }
 
+  REG(state, X87_CW, x87.fxsave.cwd.flat, u16);
+  REG(state, MXCSR, x87.fxsave.mxcsr.flat, u32);
+
   REG(state, ST0, st.elems[0].val, f80);
   REG(state, ST1, st.elems[1].val, f80);
   REG(state, ST2, st.elems[2].val, f80);
