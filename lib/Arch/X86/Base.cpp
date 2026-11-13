@@ -520,6 +520,9 @@ void X86ArchBase::PopulateRegisterTable(void) const {
 // specific variables.
 void X86ArchBase::FinishLiftedFunctionInitialization(
     llvm::Module *module, llvm::Function *bb_func) const {
+  // Match the strict-FP semantics. LLVM 17/18 refuse to inline strict callees
+  // into non-strict callers, leaving internal semantics calls in the trace.
+  bb_func->addFnAttr(llvm::Attribute::StrictFP);
   const auto &dl = module->getDataLayout();
   CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
       << "Mismatch between size of State type for x86/amd64 and what is in "
