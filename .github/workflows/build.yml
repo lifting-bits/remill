@@ -46,7 +46,7 @@ jobs:
           apt update
           apt install --no-install-recommends -y \
             llvm-${{ matrix.llvm }}-dev
-          echo "LLVM_PREFIX=$$(llvm-config-${{ matrix.llvm }} --prefix)" >> $GITHUB_ENV
+          echo "LLVM_PREFIX=$(llvm-config-${{ matrix.llvm }} --prefix)" >> $GITHUB_ENV
           echo "CC=clang-${{ matrix.llvm }}" >> $GITHUB_ENV
           echo "CXX=clang++-${{ matrix.llvm }}" >> $GITHUB_ENV
 
@@ -128,7 +128,9 @@ jobs:
   macos:
     # Skip building pull requests from the same repository
     if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
-    runs-on: macos-latest
+    # Keep arm64 coverage on the supported macOS 15 image; the macOS 26
+    # pool behind macos-latest is currently failing runner acquisition.
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
