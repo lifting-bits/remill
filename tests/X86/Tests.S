@@ -596,6 +596,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FNINIT.S"
 #include "tests/X86/X87/CONTROL.S"
 #include "tests/X86/X87/ROUNDING.S"
+#include "tests/X86/X87/COMPARE.S"
 #include "tests/X86/MMX/EMMS.S"
 
 #include "tests/X86/FMA/VFMADDSD.S"

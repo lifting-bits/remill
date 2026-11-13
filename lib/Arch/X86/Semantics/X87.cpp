@@ -1013,7 +1013,6 @@ DEF_FPU_SEM(DoFXAM) {
 
 DEF_HELPER(OrderedCompare, native_float80_t src1, native_float80_t src2)->void {
   state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
-  state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
     state.sw.c0 = 1;
@@ -1039,13 +1038,13 @@ DEF_HELPER(OrderedCompare, native_float80_t src1, native_float80_t src2)->void {
 
 DEF_HELPER(UnorderedCompare, native_float80_t src1, native_float80_t src2)->void {
   state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
-  state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
     state.sw.c0 = 1;
     state.sw.c2 = 1;
     state.sw.c3 = 1;
-    state.sw.ie = IsSignalingNaN(src1) | IsSignalingNaN(src1);
+    // Select the ext80 overload, not the generic native-type fallback.
+    state.sw.ie |= IsSignalingNaN(Float80(src1)) | IsSignalingNaN(Float80(src2));
   } else if (__builtin_isless(src1, src2)) {
     state.sw.c0 = 1;
     state.sw.c2 = 0;
@@ -1161,13 +1160,13 @@ DEF_FPU_SEM(DoFCOMPP) {
 
 DEF_HELPER(UnorderedCompareEflags, native_float80_t src1, native_float80_t src2)->void {
   state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
-  state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
     FLAG_CF = 1;
     FLAG_PF = 1;
     FLAG_ZF = 1;
-    state.sw.ie = IsSignalingNaN(src1) | IsSignalingNaN(src1);
+    // Select the ext80 overload, not the generic native-type fallback.
+    state.sw.ie |= IsSignalingNaN(Float80(src1)) | IsSignalingNaN(Float80(src2));
 
   } else if (__builtin_isless(src1, src2)) {
     FLAG_CF = 1;
@@ -1188,7 +1187,6 @@ DEF_HELPER(UnorderedCompareEflags, native_float80_t src1, native_float80_t src2)
 
 DEF_HELPER(OrderedCompareEflags, native_float80_t src1, native_float80_t src2)->void {
   state.sw.de |= IsDenormal(src1) | IsDenormal(src2);
-  state.sw.ie = 0;
 
   if (__builtin_isunordered(src1, src2)) {
     FLAG_CF = 1;
