@@ -602,6 +602,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/FMA/VFMADDSD.S"
 #include "tests/X86/FMA/VFMSUBSD.S"
 
+#include "tests/X86/BRANCH/STACK.S"
 #include "tests/X86/BRANCH/CALL.S"
 #include "tests/X86/BRANCH/JAE.S"
 #include "tests/X86/BRANCH/JE.S"
