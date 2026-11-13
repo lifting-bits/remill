@@ -23,6 +23,9 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <ucontext.h>
+#ifdef __linux__
+#  include <sched.h>
+#endif
 
 #include <cfenv>
 #include <cmath>
@@ -1442,6 +1445,23 @@ static void SetupSignals(void) {
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
+
+#ifdef __linux__
+  // CPUID topology leaves report the executing CPU. Keep the native and
+  // lifted executions on the same allowed CPU instead of masking their IDs.
+  cpu_set_t allowed, selected;
+  CPU_ZERO(&allowed);
+  PCHECK(sched_getaffinity(0, sizeof(allowed), &allowed) == 0);
+  CPU_ZERO(&selected);
+  for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+    if (CPU_ISSET(cpu, &allowed)) {
+      CPU_SET(cpu, &selected);
+      break;
+    }
+  }
+  CHECK_EQ(CPU_COUNT(&selected), 1);
+  PCHECK(sched_setaffinity(0, sizeof(selected), &selected) == 0);
+#endif
 
   InitFlags();
 
