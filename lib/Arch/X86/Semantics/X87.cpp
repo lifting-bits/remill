@@ -1297,9 +1297,6 @@ DEF_SEM(FNSTSW, D dst) {
 
 DEF_SEM(FNSTCW, M16W dst) {
   auto &cw = state.x87.fxsave.cwd;
-  cw.pc = kPrecisionSingle;
-
-  cw.rc = (FPURoundingControl) __remill_fpu_get_rounding();
   Write(dst, cw.flat);
   return memory;
 }
@@ -1308,7 +1305,6 @@ DEF_SEM(FLDCW, M16 cwd) {
   auto &cw = state.x87.fxsave.cwd;
   // Bit 6 is fixed at one; reserved bits 7 and 13-15 are fixed at zero.
   cw.flat = (Read(cwd) & 0x1f3f) | 0x0040;
-  cw.pc = kPrecisionSingle;
   __remill_fpu_set_rounding(cw.rc);
   return memory;
 }
