@@ -469,12 +469,6 @@ Memory *__remill_async_hyper_call(State &state, addr_t, Memory *memory) {
   }
 }
 
-Memory *__remill_sync_hyper_call(State &, Memory *, SyncHyperCall::Name call) {
-  ADD_FAILURE() << "Instruction requires external emulation: "
-                << static_cast<unsigned>(call);
-  siglongjmp(gJmpBuf, 1);
-}
-
 uint8_t __remill_undefined_8(void) {
   return 0;
 }
