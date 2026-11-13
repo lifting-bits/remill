@@ -15,6 +15,7 @@
  */
 
 #include "remill/Arch/Assembly.S"
+#include "tests/X86/Test.h"
 
 #ifndef ADDRESS_SIZE_BITS
 # define ADDRESS_SIZE_BITS 64
@@ -75,6 +76,16 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     TEXT_SECTION ; \
     3: \
     .cfi_startproc ;
+
+/* Opt-in checks run before the legacy comparison normalizes FPU fields.
+ * These cases supply their flag policy here, not through TEST_IGNORE_FLAGS. */
+#define TEST_BEGIN_FPU(instr_name, num_args, status_mask, checks) \
+    TEST_BEGIN(instr_name, num_args) \
+    .section "__x86_test_table", "aw" ; \
+    .quad 0 ; \
+    .quad status_mask ; \
+    .quad checks ; \
+    .text ;
 
 /* Note:    The test end address is placed *before* the `RET` so that we can
  *          make sure that the end of a test marker is actually
@@ -165,6 +176,8 @@ SYMBOL(FUNC_NAME(instr_name, num_args)): ; \
     .extern SYMBOL(gTestEnd)
     .extern SYMBOL(gStackSaveSlot)
     .extern SYMBOL(gRflagsForTest)
+    .extern SYMBOL(gFpuInputEnabled)
+    .extern SYMBOL(gFpuInput)
 
     CONST_SECTION
     .align 16
@@ -239,6 +252,11 @@ SYMBOL(DoInvokeTestCase):
     SET_VEC(6)
     SET_VEC(7)
 
+    /* Fixture setup is outside the instruction sequence being lifted. */
+    cmp DWORD PTR [RIP + SYMBOL(gFpuInputEnabled)], 0
+    je 1f
+    fxrstor64 [RIP + SYMBOL(gFpuInput)]
+1:
     /* Set the rflags to what we want them to be. */
     push QWORD PTR [RIP + SYMBOL(gRflagsForTest)]
     popfq
@@ -327,6 +345,7 @@ SYMBOL(__x86_test_table_begin):
 
 #include "tests/X86/ABI.S"
 #include "tests/X86/MMX/INPUTS.S"
+#include "tests/X86/X87/INPUTS.S"
 
 /* Change to `0` and put new `#include`s above when making new tests to speed
  * up compile and test times. */
@@ -497,6 +516,7 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/MMX/POR.S"
 
 #include "tests/X86/POP/POP.S"
+#include "tests/X86/POP/POPA.S"
 #include "tests/X86/POP/POPF.S"
 
 #include "tests/X86/PUSH/PUSH.S"
@@ -574,6 +594,9 @@ SYMBOL(__x86_test_table_begin):
 #include "tests/X86/X87/FXCH.S"
 #include "tests/X86/X87/MISC.S"
 #include "tests/X86/X87/FNINIT.S"
+#include "tests/X86/X87/CONTROL.S"
+#include "tests/X86/X87/ROUNDING.S"
+#include "tests/X86/MMX/EMMS.S"
 
 #include "tests/X86/FMA/VFMADDSD.S"
 #include "tests/X86/FMA/VFMSUBSD.S"

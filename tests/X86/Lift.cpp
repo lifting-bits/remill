@@ -140,6 +140,27 @@ extern "C" int main(int argc, char *argv[]) {
     module = remill::LoadArchSemantics(arch.get());
   }
 
+  if (arch->address_size == 32) {
+    remill::Instruction instruction;
+    CHECK(arch->DecodeInstruction(0x1000, std::string("\x66\x61", 2),
+                                  instruction, arch->CreateInitialContext()));
+    CHECK_EQ(instruction.function, "POPA_16");
+    CHECK(arch->DecodeInstruction(0x1000, std::string("\x61", 1),
+                                  instruction, arch->CreateInitialContext()));
+    CHECK_EQ(instruction.function, "POPAD_32");
+  }
+  // Scoped host rounding can conceal host-derived STMXCSR readback at runtime.
+  auto *isel = module->getNamedGlobal("ISEL_STMXCSR_MEMd");
+  CHECK(isel && isel->hasInitializer());
+  auto *semantic = llvm::dyn_cast<llvm::Function>(
+      isel->getInitializer()->stripPointerCasts());
+  CHECK(semantic);
+  for (auto &block : *semantic)
+    for (auto &instruction : block)
+      if (auto *call = llvm::dyn_cast<llvm::CallBase>(&instruction))
+        if (auto *callee = call->getCalledFunction())
+          CHECK_NE(callee->getName().str(), "__remill_fpu_get_rounding");
+
   remill::IntrinsicTable intrinsics(module.get());
   remill::TraceLifter trace_lifter(arch.get(), manager);
 
