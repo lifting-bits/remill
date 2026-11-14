@@ -792,6 +792,36 @@ static void DecodeOperand(Instruction &inst, const xed_decoded_inst_t *xedd,
   }
 }
 
+// A host has one active arithmetic rounding environment; x87 and SIMD have
+// independent guest controls. Select the instruction's domain, then restore
+// the caller's mode. Control-word loads/stores are not the source of truth for
+// the host mode at a later instruction (or after a guest context switch).
+class X86RoundingLifter final : public InstructionLifter {
+ public:
+  X86RoundingLifter(const Arch *arch, const IntrinsicTable *intrinsics, bool x87)
+      : InstructionLifter(arch, intrinsics), x87_(x87) {}
+
+  LiftStatus LiftIntoBlock(Instruction &inst, llvm::BasicBlock *block,
+                           llvm::Value *state, bool delayed = false) override {
+    auto module = block->getModule();
+    auto get = module->getFunction("__remill_fpu_get_rounding");
+    auto set = module->getFunction("__remill_fpu_set_rounding");
+    CHECK(get && set);
+    auto control = LoadRegValue(block, state, x87_ ? "X87_CW" : "MXCSR");
+    llvm::IRBuilder<> ir(block);
+    auto mode = ir.CreateZExtOrTrunc(control, ir.getInt32Ty());
+    mode = ir.CreateAnd(ir.CreateLShr(mode, x87_ ? 10 : 13), 3);
+    auto saved = ir.CreateCall(get);
+    ir.CreateCall(set, {mode});
+    auto status = InstructionLifter::LiftIntoBlock(inst, block, state, delayed);
+    llvm::IRBuilder<>(block).CreateCall(set, {saved});
+    return status;
+  }
+
+ private:
+  bool x87_;
+};
+
 class X86Arch final : public X86ArchBase, public DefaultContextAndLifter {
  public:
   X86Arch(llvm::LLVMContext *context_, OSName os_name_, ArchName arch_name_);
@@ -1232,7 +1262,13 @@ bool X86Arch::ArchDecodeInstruction(uint64_t address,
 
     if (set_ip_dp) {
       DecodeX87LastIpDp(inst);
+      inst.SetLifter(std::make_shared<X86RoundingLifter>(
+          this, GetInstrinsicTable(), true));
     }
+  } else if (xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_MXCSR) ||
+             xed_decoded_inst_get_attribute(xedd, XED_ATTRIBUTE_MXCSR_RD)) {
+    inst.SetLifter(std::make_shared<X86RoundingLifter>(
+        this, GetInstrinsicTable(), false));
   }
 
   if (xed_decoded_inst_is_xacquire(xedd) ||

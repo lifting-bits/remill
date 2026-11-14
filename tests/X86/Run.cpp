@@ -23,6 +23,9 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <ucontext.h>
+#ifdef __linux__
+#  include <sched.h>
+#endif
 
 #include <cfenv>
 #include <cmath>
@@ -107,6 +110,8 @@ std::aligned_storage<sizeof(State), alignof(State)>::type gNativeState;
 
 // The RFLAGS to run the test with.
 Flags gRflagsForTest = {};
+alignas(16) uint8_t gFpuInput[512] = {};
+uint32_t gFpuInputEnabled = 0;
 
 // Address of the native test to run. The `InvokeTestCase` function saves
 // the native program state but then needs a way to figure out where to go
@@ -782,41 +787,62 @@ static bool AreFCSAndFDSDeprecated(void) {
 // Convert some native state, stored in various ways, into the `State` structure
 // type.
 static void ImportX87State(State *state) {
-  auto &fpu = state->x87;
-
-  // Looks like MMX state.
-  if (kFPUAbridgedTagValid == fpu.fxsave.ftw.r0 &&
-      kFPUAbridgedTagValid == fpu.fxsave.ftw.r1 &&
-      kFPUAbridgedTagValid == fpu.fxsave.ftw.r2 &&
-      kFPUAbridgedTagValid == fpu.fxsave.ftw.r3 &&
-      kFPUAbridgedTagValid == fpu.fxsave.ftw.r4 &&
-      kFPUAbridgedTagValid == fpu.fxsave.ftw.r5 &&
-      kFPUAbridgedTagValid == fpu.fxsave.ftw.r6 &&
-      kFPUAbridgedTagValid == fpu.fxsave.ftw.r7) {
-
-    // Copy over the MMX data. A good guess for MMX data is that the
-    // value looks like it's infinity.
-    DLOG(INFO) << "Importing MMX state.";
-    for (size_t i = 0; i < 8; ++i) {
-      if (static_cast<uint16_t>(0xFFFFU) == fpu.fxsave.st[i].infinity) {
-        state->mmx.elems[i].val.qwords.elems[0] = fpu.fxsave.st[i].mmx;
-      }
-    }
-
-    // Looks like X87 state.
-  } else {
-    DLOG(INFO) << "Importing FPU state.";
-    for (size_t i = 0; i < 8; ++i) {
-      auto st = *reinterpret_cast<long double *>(&(fpu.fxsave.st[i].st));
-      state->st.elems[i].val = static_cast<float80_t>(st);
-    }
+  const auto &fpu = state->x87.fxsave;
+  // FXSAVE stores logical ST(i), while MMX names physical registers. Copy
+  // bytes, not long double values: importing an SNaN must not quiet it.
+  for (unsigned i = 0; i < 8; ++i) {
+    std::memcpy(state->st.elems[i].val.data, fpu.st[i].st.data, 10);
+    std::memcpy(&state->mmx.elems[(fpu.swd.top + i) & 7].val,
+                fpu.st[i].st.data, 8);
   }
+  state->sw = {};
+  state->sw.c0 = fpu.swd.c0;
+  state->sw.c1 = fpu.swd.c1;
+  state->sw.c2 = fpu.swd.c2;
+  state->sw.c3 = fpu.swd.c3;
+  state->sw.ie = fpu.swd.ie;
+  state->sw.de = fpu.swd.de;
+  state->sw.ze = fpu.swd.ze;
+  state->sw.oe = fpu.swd.oe;
+  state->sw.ue = fpu.swd.ue;
+  state->sw.pe = fpu.swd.pe;
+  state->sw.sf = fpu.swd.sf;
+}
 
-  state->sw.c0 = fpu.fxsave.swd.c0;
+static void PrepareFpuInput(uint64_t registers, uint64_t control,
+                            uint64_t mxcsr) {
+  State input{};
+  auto &fpu = input.x87.fxsave;
+  fpu.cwd.flat = static_cast<uint16_t>(control);
+  fpu.swd.flat = static_cast<uint16_t>(control >> 16);
+  fpu.ftw.flat = 0xff;
+  fpu.mxcsr.flat = static_cast<uint32_t>(mxcsr);
+  const auto *raw = reinterpret_cast<const uint8_t *>(registers);
+  for (unsigned i = 0; i < 8; ++i)
+    std::memcpy(fpu.st[i].st.data, raw + 16 * i, 10);
+  static_assert(sizeof(fpu) == sizeof(gFpuInput));
+  std::memcpy(gFpuInput, &fpu, sizeof(gFpuInput));
+}
 
-  //  state->sw.c1 = fpu.fxsave.swd.c1;  // currently we do not model C1
-  state->sw.c2 = fpu.fxsave.swd.c2;
-  state->sw.c3 = fpu.fxsave.swd.c3;
+static uint16_t X87Status(const State &state) {
+  auto sw = state.x87.fxsave.swd;
+  sw.c0 = state.sw.c0; sw.c1 = state.sw.c1;
+  sw.c2 = state.sw.c2; sw.c3 = state.sw.c3;
+  sw.ie = state.sw.ie; sw.de = state.sw.de; sw.ze = state.sw.ze;
+  sw.oe = state.sw.oe; sw.ue = state.sw.ue; sw.pe = state.sw.pe;
+  sw.sf = state.sw.sf;
+  return sw.flat;
+}
+
+static void ClearFpuBookkeeping(State &state) {
+  // Compare architectural flags, not padding or implementation-side tag caches.
+  decltype(state.sw) flags{};
+  flags.c0 = state.sw.c0; flags.c1 = state.sw.c1;
+  flags.c2 = state.sw.c2; flags.c3 = state.sw.c3;
+  flags.ie = state.sw.ie; flags.de = state.sw.de; flags.ze = state.sw.ze;
+  flags.oe = state.sw.oe; flags.ue = state.sw.ue; flags.pe = state.sw.pe;
+  flags.sf = state.sw.sf;
+  state.sw = flags;
 }
 
 // Resets the flags to sane defaults. This will disable the trap flag, the
@@ -896,6 +922,8 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   gTestToRun = info->test_begin;
   gStackSwitcher = &(gLiftedStack._redzone2[0]);
   gRflagsForTest = flags;
+  gFpuInputEnabled = (info->fpu_checks & TEST_FPU_INPUTS) != 0;
+  if (gFpuInputEnabled) PrepareFpuInput(arg1, arg2, arg3);
 
   ResetFlags();
 
@@ -911,8 +939,9 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
     native_test_faulted = true;
   }
 
-  ImportX87State(native_state);
   ResetFlags();
+  ImportX87State(native_state);
+  ImportX87State(lifted_state);
 
   // Set up the RIP correctly.
   lifted_state->gpr.rip.aword = static_cast<addr_t>(info->test_begin);
@@ -933,17 +962,51 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
     gInNativeTest = false;
     std::fesetenv(FE_DFL_ENV);
     FixGlibcMxcsrBug();
+    const int modes[] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
+    const auto host_mode = modes[gFpuInputEnabled ? ((arg3 >> 32) & 3) : 0];
+    std::fesetround(host_mode);
+    if (info->fpu_checks & TEST_HOST_FLAGS) std::feraiseexcept(FE_INVALID);
+    const auto host_flags = std::fetestexcept(FE_ALL_EXCEPT);
     (void) lifted_func(*lifted_state,
                        static_cast<addr_t>(lifted_state->gpr.rip.aword),
                        nullptr);
+    if (gFpuInputEnabled) EXPECT_EQ(std::fegetround(), host_mode);
+    if (info->fpu_checks & TEST_HOST_FLAGS)
+      EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), host_flags);
   } else {
     EXPECT_TRUE(native_test_faulted);
   }
 
   ResetFlags();
+  EXPECT_EQ(X87Status(*lifted_state) & info->fpu_status_mask,
+            native_state->x87.fxsave.swd.flat & info->fpu_status_mask) << desc;
+  if (info->fpu_checks & TEST_FPU_TAGS)
+    EXPECT_EQ(lifted_state->x87.fxsave.ftw.flat,
+              native_state->x87.fxsave.ftw.flat) << desc;
+  if (info->fpu_checks & TEST_FPU_MXCSR)
+    EXPECT_EQ(lifted_state->x87.fxsave.mxcsr.flat,
+              native_state->x87.fxsave.mxcsr.flat) << desc;
+  if (info->fpu_checks & TEST_FPU_RAW_REGISTERS) {
+    for (unsigned i = 0; i < 8; ++i)
+      EXPECT_EQ(std::memcmp(lifted_state->st.elems[i].val.data,
+                            native_state->st.elems[i].val.data, 10), 0)
+          << desc << " ST(" << i << ')';
+  }
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winvalid-offsetof"
+
+  // Legacy cases selected one register view using the abridged tags. Keep
+  // that policy without requiring the unused duplicate view to remain zero.
+  // Raw x87 cases already checked all ten architectural bytes above.
+  if (!(info->fpu_checks & TEST_FPU_RAW_REGISTERS) &&
+      native_state->x87.fxsave.ftw.flat == 0xff) {
+    std::memset(&lifted_state->st, 0, sizeof(lifted_state->st));
+    std::memset(&native_state->st, 0, sizeof(native_state->st));
+  } else {
+    std::memset(&lifted_state->mmx, 0, sizeof(lifted_state->mmx));
+    std::memset(&native_state->mmx, 0, sizeof(native_state->mmx));
+  }
 
   // We'll compare the `ST` and `XMM` regs via their other stored forms.
   auto kill_size = sizeof(lifted_state->x87) - offsetof(FPU, fxsave.st);
@@ -1048,15 +1111,16 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
   lifted_state->x87.fsave._rsvd1 = native_state->x87.fsave._rsvd1 = 0;
   lifted_state->x87.fsave._rsvd2 = native_state->x87.fsave._rsvd2 = 0;
   lifted_state->x87.fsave._rsvd3 = native_state->x87.fsave._rsvd3 = 0;
-  std::memset(lifted_state->sw._padding, 0, 4);
-  std::memset(native_state->sw._padding, 0, 4);
+  ClearFpuBookkeeping(*lifted_state);
+  ClearFpuBookkeeping(*native_state);
 
   // Compare the FPU states.
   for (auto i = 0U; i < 8U; ++i) {
     auto lifted_st = lifted_state->st.elems[i].val;
     auto native_st = native_state->st.elems[i].val;
     if (lifted_st != native_st) {
-      if (std::abs(lifted_st - native_st) <= 1e-14) {
+      if (!(info->fpu_checks & TEST_FPU_RAW_REGISTERS) &&
+          std::abs(lifted_st - native_st) <= 1e-14) {
         lifted_state->st.elems[i].val = native_st;  // Hide the inconsistency.
       }
     }
@@ -1211,6 +1275,9 @@ static void RunWithFlags(const test::TestInfo *info, Flags flags,
 
 TEST_P(InstrTest, SemanticsMatchNative) {
   auto info = GetParam();
+  const auto stack_addr = reinterpret_cast<uintptr_t>(&gLiftedStack.bytes[0]);
+  if (static_cast<uintptr_t>(static_cast<addr_t>(stack_addr)) != stack_addr)
+    GTEST_SKIP() << "32-bit guest requires the test stack below 4 GiB";
   for (auto args = info->args_begin; args < info->args_end;
        args += info->num_args) {
     std::stringstream ss;
@@ -1220,7 +1287,7 @@ TEST_P(InstrTest, SemanticsMatchNative) {
       if (2 <= info->num_args) {
         ss << " ARG2=0x" << std::hex << args[1];
         if (3 <= info->num_args) {
-          ss << " ARG3=0x" << std::hex << args[3];
+          ss << " ARG3=0x" << std::hex << args[2];
         }
       }
     }
@@ -1243,9 +1310,11 @@ TEST_P(InstrTest, SemanticsMatchNative) {
     static_assert(sizeof(EFLAGS) == 4, "Invalid packing of `union EFLAGS`.");
 
     // Go through all possible flag combinations.
-    for (uint32_t i = 0U; i <= 0x7FU; ++i) {
+    const uint32_t last_flags = (info->fpu_checks & TEST_SINGLE_FLAGS) ? 0 :
+                               (info->fpu_checks & TEST_TWO_FLAGS) ? 1 : 0x7f;
+    for (uint32_t i = 0U; i <= last_flags; ++i) {
       EFLAGS eflags;
-      eflags.flat = i;
+      eflags.flat = (info->fpu_checks & TEST_TWO_FLAGS) && i ? 0x7f : i;
 
       std::stringstream ss2;
       ss2 << desc << " and"
@@ -1376,6 +1445,23 @@ static void SetupSignals(void) {
 int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
+
+#ifdef __linux__
+  // CPUID topology leaves report the executing CPU. Keep the native and
+  // lifted executions on the same allowed CPU instead of masking their IDs.
+  cpu_set_t allowed, selected;
+  CPU_ZERO(&allowed);
+  PCHECK(sched_getaffinity(0, sizeof(allowed), &allowed) == 0);
+  CPU_ZERO(&selected);
+  for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+    if (CPU_ISSET(cpu, &allowed)) {
+      CPU_SET(cpu, &selected);
+      break;
+    }
+  }
+  CHECK_EQ(CPU_COUNT(&selected), 1);
+  PCHECK(sched_setaffinity(0, sizeof(selected), &selected) == 0);
+#endif
 
   InitFlags();
 

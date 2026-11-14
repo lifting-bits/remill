@@ -1998,26 +1998,17 @@ DEF_SEM(DoMASKMOVQ_MMXq_MMXq, V64 src1, V64 src2) {
 }
 
 DEF_SEM(DoEMMS) {
-  state.mmx.elems[0].val.qwords.elems[0] = __remill_undefined_64();
-  state.mmx.elems[1].val.qwords.elems[0] = __remill_undefined_64();
-  state.mmx.elems[2].val.qwords.elems[0] = __remill_undefined_64();
-  state.mmx.elems[3].val.qwords.elems[0] = __remill_undefined_64();
-  state.mmx.elems[4].val.qwords.elems[0] = __remill_undefined_64();
-  state.mmx.elems[5].val.qwords.elems[0] = __remill_undefined_64();
-  state.mmx.elems[6].val.qwords.elems[0] = __remill_undefined_64();
-  state.mmx.elems[7].val.qwords.elems[0] = __remill_undefined_64();
-
-  state.st.elems[0].val = __remill_undefined_f80();
-  state.st.elems[1].val = __remill_undefined_f80();
-  state.st.elems[2].val = __remill_undefined_f80();
-  state.st.elems[3].val = __remill_undefined_f80();
-  state.st.elems[4].val = __remill_undefined_f80();
-  state.st.elems[5].val = __remill_undefined_f80();
-  state.st.elems[6].val = __remill_undefined_f80();
-  state.st.elems[7].val = __remill_undefined_f80();
-
-  // TODO(pag): Add FPU tag word stuff to the `State` structure, and reset
-  //            it here.
+  // EMMS empties the tags without destroying the physical register data.
+  // TOP becomes zero; State::st is logical ST(i), whereas State::mmx is
+  // physical. Rotate only the logical view to preserve that correspondence.
+  const auto previous = state.st;
+  const auto top = state.x87.fxsave.swd.top;
+  _Pragma("unroll") for (unsigned i = 0; i < 8; ++i) {
+    state.st.elems[i].val = previous.elems[(i + 8 - top) % 8].val;
+  }
+  state.x87.fxsave.swd.top = 0;
+  // FXSAVE's abridged tag word uses zero for empty (FSAVE uses 11b).
+  state.x87.fxsave.ftw.flat = 0;
   return memory;
 }
 }  // namespace

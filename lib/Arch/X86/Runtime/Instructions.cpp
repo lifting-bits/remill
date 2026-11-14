@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 // clang-format off
 #include "remill/Arch/Runtime/Float.h"

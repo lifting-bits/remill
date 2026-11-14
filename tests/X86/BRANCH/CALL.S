@@ -22,11 +22,11 @@ TEST_INPUTS(
     0x7FFFFFFF)
 
     mov RET_32, ARG1_32
-    call call_target1
+    TEST_CALL call_target1
     jmp call_done1
 call_target1:
     add RET_32, ARG1_32
-    ret
+    TEST_RET
 call_done1:
     nop
 TEST_END

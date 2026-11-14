@@ -431,6 +431,9 @@ void X86ArchBase::PopulateRegisterTable(void) const {
     SUB_REG(state, XMM31, vec[31].xmm, v128, YMM31);
   }
 
+  REG(state, X87_CW, x87.fxsave.cwd.flat, u16);
+  REG(state, MXCSR, x87.fxsave.mxcsr.flat, u32);
+
   REG(state, ST0, st.elems[0].val, f80);
   REG(state, ST1, st.elems[1].val, f80);
   REG(state, ST2, st.elems[2].val, f80);
@@ -517,6 +520,9 @@ void X86ArchBase::PopulateRegisterTable(void) const {
 // specific variables.
 void X86ArchBase::FinishLiftedFunctionInitialization(
     llvm::Module *module, llvm::Function *bb_func) const {
+  // Match the strict-FP semantics. LLVM 17/18 refuse to inline strict callees
+  // into non-strict callers, leaving internal semantics calls in the trace.
+  bb_func->addFnAttr(llvm::Attribute::StrictFP);
   const auto &dl = module->getDataLayout();
   CHECK_EQ(sizeof(State), dl.getTypeAllocSize(StateStructType()))
       << "Mismatch between size of State type for x86/amd64 and what is in "

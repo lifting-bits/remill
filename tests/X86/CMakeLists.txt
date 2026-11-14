@@ -71,6 +71,14 @@ function(COMPILE_X86_TESTS name address_size has_avx has_avx512)
     PRIVATE ${X86_TEST_FLAGS}
   )
 
+  # The 32-bit guest must address the harness's code and recording stack.
+  if(address_size EQUAL 32 AND NOT APPLE)
+    foreach(target lift-${name}-tests run-${name}-tests)
+      target_compile_options(${target} PRIVATE -fno-pie)
+      target_link_options(${target} PRIVATE -no-pie)
+    endforeach()
+  endif()
+
   message(STATUS "Adding test: ${name} as run-${name}-tests")
   add_test(NAME "${name}" COMMAND "run-${name}-tests")
   add_dependencies(test_dependencies "run-${name}-tests")

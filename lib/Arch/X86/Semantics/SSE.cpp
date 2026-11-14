@@ -2118,27 +2118,6 @@ DEF_SEM(LDMXCSR, M32 src) {
 DEF_SEM(STMXCSR, M32W dst) {
   auto &csr = state.x87.fxsave.mxcsr;
 
-  // Store the current FPU rounding mode:
-  switch (__remill_fpu_get_rounding()) {
-    default:
-    case kFPURoundToNearestEven:
-      csr.rp = 0;
-      csr.rn = 0;
-      break;
-    case kFPURoundDownNegInf:
-      csr.rp = 0;
-      csr.rn = 1;
-      break;
-    case kFPURoundUpInf:
-      csr.rp = 1;
-      csr.rn = 0;
-      break;
-    case kFPURoundToZero:
-      csr.rp = 1;
-      csr.rn = 1;
-      break;
-  }
-
   Write(dst, csr.flat);
 
   return memory;
